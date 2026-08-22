@@ -1,0 +1,42 @@
+# --- Claude Code harness artifacts ---
+.claude/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Editors ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# --- Environment / secrets ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Node / Next.js (web/) ---
+web/node_modules/
+web/.next/
+web/out/
+web/build/
+web/.vercel/
+web/*.tsbuildinfo
+web/npm-debug.log*
+web/coverage/
+
+# --- Python / Django (api/) ---
+api/.venv/
+api/venv/
+api/__pycache__/
+api/**/__pycache__/
+api/*.pyc
+api/db.sqlite3
+api/staticfiles/
+api/media/
+api/.pytest_cache/
+api/htmlcov/
+api/.coverage
