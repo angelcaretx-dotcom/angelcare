@@ -20,16 +20,18 @@ Tracked honestly so nothing here is discovered by surprise later.
 - **No rate schedule, payer/broker integration, billing, or claims** —
   none of that exists yet; the site currently only captures and stores
   a transportation request for staff to follow up on manually.
-- **`api/` is not yet deployed.** Hosting moved from DigitalOcean to
-  Fly.io + Supabase (see ADR 0003) specifically so the account owner,
-  not the assistant, holds the cloud credentials. The Supabase database
-  is live and migrated; the Fly app itself still needs its one-time
-  setup (`fly apps create`, `fly secrets set`, `FLY_API_TOKEN` GitHub
-  secret) done by the account owner before `.github/workflows/deploy-api.yml`
-  can deploy it — see `docs/decisions/0003-supabase-and-flyio.md`.
+- **`api/` is not yet deployed to production.** This is expected and
+  not blocking anything — see ADR 0004: production hosting is a
+  deliberately separate, later step from development, never a
+  prerequisite for it. The full workflow (form -> API -> Postgres ->
+  admin) is proven working locally end to end. When production
+  deployment does happen: Supabase database is already live and
+  migrated; the Fly app still needs its one-time setup (`fly apps
+  create`, `fly secrets set`, `FLY_API_TOKEN` GitHub secret) done by
+  the account owner — see `docs/decisions/0003-supabase-and-flyio.md`.
   Until then, `web/`'s trip request form has no live backend to submit
-  to in production.
+  to in *production* specifically (local development is unaffected).
 - **`web/` is deployed** to Vercel (`angelcare` project, team `ACT`) and
   `angelcaretransit.com` DNS points at it. `NEXT_PUBLIC_API_URL` is not
   yet set in Vercel's environment variables — needs to be set once the
-  API is deployed (above), pointing at the Fly.io app URL.
+  API is deployed (above), pointing at wherever it ends up.

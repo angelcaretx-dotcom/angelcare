@@ -1,0 +1,29 @@
+# Local development database. Not used in production (see
+# docs/decisions/0003-supabase-and-flyio.md for prod's database) --
+# this exists purely so local dev/test can run against real
+# PostgreSQL instead of the SQLite fallback, matching production
+# behavior more closely.
+#
+# Usage (from repo root):
+#   docker compose up -d
+#   # then in api/.env: DATABASE_URL=postgresql://angelcare:localdev@localhost:5432/angelcare
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: angelcare
+      POSTGRES_PASSWORD: localdev
+      POSTGRES_DB: angelcare
+    ports:
+      - "5432:5432"
+    volumes:
+      - angelcare_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U angelcare"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  angelcare_pg_data:

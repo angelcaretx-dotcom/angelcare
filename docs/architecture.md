@@ -3,6 +3,7 @@
 See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0002](decisions/0002-hosting-and-stack.md),
 [ADR 0003](decisions/0003-supabase-and-flyio.md),
+[ADR 0004](decisions/0004-local-first-development.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 

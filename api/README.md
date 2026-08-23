@@ -1,25 +1,47 @@
 # AngelCare Transit — API
 
 Backend for AngelCare Transit. Django + Django REST Framework +
-PostgreSQL (SQLite fallback for local dev only). Deploys to Fly.io
-(Docker), database hosted on Supabase — see
-[`docs/decisions/0003-supabase-and-flyio.md`](../docs/decisions/0003-supabase-and-flyio.md).
+PostgreSQL. Fully runnable and testable locally — no cloud account or
+provider is required for development. See "Deployment" at the bottom
+for production, which is a separate, later concern.
 
-## Setup
+## Setup (local development)
 
-```bash
-python -m venv .venv
-.venv/Scripts/activate        # Windows
-# source .venv/bin/activate   # macOS/Linux
+1. Start a local PostgreSQL, matching what production uses (from the
+   repo root, requires Docker):
 
-pip install -r requirements.txt
-cp .env.example .env          # edit as needed; unset DATABASE_URL uses local SQLite
-python manage.py migrate
-python manage.py createsuperuser   # to access /admin/
-python manage.py runserver
-```
+   ```bash
+   docker compose up -d
+   ```
+
+   No Docker available? The app also runs against SQLite with zero
+   extra setup — see `.env.example`. Postgres is preferred so local
+   behavior matches production, but it's not a hard requirement to
+   start developing.
+
+2. Set up the app:
+
+   ```bash
+   python -m venv .venv
+   .venv/Scripts/activate        # Windows
+   # source .venv/bin/activate   # macOS/Linux
+
+   pip install -r requirements.txt
+   cp .env.example .env
+   # if using docker compose above, uncomment the DATABASE_URL line in .env
+   # pointing at localhost:5432 (see .env.example for the exact value)
+
+   python manage.py migrate
+   python manage.py createsuperuser   # to access /admin/
+   python manage.py runserver
+   ```
 
 API is served at `http://localhost:8000/`. Admin at `/admin/`.
+
+The frontend (`web/`) talks to this exact same API over HTTP
+(`NEXT_PUBLIC_API_URL=http://localhost:8000` in `web/.env.local`) —
+there is no separate mock/stub backend for local dev. The request path
+is identical to production, only the URL differs.
 
 ## Scripts
 
@@ -41,17 +63,23 @@ built — see `../docs/architecture.md` for the planned phase order.
 
 ## Environment variables
 
-See `.env.example`. In production, `DJANGO_SECRET_KEY` and
-`DATABASE_URL` are required (the app refuses to start without them when
-`DJANGO_DEBUG` is off), and `DJANGO_CORS_ALLOWED_ORIGINS` must include
-the deployed frontend origin.
+See `.env.example`. Every environment-specific value (secrets, DB,
+allowed hosts, CORS origins) comes from environment variables — nothing
+provider-specific is hard-coded in application code. In production,
+`DJANGO_SECRET_KEY` and `DATABASE_URL` are required (the app refuses to
+start without them when `DJANGO_DEBUG` is off).
 
-## Deployment
+## Deployment (production — not required for local development)
 
-Deploys automatically via `.github/workflows/deploy-api.yml` on every
-push to `main` that touches `api/` (tests run first; deploy only
-happens if they pass). One-time setup (Fly app creation, secrets, and
-the `FLY_API_TOKEN` GitHub secret) is documented step-by-step in
+`fly.toml` and `.github/workflows/deploy-api.yml` configure a Fly.io +
+Supabase production deployment. These files are inert during local
+development — nothing in `manage.py runserver`, the test suite, or the
+app's own code reads or depends on them. They only take effect when the
+GitHub Actions workflow actually runs on a push to `main`.
+
+Fly.io/Supabase is the current production choice, not an architectural
+requirement — see
 [`docs/decisions/0003-supabase-and-flyio.md`](../docs/decisions/0003-supabase-and-flyio.md)
-and must be done once by the account owner before the first deploy
-will succeed.
+for why, and what it would take to swap it for a different host later
+(the app's env-var-driven config is what makes that swap possible
+without touching application code).
