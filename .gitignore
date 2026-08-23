@@ -29,6 +29,7 @@ web/npm-debug.log*
 web/coverage/
 
 # --- Python / Django (api/) ---
+api/fly.secrets.env
 api/.venv/
 api/venv/
 api/__pycache__/

@@ -2,6 +2,7 @@
 
 See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0002](decisions/0002-hosting-and-stack.md),
+[ADR 0003](decisions/0003-supabase-and-flyio.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -13,7 +14,7 @@ Two independently deployable apps in one repo:
 web/   Next.js (TypeScript, Tailwind) — public site + trip request form UI
        -> deploys to Vercel
 api/   Django + DRF + PostgreSQL      — owns the database, all business logic
-       -> deploys to DigitalOcean
+       -> deploys to Fly.io, database on Supabase (ADR 0003)
 ```
 
 `web/` calls `api/` only over HTTP, at a versioned path (`/api/v1/...`).

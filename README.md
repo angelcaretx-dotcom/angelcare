@@ -9,7 +9,7 @@ applications:
 | Path | What it is | Deploys to |
 |---|---|---|
 | [`web/`](web/) | Public marketing site + trip request form (Next.js) | Vercel |
-| [`api/`](api/) | Backend API and future operations platform (Django + PostgreSQL) | DigitalOcean |
+| [`api/`](api/) | Backend API and future operations platform (Django + PostgreSQL) | Fly.io (DB: Supabase) |
 
 See [`docs/`](docs/) for architecture, decisions, and business-requirements
 records.

@@ -18,9 +18,10 @@ is UNKNOWN and must not be assumed.
 | 2026-08-22 | Logo (current) | Official vector mark `angelcaretransite-logo.svg`, blue/teal abstract "act" symbol — stored at `web/public/logo.svg`, used as-is, explicitly confirmed as the replacement | Owner, chat |
 | 2026-08-22 | Brand colors (derived from current logo) | Blue `#4fb1e4` / teal `#6bc9cd` (decorative, from the SVG artwork); accessible text/button variants `#2d6f91` / `#2f7377` (chosen separately to pass WCAG AA 4.5:1 on white — see `web/src/app/globals.css`) | Derived, not separately confirmed |
 | 2026-08-22 | GitHub repo visibility | Public (explicitly chosen, kept despite recommendation to go private) | Owner, chat |
-| 2026-08-22 | Frontend hosting | Vercel | Owner, chat |
-| 2026-08-22 | Backend/DB hosting | DigitalOcean | Owner, chat |
-| 2026-08-22 | Backend stack | Python / Django + PostgreSQL | Owner, chat |
+| 2026-08-22 | Frontend hosting | Vercel — deployed, project `angelcare` under team `ACT` (act-c1d1), domain angelcaretransit.com attached | Owner, chat |
+| 2026-08-22 | Backend/DB hosting (superseded) | DigitalOcean — replaced before deployment; doctl has no non-interactive login and the owner didn't want to share a full-account token | Owner, chat |
+| 2026-08-22 | Backend/DB hosting (current) | Fly.io (app, via GitHub Actions deploy) + Supabase (Postgres) — see ADR 0003. Chosen so the owner keeps sole control of both accounts' credentials | Owner, chat |
+| 2026-08-22 | Backend stack | Python / Django + PostgreSQL (unchanged by the hosting swap) | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)
 

@@ -1,7 +1,9 @@
 # AngelCare Transit — API
 
 Backend for AngelCare Transit. Django + Django REST Framework +
-PostgreSQL (SQLite fallback for local dev only). Deploys to DigitalOcean.
+PostgreSQL (SQLite fallback for local dev only). Deploys to Fly.io
+(Docker), database hosted on Supabase — see
+[`docs/decisions/0003-supabase-and-flyio.md`](../docs/decisions/0003-supabase-and-flyio.md).
 
 ## Setup
 
@@ -43,3 +45,13 @@ See `.env.example`. In production, `DJANGO_SECRET_KEY` and
 `DATABASE_URL` are required (the app refuses to start without them when
 `DJANGO_DEBUG` is off), and `DJANGO_CORS_ALLOWED_ORIGINS` must include
 the deployed frontend origin.
+
+## Deployment
+
+Deploys automatically via `.github/workflows/deploy-api.yml` on every
+push to `main` that touches `api/` (tests run first; deploy only
+happens if they pass). One-time setup (Fly app creation, secrets, and
+the `FLY_API_TOKEN` GitHub secret) is documented step-by-step in
+[`docs/decisions/0003-supabase-and-flyio.md`](../docs/decisions/0003-supabase-and-flyio.md)
+and must be done once by the account owner before the first deploy
+will succeed.

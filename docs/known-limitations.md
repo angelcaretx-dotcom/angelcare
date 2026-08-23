@@ -20,9 +20,16 @@ Tracked honestly so nothing here is discovered by surprise later.
 - **No rate schedule, payer/broker integration, billing, or claims** —
   none of that exists yet; the site currently only captures and stores
   a transportation request for staff to follow up on manually.
-- **DigitalOcean deployment is not yet provisioned** — `api/` runs
-  locally (SQLite fallback) and has not been deployed. Production
-  `DJANGO_SECRET_KEY`/`DATABASE_URL`/`DJANGO_CORS_ALLOWED_ORIGINS`
-  need to be set when that happens (see `api/.env.example`).
-- **Vercel deployment is not yet connected** to angelcaretransit.com's
-  DNS — `web/` has not been deployed or pointed at the domain.
+- **`api/` is not yet deployed.** Hosting moved from DigitalOcean to
+  Fly.io + Supabase (see ADR 0003) specifically so the account owner,
+  not the assistant, holds the cloud credentials. The Supabase database
+  is live and migrated; the Fly app itself still needs its one-time
+  setup (`fly apps create`, `fly secrets set`, `FLY_API_TOKEN` GitHub
+  secret) done by the account owner before `.github/workflows/deploy-api.yml`
+  can deploy it — see `docs/decisions/0003-supabase-and-flyio.md`.
+  Until then, `web/`'s trip request form has no live backend to submit
+  to in production.
+- **`web/` is deployed** to Vercel (`angelcare` project, team `ACT`) and
+  `angelcaretransit.com` DNS points at it. `NEXT_PUBLIC_API_URL` is not
+  yet set in Vercel's environment variables — needs to be set once the
+  API is deployed (above), pointing at the Fly.io app URL.

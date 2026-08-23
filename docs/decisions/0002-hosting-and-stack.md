@@ -1,6 +1,6 @@
 # ADR 0002: Hosting and stack choice
 
-- Status: Accepted
+- Status: Superseded by [ADR 0003](0003-supabase-and-flyio.md) (hosting only; the Django+PostgreSQL stack decision below still stands)
 - Date: 2026-08-22
 
 ## Context
