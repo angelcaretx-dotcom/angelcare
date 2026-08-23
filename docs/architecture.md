@@ -30,17 +30,24 @@ monolithic app. Currently:
 
 - `transportation/` — trip request intake (Phase 1: capture and store a
   request; not yet the full trip lifecycle / dispatch state machine)
+- `notifications/` — (Phase 2) `NotificationService` + a swappable
+  `EmailProvider` interface, and a `NotificationLog` audit trail of
+  every send attempt. This is the first realized instance of the
+  vendor-isolation pattern below: `transportation` calls
+  `NotificationService`, never an email vendor's SDK directly.
 
 Future domains, added only when there's a confirmed business need
 (never speculatively): organization, passengers, drivers, vehicles,
 dispatch/trips, payers/brokers, billing, claims, compliance, documents,
-notifications, audit. Each gets its own app, its own models, and talks
-to other domains through explicit interfaces — not by reaching into
-another app's models directly once the domains get more coupled logic.
+audit. Each gets its own app, its own models, and talks to other
+domains through explicit interfaces — not by reaching into another
+app's models directly once the domains get more coupled logic.
 
-Third-party vendors (maps, SMS, email, payments, broker APIs) are to be
-isolated behind an `integrations/` layer when they're introduced — never
-called directly from domain logic. None exist yet in Phase 1.
+Third-party vendors (maps, SMS, email, payments, broker APIs) are
+isolated behind an interface when they're introduced — never called
+directly from domain logic. `notifications/providers/` is the first
+example (an `EmailProvider` ABC); the same pattern applies to maps, SMS,
+payments, etc. as they're added.
 
 ## Data conventions
 

@@ -1,9 +1,13 @@
 from datetime import timedelta
+from unittest.mock import patch
 
+from django.core import mail
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
+
+from notifications.models import NotificationLog
 
 from .models import TripRequest, TripRequestStatus
 
@@ -101,6 +105,45 @@ class TripRequestCreateTests(APITestCase):
 
         detail_response = self.client.get(f"{self.url}{trip_request_id}/")
         self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class TripRequestNotificationIntegrationTests(APITestCase):
+    """
+    Confirms the full path: a real API submission actually triggers
+    real notification sends (via Django's test email backend) and logs
+    them -- not just that NotificationService works in isolation.
+    """
+
+    def setUp(self):
+        self.url = reverse("transportation:trip-request-create")
+        mail.outbox = []
+
+    def test_submitting_a_request_sends_staff_and_customer_emails(self):
+        response = self.client.post(self.url, valid_payload(), format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(len(mail.outbox), 2)
+
+        recipients = {email.to[0] for email in mail.outbox}
+        self.assertEqual(recipients, {"angelcaretx@gmail.com", "jane@example.com"})
+
+    def test_submitting_a_request_creates_notification_log_entries(self):
+        response = self.client.post(self.url, valid_payload(), format="json")
+
+        logs = NotificationLog.objects.filter(related_object_id=response.data["id"])
+        self.assertEqual(logs.count(), 2)
+
+    def test_notification_failure_does_not_break_trip_request_creation(self):
+        with patch(
+            "notifications.providers.email.DjangoEmailProvider.send",
+            side_effect=RuntimeError("smtp down"),
+        ):
+            response = self.client.post(self.url, valid_payload(), format="json")
+
+        # The trip request itself must still succeed -- a notification
+        # outage is not a reason to lose a real customer's request.
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(TripRequest.objects.count(), 1)
 
 
 class TripRequestModelTests(APITestCase):

@@ -55,6 +55,11 @@ is identical to production, only the URL differs.
 - `transportation/` — trip request intake domain (Phase 1). Public,
   create-only API at `POST /api/v1/trip-requests/`. Staff review
   submissions via `/admin/`.
+- `notifications/` — email notifications (Phase 2). `NotificationService`
+  + a swappable `EmailProvider` interface (Section 17 pattern) send a
+  staff alert and a customer confirmation on every new trip request,
+  and log every attempt to `NotificationLog` (visible in `/admin/`) so
+  a silent delivery failure is never invisible.
 - `healthz/` — unauthenticated health check endpoint
 
 Domains beyond `transportation` (organization, passengers, drivers,

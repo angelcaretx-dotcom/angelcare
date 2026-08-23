@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "transportation",
+    "notifications",
 ]
 
 MIDDLEWARE = [
@@ -176,6 +177,38 @@ REST_FRAMEWORK = {
         "user": "1000/hour",
     },
 }
+
+
+# --- Email / Notifications ---
+# Local dev (default): console backend -- emails print to the runserver
+# terminal, no credentials or account needed (see ADR 0004). Tests use
+# Django's in-memory backend automatically. Production must set
+# DJANGO_EMAIL_BACKEND to a real backend (e.g. smtp) and the
+# corresponding host/port/user/password -- see .env.example.
+
+DEFAULT_EMAIL_BACKEND = (
+    "django.core.mail.backends.console.EmailBackend"
+    if DEBUG
+    else "django.core.mail.backends.smtp.EmailBackend"
+)
+EMAIL_BACKEND = os.environ.get("DJANGO_EMAIL_BACKEND", DEFAULT_EMAIL_BACKEND)
+EMAIL_HOST = os.environ.get("DJANGO_EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("DJANGO_EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("DJANGO_EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("DJANGO_EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = env_bool("DJANGO_EMAIL_USE_TLS", True)
+
+DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_DEFAULT_FROM_EMAIL", "angelcaretx@gmail.com")
+# Where new-trip-request notifications are sent for staff to review.
+STAFF_NOTIFICATION_EMAIL = os.environ.get("STAFF_NOTIFICATION_EMAIL", "angelcaretx@gmail.com")
+
+if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend" and not DEBUG:
+    if not (EMAIL_HOST and EMAIL_HOST_USER and EMAIL_HOST_PASSWORD):
+        raise RuntimeError(
+            "DJANGO_EMAIL_HOST, DJANGO_EMAIL_HOST_USER, and "
+            "DJANGO_EMAIL_HOST_PASSWORD must be set to send real email "
+            "in production (DJANGO_DEBUG is not enabled)."
+        )
 
 
 # --- Security (effective only when DEBUG is off) ---

@@ -18,8 +18,14 @@ Tracked honestly so nothing here is discovered by surprise later.
   actual data handling but are not attorney-reviewed and contain no
   pricing/cancellation/service-level terms (none have been defined).
 - **No rate schedule, payer/broker integration, billing, or claims** —
-  none of that exists yet; the site currently only captures and stores
-  a transportation request for staff to follow up on manually.
+  none of that exists yet.
+- **Notifications are email-only, plain text, no retry.** A new trip
+  request emails staff and the customer once; if the send fails it's
+  logged to `NotificationLog` (visible in `/admin/`) but not
+  automatically retried. SMS/push are not implemented — the
+  `EmailProvider` interface (`notifications/providers/`) is designed so
+  adding them later doesn't require touching `NotificationService`'s
+  callers.
 - **`api/` is not yet deployed to production.** This is expected and
   not blocking anything — see ADR 0004: production hosting is a
   deliberately separate, later step from development, never a

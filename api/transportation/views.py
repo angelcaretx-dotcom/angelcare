@@ -1,6 +1,8 @@
 from rest_framework import permissions
 from rest_framework.generics import CreateAPIView
 
+from notifications.services import NotificationService
+
 from .serializers import TripRequestCreateSerializer
 
 
@@ -16,3 +18,10 @@ class TripRequestCreateView(CreateAPIView):
 
     serializer_class = TripRequestCreateSerializer
     permission_classes = [permissions.AllowAny]
+
+    def perform_create(self, serializer):
+        trip_request = serializer.save()
+        # Notification failure must never break the request -- the
+        # trip request is already safely saved by this point.
+        # See notifications/services.py for why this can't raise.
+        NotificationService().notify_new_trip_request(trip_request)

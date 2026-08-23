@@ -1,0 +1,16 @@
+New transportation request received.
+
+Name: {{ trip_request.full_name }}
+Phone: {{ trip_request.phone }}
+Email: {{ trip_request.email }}
+
+Service type: {{ trip_request.get_service_type_display }}
+Requested pickup: {{ trip_request.requested_datetime }}
+
+Pickup address: {{ trip_request.pickup_address }}
+Drop-off address: {{ trip_request.dropoff_address }}
+
+{% if trip_request.mobility_notes %}Mobility notes: {{ trip_request.mobility_notes }}
+{% endif %}{% if trip_request.additional_notes %}Additional notes: {{ trip_request.additional_notes }}
+{% endif %}
+Review and update status in the admin: /admin/transportation/triprequest/{{ trip_request.id }}/change/

@@ -1,0 +1,20 @@
+Hi {{ trip_request.full_name }},
+
+Thank you for submitting a transportation request to AngelCare Transit.
+
+This is a request only — not a confirmed booking. Our team will review
+it and contact you at {{ trip_request.phone }} or this email address to
+confirm the details and availability.
+
+Request summary:
+- Service type: {{ trip_request.get_service_type_display }}
+- Requested pickup: {{ trip_request.requested_datetime }}
+- Pickup address: {{ trip_request.pickup_address }}
+- Drop-off address: {{ trip_request.dropoff_address }}
+
+If you are experiencing a medical emergency, call 911 immediately —
+this email and our request form are not monitored in real time.
+
+Questions? Call 817-766-9228 or reply to this email.
+
+— AngelCare Transit
