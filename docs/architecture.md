@@ -5,6 +5,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0003](decisions/0003-supabase-and-flyio.md),
 [ADR 0004](decisions/0004-local-first-development.md),
 [ADR 0005](decisions/0005-rbac-and-audit-foundation.md),
+[ADR 0006](decisions/0006-passenger-domain.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -29,8 +30,12 @@ rewriting the other.
 The backend is organized as domain-oriented Django apps, not one
 monolithic app. Currently:
 
+- `passengers/` — (Phase 4) real, standalone passenger records —
+  see ADR 0006 for what's included and what's deliberately deferred.
 - `transportation/` — trip request intake (Phase 1: capture and store a
-  request; not yet the full trip lifecycle / dispatch state machine)
+  request; not yet the full trip lifecycle / dispatch state machine).
+  `TripRequest.passenger` optionally links to a `passengers.Passenger`,
+  set by staff only, never auto-matched on submission.
 - `notifications/` — (Phase 2) `NotificationService` + a swappable
   `EmailProvider` interface, and a `NotificationLog` audit trail of
   every send attempt. This is the first realized instance of the

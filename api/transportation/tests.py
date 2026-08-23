@@ -8,6 +8,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from notifications.models import NotificationLog
+from passengers.models import Passenger
 
 from .models import TripRequest, TripRequestStatus
 
@@ -42,6 +43,20 @@ class TripRequestCreateTests(APITestCase):
         self.assertEqual(trip_request.full_name, "Jane Doe")
         self.assertEqual(trip_request.status, TripRequestStatus.NEW)
         self.assertEqual(trip_request.source, "website")
+
+    def test_public_submission_cannot_set_passenger_link(self):
+        # Linking a request to a Passenger record is a deliberate staff
+        # action in /admin/ (see passengers app), never settable by an
+        # anonymous public submission.
+        passenger = Passenger.objects.create(legal_name="Someone Else", phone="817-555-0111")
+
+        response = self.client.post(
+            self.url, valid_payload(passenger=str(passenger.id)), format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        trip_request = TripRequest.objects.get(id=response.data["id"])
+        self.assertIsNone(trip_request.passenger)
 
     def test_anonymous_users_can_submit(self):
         # Public endpoint: no auth required.

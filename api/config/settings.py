@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "audit",
+    "passengers",
     "transportation",
     "notifications",
     "accounts",

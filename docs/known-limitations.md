@@ -7,10 +7,14 @@ Tracked honestly so nothing here is discovered by surprise later.
   what's actually needed today (reviewing trip requests), not
   speculative job titles. There is still no customer login and no
   driver-facing app; only staff `/admin/` access is role-gated.
-- **Audit trail covers trip request status changes only.** `AuditLog`
-  (ADR 0005) is general-purpose and ready for other domains, but only
-  `TripRequest` status changes are wired into it so far — other admin
+- **Audit trail covers status changes only.** `AuditLog` (ADR 0005) is
+  general-purpose and ready for other domains, but only `TripRequest`
+  and `Passenger` status changes are wired into it so far — other
   edits (e.g. changing a phone number) aren't yet logged.
+- **Passenger domain is intentionally minimal** (ADR 0006): no
+  authorized representatives, no facility/payer/document relationships,
+  no field-level edit history beyond status. Trip requests are never
+  auto-linked to a passenger — staff link them manually in `/admin/`.
 - **No physical business address published**, per the owner's choice —
   revisit if that changes.
 - **Privacy Policy and Terms of Use pages are drafts**, explicitly

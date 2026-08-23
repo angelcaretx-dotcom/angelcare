@@ -16,7 +16,16 @@ class RoleSeedingTests(TestCase):
     def test_dispatcher_group_exists_with_expected_permissions(self):
         dispatcher = Group.objects.get(name="Dispatcher")
         codenames = set(dispatcher.permissions.values_list("codename", flat=True))
-        self.assertEqual(codenames, {"view_triprequest", "change_triprequest"})
+        self.assertEqual(
+            codenames,
+            {
+                "view_triprequest",
+                "change_triprequest",
+                "view_passenger",
+                "change_passenger",
+                "add_passenger",
+            },
+        )
 
     def test_administrator_group_exists_with_expected_permissions(self):
         administrator = Group.objects.get(name="Administrator")
@@ -28,6 +37,10 @@ class RoleSeedingTests(TestCase):
                 "change_triprequest",
                 "add_triprequest",
                 "delete_triprequest",
+                "view_passenger",
+                "change_passenger",
+                "add_passenger",
+                "delete_passenger",
                 "view_notificationlog",
                 "view_auditlog",
             },

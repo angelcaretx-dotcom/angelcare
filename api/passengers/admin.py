@@ -2,25 +2,23 @@ from django.contrib import admin
 
 from audit.services import record_change
 
-from .models import TripRequest
+from .models import Passenger
 
 
-@admin.register(TripRequest)
-class TripRequestAdmin(admin.ModelAdmin):
+@admin.register(Passenger)
+class PassengerAdmin(admin.ModelAdmin):
     list_display = (
-        "full_name",
+        "legal_name",
+        "preferred_name",
         "phone",
-        "service_type",
-        "requested_datetime",
+        "preferred_service_type",
         "status",
-        "passenger",
         "created_at",
     )
-    list_filter = ("status", "service_type")
-    search_fields = ("full_name", "phone", "email", "pickup_address", "dropoff_address")
-    readonly_fields = ("id", "created_at", "updated_at", "source")
-    autocomplete_fields = ("passenger",)
-    ordering = ("-created_at",)
+    list_filter = ("status", "preferred_service_type")
+    search_fields = ("legal_name", "preferred_name", "phone", "email")
+    readonly_fields = ("id", "created_at", "updated_at")
+    ordering = ("legal_name",)
 
     def save_model(self, request, obj, form, change):
         previous_status = form.initial.get("status") if change else None
@@ -30,7 +28,7 @@ class TripRequestAdmin(admin.ModelAdmin):
             record_change(
                 actor=request.user,
                 action="status_changed",
-                resource_type="TripRequest",
+                resource_type="Passenger",
                 resource_id=obj.id,
                 before={"status": previous_status},
                 after={"status": obj.status},

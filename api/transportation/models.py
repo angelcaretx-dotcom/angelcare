@@ -48,6 +48,19 @@ class TripRequest(models.Model):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
+    # Deliberately nullable and staff-set only (never auto-matched on
+    # submission) -- see docs/decisions/0006-passenger-domain.md for why
+    # automatic phone/email matching isn't safe without real dedup logic.
+    # String reference (not a direct import) avoids a circular import,
+    # since passengers.models imports ServiceType from this module.
+    passenger = models.ForeignKey(
+        "passengers.Passenger",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="trip_requests",
+    )
+
     full_name = models.CharField(max_length=200)
     phone = models.CharField(max_length=20, validators=[phone_validator])
     email = models.EmailField()

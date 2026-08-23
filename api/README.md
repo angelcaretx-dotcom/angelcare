@@ -52,9 +52,13 @@ is identical to production, only the URL differs.
 ## Structure
 
 - `config/` — project settings, root URLconf
+- `passengers/` — real passenger records (Phase 4): name, contact,
+  emergency contact, mobility profile, status. See
+  `docs/decisions/0006-passenger-domain.md` for scope.
 - `transportation/` — trip request intake domain (Phase 1). Public,
   create-only API at `POST /api/v1/trip-requests/`. Staff review
-  submissions via `/admin/`.
+  submissions via `/admin/`, and can optionally link a request to a
+  `Passenger` there (autocomplete search) — never automatic.
 - `notifications/` — email notifications (Phase 2). `NotificationService`
   + a swappable `EmailProvider` interface (Section 17 pattern) send a
   staff alert and a customer confirmation on every new trip request,
