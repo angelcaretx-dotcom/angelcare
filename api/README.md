@@ -55,6 +55,9 @@ is identical to production, only the URL differs.
 - `passengers/` — real passenger records (Phase 4): name, contact,
   emergency contact, mobility profile, status. See
   `docs/decisions/0006-passenger-domain.md` for scope.
+- `drivers/`, `vehicles/` — driver and vehicle records (Phase 5). See
+  `docs/decisions/0007-driver-vehicle-domains.md` for scope. Not yet
+  linked to trip requests — no assignment/dispatch feature exists yet.
 - `transportation/` — trip request intake domain (Phase 1). Public,
   create-only API at `POST /api/v1/trip-requests/`. Staff review
   submissions via `/admin/`, and can optionally link a request to a

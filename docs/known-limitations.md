@@ -15,6 +15,13 @@ Tracked honestly so nothing here is discovered by surprise later.
   authorized representatives, no facility/payer/document relationships,
   no field-level edit history beyond status. Trip requests are never
   auto-linked to a passenger — staff link them manually in `/admin/`.
+- **Driver/Vehicle domains are intentionally minimal** (ADR 0007): no
+  insurance, background checks, training/certification records,
+  maintenance/mileage history, or incident tracking. License and
+  registration/inspection expiration dates are tracked, but nothing
+  enforces them yet — there's no assignment/dispatch feature to block
+  an expired-credential driver or vehicle from being assigned to,
+  because there's no assignment feature at all yet (that's next).
 - **No physical business address published**, per the owner's choice —
   revisit if that changes.
 - **Privacy Policy and Terms of Use pages are drafts**, explicitly

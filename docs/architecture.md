@@ -6,6 +6,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0004](decisions/0004-local-first-development.md),
 [ADR 0005](decisions/0005-rbac-and-audit-foundation.md),
 [ADR 0006](decisions/0006-passenger-domain.md),
+[ADR 0007](decisions/0007-driver-vehicle-domains.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -32,6 +33,10 @@ monolithic app. Currently:
 
 - `passengers/` — (Phase 4) real, standalone passenger records —
   see ADR 0006 for what's included and what's deliberately deferred.
+- `drivers/`, `vehicles/` — (Phase 5) driver and vehicle records —
+  see ADR 0007 for what's included and what's deliberately deferred.
+  Not yet referenced by `transportation` -- no assignment/dispatch
+  feature exists yet to link them to a trip.
 - `transportation/` — trip request intake (Phase 1: capture and store a
   request; not yet the full trip lifecycle / dispatch state machine).
   `TripRequest.passenger` optionally links to a `passengers.Passenger`,

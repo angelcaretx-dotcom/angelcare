@@ -63,6 +63,8 @@ INSTALLED_APPS = [
     "corsheaders",
     "audit",
     "passengers",
+    "drivers",
+    "vehicles",
     "transportation",
     "notifications",
     "accounts",

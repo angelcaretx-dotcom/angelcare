@@ -32,18 +32,26 @@ def _permissions(app_label, model, actions):
 
 
 def seed_roles(sender, **kwargs):
-    _ensure_permissions_exist(["transportation", "notifications", "audit", "passengers"])
+    _ensure_permissions_exist(
+        ["transportation", "notifications", "audit", "passengers", "drivers", "vehicles"]
+    )
 
     dispatcher, _ = Group.objects.get_or_create(name="Dispatcher")
     dispatcher.permissions.set(
         list(_permissions("transportation", "triprequest", ["view", "change"]))
         + list(_permissions("passengers", "passenger", ["view", "change", "add"]))
+        # Dispatchers need to see who/what is available, not edit HR/fleet
+        # records -- that stays with Administrator (least privilege).
+        + list(_permissions("drivers", "driver", ["view"]))
+        + list(_permissions("vehicles", "vehicle", ["view"]))
     )
 
     administrator, _ = Group.objects.get_or_create(name="Administrator")
     administrator.permissions.set(
         list(_permissions("transportation", "triprequest", ["view", "change", "add", "delete"]))
         + list(_permissions("passengers", "passenger", ["view", "change", "add", "delete"]))
+        + list(_permissions("drivers", "driver", ["view", "change", "add", "delete"]))
+        + list(_permissions("vehicles", "vehicle", ["view", "change", "add", "delete"]))
         + list(_permissions("notifications", "notificationlog", ["view"]))
         + list(_permissions("audit", "auditlog", ["view"]))
     )
