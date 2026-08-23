@@ -4,6 +4,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0002](decisions/0002-hosting-and-stack.md),
 [ADR 0003](decisions/0003-supabase-and-flyio.md),
 [ADR 0004](decisions/0004-local-first-development.md),
+[ADR 0005](decisions/0005-rbac-and-audit-foundation.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -35,6 +36,11 @@ monolithic app. Currently:
   every send attempt. This is the first realized instance of the
   vendor-isolation pattern below: `transportation` calls
   `NotificationService`, never an email vendor's SDK directly.
+- `audit/` — (Phase 3) general-purpose `AuditLog` + `record_change()`,
+  usable by any domain app, not tied to Django admin specifically.
+- `accounts/` — (Phase 3) seeds staff roles as Django Groups
+  (`Dispatcher`, `Administrator`) with explicit permissions — see
+  ADR 0005.
 
 Future domains, added only when there's a confirmed business need
 (never speculatively): organization, passengers, drivers, vehicles,

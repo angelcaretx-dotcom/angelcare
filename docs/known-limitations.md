@@ -1,16 +1,16 @@
-# Known Limitations (Phase 1)
+# Known Limitations
 
 Tracked honestly so nothing here is discovered by surprise later.
 
-- **No audit trail yet.** `TripRequest` has `created_at`/`updated_at`
-  only. Status changes made by staff in `/admin/` are not individually
-  logged with actor/timestamp/reason. A centralized audit system
-  (Section 15 of the project directive) is planned for a later phase,
-  once there are actual staff-facing state transitions worth auditing
-  beyond simple admin edits.
-- **No authentication/RBAC beyond Django's built-in admin auth.** There
-  is no customer login, no driver app, no permission model yet — only
-  Django staff accounts guarding `/admin/`.
+- **RBAC covers two roles only.** `Dispatcher` and `Administrator`
+  (see ADR 0005) are the only staff roles that exist — grounded in
+  what's actually needed today (reviewing trip requests), not
+  speculative job titles. There is still no customer login and no
+  driver-facing app; only staff `/admin/` access is role-gated.
+- **Audit trail covers trip request status changes only.** `AuditLog`
+  (ADR 0005) is general-purpose and ready for other domains, but only
+  `TripRequest` status changes are wired into it so far — other admin
+  edits (e.g. changing a phone number) aren't yet logged.
 - **No physical business address published**, per the owner's choice —
   revisit if that changes.
 - **Privacy Policy and Terms of Use pages are drafts**, explicitly

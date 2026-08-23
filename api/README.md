@@ -60,6 +60,18 @@ is identical to production, only the URL differs.
   staff alert and a customer confirmation on every new trip request,
   and log every attempt to `NotificationLog` (visible in `/admin/`) so
   a silent delivery failure is never invisible.
+- `audit/` — general-purpose audit trail (Phase 3). `record_change()`
+  is called from anywhere a sensitive change happens (currently:
+  trip request status changes in `/admin/`) and logs actor, before/
+  after, source, and timestamp to `AuditLog`. Entries are view-only in
+  `/admin/` — not editable or deletable.
+- `accounts/` — staff roles (Phase 3). Seeds `Dispatcher` (view/change
+  trip requests) and `Administrator` (full access) as Django Groups
+  with real permissions — see `docs/decisions/0005-rbac-and-audit-foundation.md`.
+  `python manage.py createsuperuser` is for full admins only. For a
+  scoped role: as an existing Administrator/superuser, create a regular
+  `User` with `is_staff=True` via `/admin/auth/user/` and add them to
+  the `Dispatcher` group.
 - `healthz/` — unauthenticated health check endpoint
 
 Domains beyond `transportation` (organization, passengers, drivers,
