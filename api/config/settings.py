@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "drivers",
     "vehicles",
     "transportation",
+    "trips",
     "notifications",
     "accounts",
 ]

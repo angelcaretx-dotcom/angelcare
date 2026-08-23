@@ -26,6 +26,9 @@ class RoleSeedingTests(TestCase):
                 "add_passenger",
                 "view_driver",
                 "view_vehicle",
+                "view_trip",
+                "change_trip",
+                "add_trip",
             },
         )
 
@@ -51,6 +54,10 @@ class RoleSeedingTests(TestCase):
                 "change_vehicle",
                 "add_vehicle",
                 "delete_vehicle",
+                "view_trip",
+                "change_trip",
+                "add_trip",
+                "delete_trip",
                 "view_notificationlog",
                 "view_auditlog",
             },

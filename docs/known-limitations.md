@@ -17,11 +17,17 @@ Tracked honestly so nothing here is discovered by surprise later.
   auto-linked to a passenger — staff link them manually in `/admin/`.
 - **Driver/Vehicle domains are intentionally minimal** (ADR 0007): no
   insurance, background checks, training/certification records,
-  maintenance/mileage history, or incident tracking. License and
-  registration/inspection expiration dates are tracked, but nothing
-  enforces them yet — there's no assignment/dispatch feature to block
-  an expired-credential driver or vehicle from being assigned to,
-  because there's no assignment feature at all yet (that's next).
+  maintenance/mileage history, or incident tracking.
+- **Trip status is intentionally coarse** (ADR 0008): `SCHEDULED ->
+  IN_PROGRESS -> COMPLETED` (+ `CANCELLED`/`NO_SHOW`), not the project
+  directive's full example machine (`ARRIVED`, `PASSENGER_ONBOARD`,
+  etc.) — those assume a driver-facing app reporting real-time status,
+  which doesn't exist. Credential-expiration blocking IS enforced now
+  (Driver license, Vehicle registration/inspection) since assignment
+  is now a real feature.
+- **No recurring trips.** Each `Trip` is one-to-one with one
+  `TripRequest`; recurring transportation (Section 4) needs its own
+  request/trip pair per occurrence for now.
 - **No physical business address published**, per the owner's choice —
   revisit if that changes.
 - **Privacy Policy and Terms of Use pages are drafts**, explicitly
