@@ -14,8 +14,9 @@ is UNKNOWN and must not be assumed.
 | 2026-08-22 | Business email | angelcaretx@gmail.com | Owner, chat |
 | 2026-08-22 | Physical address | Not provided — intentionally omitted from public site | Owner, chat |
 | 2026-08-22 | Services offered | Ambulatory, Wheelchair, Stretcher transportation | Owner, chat |
-| 2026-08-22 | Logo | Provided (red/maroon hands + cyan "ACT" wordmark) — stored at `web/public/logo.png`, used as-is | Owner, chat |
-| 2026-08-22 | Brand colors (derived from logo) | Maroon `#A6353A`, Cyan `#1CADE4` | Derived, not separately confirmed |
+| 2026-08-22 | Logo (superseded) | An earlier PNG (red/maroon hands + cyan "ACT" wordmark) was sent first but replaced before use | Owner, chat |
+| 2026-08-22 | Logo (current) | Official vector mark `angelcaretransite-logo.svg`, blue/teal abstract "act" symbol — stored at `web/public/logo.svg`, used as-is, explicitly confirmed as the replacement | Owner, chat |
+| 2026-08-22 | Brand colors (derived from current logo) | Blue `#4fb1e4` / teal `#6bc9cd` (decorative, from the SVG artwork); accessible text/button variants `#2d6f91` / `#2f7377` (chosen separately to pass WCAG AA 4.5:1 on white — see `web/src/app/globals.css`) | Derived, not separately confirmed |
 | 2026-08-22 | GitHub repo visibility | Public (explicitly chosen, kept despite recommendation to go private) | Owner, chat |
 | 2026-08-22 | Frontend hosting | Vercel | Owner, chat |
 | 2026-08-22 | Backend/DB hosting | DigitalOcean | Owner, chat |

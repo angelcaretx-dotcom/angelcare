@@ -23,7 +23,7 @@ export default function AboutPage() {
         <p>
           For questions about our company, service history, or credentials,
           please{" "}
-          <a href={siteConfig.emailHref} className="text-brand-cyan-dark hover:underline">
+          <a href={siteConfig.emailHref} className="text-brand-teal-dark hover:underline">
             contact us
           </a>{" "}
           directly.

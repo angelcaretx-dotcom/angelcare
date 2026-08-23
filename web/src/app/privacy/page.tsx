@@ -49,7 +49,7 @@ export default function PrivacyPage() {
           </h2>
           <p className="mt-2">
             Questions about this policy or your information can be sent to{" "}
-            <a href={siteConfig.emailHref} className="text-brand-cyan-dark hover:underline">
+            <a href={siteConfig.emailHref} className="text-brand-teal-dark hover:underline">
               {siteConfig.email}
             </a>
             .

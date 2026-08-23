@@ -36,7 +36,7 @@ export function Footer() {
               <li key={link.href}>
                 <Link
                   href={link.href}
-                  className="text-foreground/80 hover:text-brand-maroon transition-colors"
+                  className="text-foreground/80 hover:text-brand-blue-dark transition-colors"
                 >
                   {link.label}
                 </Link>
@@ -49,12 +49,12 @@ export function Footer() {
           <p className="text-sm font-semibold text-foreground/60">Contact</p>
           <ul className="mt-3 space-y-2 text-sm">
             <li>
-              <a href={siteConfig.phoneHref} className="hover:text-brand-maroon">
+              <a href={siteConfig.phoneHref} className="hover:text-brand-blue-dark">
                 {siteConfig.phone}
               </a>
             </li>
             <li>
-              <a href={siteConfig.emailHref} className="hover:text-brand-maroon">
+              <a href={siteConfig.emailHref} className="hover:text-brand-blue-dark">
                 {siteConfig.email}
               </a>
             </li>
@@ -69,7 +69,7 @@ export function Footer() {
           </p>
           <nav aria-label="Legal" className="flex gap-4">
             {legalLinks.map((link) => (
-              <Link key={link.href} href={link.href} className="hover:text-brand-maroon">
+              <Link key={link.href} href={link.href} className="hover:text-brand-blue-dark">
                 {link.label}
               </Link>
             ))}

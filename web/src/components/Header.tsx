@@ -23,7 +23,7 @@ export function Header() {
             <Link
               key={link.href}
               href={link.href}
-              className="text-foreground/80 hover:text-brand-maroon transition-colors"
+              className="text-foreground/80 hover:text-brand-blue-dark transition-colors"
             >
               {link.label}
             </Link>
@@ -32,13 +32,13 @@ export function Header() {
         <div className="flex items-center gap-3">
           <a
             href={siteConfig.phoneHref}
-            className="hidden text-sm font-semibold text-brand-maroon sm:block"
+            className="hidden text-sm font-semibold text-brand-blue-dark sm:block"
           >
             {siteConfig.phone}
           </a>
           <Link
             href="/request"
-            className="rounded-full bg-brand-maroon px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-maroon-dark"
+            className="rounded-full bg-brand-blue-dark px-4 py-2 text-sm font-semibold text-white transition-colors hover:brightness-90"
           >
             Request Transportation
           </Link>
@@ -53,7 +53,7 @@ export function Header() {
           <Link
             key={link.href}
             href={link.href}
-            className="text-foreground/80 hover:text-brand-maroon transition-colors"
+            className="text-foreground/80 hover:text-brand-blue-dark transition-colors"
           >
             {link.label}
           </Link>

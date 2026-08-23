@@ -22,7 +22,7 @@ export default function ContactPage() {
         <div>
           <dt className="text-sm font-semibold text-foreground/60">Phone</dt>
           <dd className="mt-1 text-lg">
-            <a href={siteConfig.phoneHref} className="text-brand-maroon font-semibold hover:underline">
+            <a href={siteConfig.phoneHref} className="text-brand-blue-dark font-semibold hover:underline">
               {siteConfig.phone}
             </a>
           </dd>
@@ -30,7 +30,7 @@ export default function ContactPage() {
         <div>
           <dt className="text-sm font-semibold text-foreground/60">Email</dt>
           <dd className="mt-1 text-lg">
-            <a href={siteConfig.emailHref} className="text-brand-maroon font-semibold hover:underline">
+            <a href={siteConfig.emailHref} className="text-brand-blue-dark font-semibold hover:underline">
               {siteConfig.email}
             </a>
           </dd>

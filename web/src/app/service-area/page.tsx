@@ -21,11 +21,11 @@ export default function ServiceAreaPage() {
         <p>
           Availability for a specific trip depends on pickup and drop-off
           location, distance, and service type. Please{" "}
-          <a href="/contact" className="text-brand-cyan-dark hover:underline">
+          <a href="/contact" className="text-brand-teal-dark hover:underline">
             contact us
           </a>{" "}
           or{" "}
-          <a href="/request" className="text-brand-cyan-dark hover:underline">
+          <a href="/request" className="text-brand-teal-dark hover:underline">
             submit a transportation request
           </a>{" "}
           to confirm availability for your trip.

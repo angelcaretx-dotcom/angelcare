@@ -24,11 +24,11 @@ export default function AccessibilityPage() {
         <p>
           If you encounter any accessibility barrier while using this site,
           please contact us at{" "}
-          <a href={siteConfig.emailHref} className="text-brand-cyan-dark hover:underline">
+          <a href={siteConfig.emailHref} className="text-brand-teal-dark hover:underline">
             {siteConfig.email}
           </a>{" "}
           or call{" "}
-          <a href={siteConfig.phoneHref} className="text-brand-cyan-dark hover:underline">
+          <a href={siteConfig.phoneHref} className="text-brand-teal-dark hover:underline">
             {siteConfig.phone}
           </a>{" "}
           and we will work to address it.

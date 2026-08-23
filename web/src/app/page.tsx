@@ -18,13 +18,13 @@ export default function Home() {
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
               href="/request"
-              className="rounded-full bg-brand-maroon px-6 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-brand-maroon-dark"
+              className="rounded-full bg-brand-blue-dark px-6 py-3 text-center text-sm font-semibold text-white transition-colors hover:brightness-90"
             >
               Request Transportation
             </Link>
             <a
               href={siteConfig.phoneHref}
-              className="rounded-full border border-brand-maroon px-6 py-3 text-center text-sm font-semibold text-brand-maroon transition-colors hover:bg-brand-maroon/5"
+              className="rounded-full border border-brand-blue-dark px-6 py-3 text-center text-sm font-semibold text-brand-blue-dark transition-colors hover:bg-brand-blue-dark/5"
             >
               Call {siteConfig.phone}
             </a>
@@ -43,7 +43,7 @@ export default function Home() {
                 key={service.slug}
                 className="rounded-2xl border border-black/10 p-6"
               >
-                <h3 className="text-lg font-semibold text-brand-maroon">
+                <h3 className="text-lg font-semibold text-brand-blue-dark">
                   {service.name}
                 </h3>
                 <p className="mt-2 text-sm text-foreground/70">
@@ -54,7 +54,7 @@ export default function Home() {
           </div>
           <Link
             href="/services"
-            className="mt-8 inline-block text-sm font-semibold text-brand-cyan-dark hover:underline"
+            className="mt-8 inline-block text-sm font-semibold text-brand-teal-dark hover:underline"
           >
             Learn more about our services &rarr;
           </Link>
@@ -72,7 +72,7 @@ export default function Home() {
           </p>
           <Link
             href="/service-area"
-            className="text-sm font-semibold text-brand-cyan-dark hover:underline"
+            className="text-sm font-semibold text-brand-teal-dark hover:underline"
           >
             View service area details &rarr;
           </Link>
@@ -80,7 +80,7 @@ export default function Home() {
       </section>
 
       <section className="py-16 sm:py-24">
-        <Container className="flex flex-col items-start gap-4 rounded-2xl bg-brand-maroon px-8 py-12 text-white sm:items-center sm:text-center">
+        <Container className="flex flex-col items-start gap-4 rounded-2xl bg-brand-blue-dark px-8 py-12 text-white sm:items-center sm:text-center">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Ready to schedule a ride?
           </h2>
@@ -90,7 +90,7 @@ export default function Home() {
           </p>
           <Link
             href="/request"
-            className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-maroon transition-colors hover:bg-white/90"
+            className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand-blue-dark transition-colors hover:bg-white/90"
           >
             Request Transportation
           </Link>

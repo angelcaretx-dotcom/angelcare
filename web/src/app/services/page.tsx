@@ -22,7 +22,7 @@ export default function ServicesPage() {
       <div className="mt-12 space-y-12">
         {services.map((service) => (
           <div key={service.slug} id={service.slug} className="border-t border-black/10 pt-8">
-            <h2 className="text-2xl font-semibold text-brand-maroon">
+            <h2 className="text-2xl font-semibold text-brand-blue-dark">
               {service.name}
             </h2>
             <p className="mt-3 max-w-2xl text-foreground/80">{service.summary}</p>
@@ -36,14 +36,14 @@ export default function ServicesPage() {
         </p>
         <p className="mt-2 text-foreground/70">
           Call us at{" "}
-          <a href={siteConfig.phoneHref} className="text-brand-maroon font-semibold">
+          <a href={siteConfig.phoneHref} className="text-brand-blue-dark font-semibold">
             {siteConfig.phone}
           </a>{" "}
           or submit a request and we&apos;ll help determine the right fit.
         </p>
         <Link
           href="/request"
-          className="mt-4 inline-block rounded-full bg-brand-maroon px-6 py-3 text-sm font-semibold text-white hover:bg-brand-maroon-dark"
+          className="mt-4 inline-block rounded-full bg-brand-blue-dark px-6 py-3 text-sm font-semibold text-white hover:brightness-90"
         >
           Request Transportation
         </Link>

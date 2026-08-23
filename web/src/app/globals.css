@@ -4,20 +4,25 @@
   --background: #ffffff;
   --foreground: #1a1a1a;
 
-  /* AngelCare Transit brand palette, derived from the provided logo */
-  --color-brand-maroon: #a6353a;
-  --color-brand-maroon-dark: #7f2529;
-  --color-brand-cyan: #1cade4;
-  --color-brand-cyan-dark: #1585ac;
+  /* AngelCare Transit brand palette, derived from the official logo SVG.
+     The base tones (--color-brand-blue/-teal) match the logo artwork
+     exactly and are for decorative/logo use only — they don't meet
+     WCAG text-contrast minimums on white. The "-dark" tones are
+     separately chosen to pass 4.5:1 on white and are what's used for
+     any live text, button, or focus indicator. */
+  --color-brand-blue: #4fb1e4;
+  --color-brand-blue-dark: #2d6f91;
+  --color-brand-teal: #6bc9cd;
+  --color-brand-teal-dark: #2f7377;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-brand-maroon: var(--color-brand-maroon);
-  --color-brand-maroon-dark: var(--color-brand-maroon-dark);
-  --color-brand-cyan: var(--color-brand-cyan);
-  --color-brand-cyan-dark: var(--color-brand-cyan-dark);
+  --color-brand-blue: var(--color-brand-blue);
+  --color-brand-blue-dark: var(--color-brand-blue-dark);
+  --color-brand-teal: var(--color-brand-teal);
+  --color-brand-teal-dark: var(--color-brand-teal-dark);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -29,6 +34,6 @@ body {
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-brand-cyan);
+  outline: 3px solid var(--color-brand-teal-dark);
   outline-offset: 2px;
 }

@@ -165,7 +165,7 @@ export function TripRequestForm() {
           name="service_type"
           required
           defaultValue=""
-          className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-brand-cyan focus:outline-none"
+          className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-brand-teal-dark focus:outline-none"
         >
           <option value="" disabled>
             Select a service&hellip;
@@ -203,7 +203,7 @@ export function TripRequestForm() {
       <button
         type="submit"
         disabled={status === "submitting"}
-        className="rounded-full bg-brand-maroon px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-maroon-dark disabled:cursor-not-allowed disabled:opacity-60"
+        className="rounded-full bg-brand-blue-dark px-6 py-3 text-sm font-semibold text-white transition-colors hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {status === "submitting" ? "Submitting…" : "Submit Request"}
       </button>
@@ -246,7 +246,7 @@ function Field({
         autoComplete={autoComplete}
         required={required}
         aria-invalid={errors && errors.length > 0 ? true : undefined}
-        className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-brand-cyan focus:outline-none"
+        className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-brand-teal-dark focus:outline-none"
       />
       {errors && errors.length > 0 && <ErrorText messages={errors} />}
     </div>
@@ -274,7 +274,7 @@ function TextAreaField({
         name={name}
         rows={3}
         placeholder={placeholder}
-        className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-brand-cyan focus:outline-none"
+        className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-brand-teal-dark focus:outline-none"
       />
     </div>
   );
