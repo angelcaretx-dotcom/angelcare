@@ -40,3 +40,6 @@ api/media/
 api/.pytest_cache/
 api/htmlcov/
 api/.coverage
+
+# --- Vercel (web/, and this root link) ---
+.vercel/
