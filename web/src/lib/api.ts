@@ -8,7 +8,11 @@ const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ??
   "http://localhost:8000";
 
-export type ServiceType = "ambulatory" | "wheelchair" | "stretcher";
+export type ServiceType =
+  | "ambulatory"
+  | "wheelchair"
+  | "stretcher"
+  | "equipment_delivery";
 
 export interface TripRequestInput {
   full_name: string;

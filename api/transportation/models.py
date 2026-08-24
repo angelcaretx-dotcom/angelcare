@@ -18,6 +18,7 @@ class ServiceType(models.TextChoices):
     AMBULATORY = "ambulatory", "Ambulatory"
     WHEELCHAIR = "wheelchair", "Wheelchair"
     STRETCHER = "stretcher", "Stretcher"
+    EQUIPMENT_DELIVERY = "equipment_delivery", "Medical Supply & Equipment Delivery"
 
 
 class TripRequestStatus(models.TextChoices):

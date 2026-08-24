@@ -10,7 +10,7 @@ export const siteConfig = {
   domain: "angelcaretransit.com",
   url: "https://www.angelcaretransit.com",
   description:
-    "Non-emergency medical transportation serving the state of Texas. Ambulatory, wheelchair, and stretcher transport.",
+    "Non-emergency medical transportation serving the state of Texas. Ambulatory, wheelchair, and stretcher transport, plus medical equipment delivery.",
   phone: "817-766-9228",
   phoneHref: "tel:+18177669228",
   email: "angelcaretx@gmail.com",
@@ -38,5 +38,11 @@ export const services = [
     name: "Stretcher Transportation",
     summary:
       "For passengers who must remain lying down during transport and cannot be safely transported seated.",
+  },
+  {
+    slug: "equipment-delivery",
+    name: "Medical Supply & Equipment Delivery",
+    summary:
+      "Delivery of wheelchairs, walkers, oxygen equipment, and other home-care equipment to homes, clinics, and care facilities.",
   },
 ] as const;
