@@ -52,6 +52,10 @@ is identical to production, only the URL differs.
 ## Structure
 
 - `config/` — project settings, root URLconf
+- `organization/` — single `Organization` record for AngelCare Transit
+  itself (Phase 8), seeded from `docs/business-decisions-log.md`. Does
+  not replace `web/`'s own static config — see
+  `docs/decisions/0010-organization-domain.md`.
 - `passengers/` — real passenger records (Phase 4): name, contact,
   emergency contact, mobility profile, status. See
   `docs/decisions/0006-passenger-domain.md` for scope.

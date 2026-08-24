@@ -9,6 +9,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0007](decisions/0007-driver-vehicle-domains.md),
 [ADR 0008](decisions/0008-trip-lifecycle-and-dispatch.md),
 [ADR 0009](decisions/0009-document-domain.md),
+[ADR 0010](decisions/0010-organization-domain.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -45,6 +46,9 @@ monolithic app. Currently:
   Django's ContentType framework) to any model, with a verify/reject
   review workflow. Currently used by Driver/Vehicle to back up their
   credential expiration dates. See ADR 0009.
+- `organization/` — (Phase 8) `Organization`: single record for
+  AngelCare Transit itself, seeded from confirmed business facts.
+  Does not replace `web/src/lib/site-config.ts` -- see ADR 0010.
 - `transportation/` — trip request intake (Phase 1: capture and store a
   request; not yet the full trip lifecycle / dispatch state machine).
   `TripRequest.passenger` optionally links to a `passengers.Passenger`,
