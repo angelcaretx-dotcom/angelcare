@@ -86,6 +86,10 @@ class DriverStatusChangeAuditIntegrationTests(TestCase):
             "license_expiration_date": self.driver.license_expiration_date.isoformat(),
             "notes": "",
             "status": "suspended",
+            "documents-document-content_type-object_id-TOTAL_FORMS": "0",
+            "documents-document-content_type-object_id-INITIAL_FORMS": "0",
+            "documents-document-content_type-object_id-MIN_NUM_FORMS": "0",
+            "documents-document-content_type-object_id-MAX_NUM_FORMS": "1000",
         }
         response = self.client.post(change_url, post_data)
         self.assertEqual(response.status_code, 302)

@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "corsheaders",
     "audit",
+    "documents",
     "passengers",
     "drivers",
     "vehicles",
@@ -149,6 +150,17 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# --- User-uploaded files (documents/) ---
+# Local filesystem storage -- fine for local dev, but NOT durable in
+# production on Fly.io (containers have ephemeral disk; an uploaded
+# file would be lost on the next deploy/restart). Production needs a
+# real object storage backend (e.g. Supabase Storage, since Supabase
+# is already used for the database) wired in via STORAGES["default"]
+# before this is trustworthy for real uploads -- see
+# docs/decisions/0009-document-domain.md and known-limitations.md.
+MEDIA_URL = "media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 STORAGES = {
     "default": {

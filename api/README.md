@@ -63,6 +63,12 @@ is identical to production, only the URL differs.
   Active or a license/registration/inspection is expired. Creating a
   Trip auto-updates the source `TripRequest`'s status to `scheduled`.
   See `docs/decisions/0008-trip-lifecycle-and-dispatch.md`.
+- `documents/` — file attachments (Phase 7) for any model via Django's
+  ContentType framework, with a pending/verified/rejected review
+  workflow. Upload from the Driver/Vehicle admin page directly (an
+  inline); verify/reject in the standalone Documents list. Local
+  filesystem storage only — **not production-durable yet** (Fly.io's
+  disk is ephemeral), see `docs/decisions/0009-document-domain.md`.
 - `transportation/` — trip request intake domain (Phase 1). Public,
   create-only API at `POST /api/v1/trip-requests/`. Staff review
   submissions via `/admin/`, and can optionally link a request to a

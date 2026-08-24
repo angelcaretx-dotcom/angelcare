@@ -28,6 +28,13 @@ Tracked honestly so nothing here is discovered by surprise later.
 - **No recurring trips.** Each `Trip` is one-to-one with one
   `TripRequest`; recurring transportation (Section 4) needs its own
   request/trip pair per occurrence for now.
+- **Document uploads are not production-durable yet** (ADR 0009).
+  Local filesystem storage works for local dev, but Fly.io's
+  containers have ephemeral disk — an uploaded file would be lost on
+  the next production deploy. A real object storage backend (Supabase
+  Storage is the natural fit) is needed before this feature is usable
+  in production. No version-chaining either — re-uploading creates a
+  new `Document` row, but there's no explicit link to what it replaced.
 - **No physical business address published**, per the owner's choice —
   revisit if that changes.
 - **Privacy Policy and Terms of Use pages are drafts**, explicitly
