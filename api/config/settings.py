@@ -114,8 +114,19 @@ WSGI_APPLICATION = "config.wsgi.application"
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 if DATABASE_URL:
+    # conn_max_age=0: no persistent connections. Correct for a
+    # serverless host (each invocation is short-lived; reusing a
+    # connection across a frozen/thawed function can hand back a dead
+    # one) and harmless for a persistent process, since production
+    # sits behind Supabase's PgBouncer pooler anyway (ADR 0011) --
+    # Django doesn't need to do its own connection reuse on top of
+    # that. DISABLE_SERVER_SIDE_CURSORS is required for PgBouncer's
+    # transaction-mode pooling, which doesn't support them.
     DATABASES = {
-        "default": dj_database_url.parse(DATABASE_URL, conn_max_age=600),
+        "default": {
+            **dj_database_url.parse(DATABASE_URL, conn_max_age=0),
+            "DISABLE_SERVER_SIDE_CURSORS": True,
+        },
     }
 elif DEBUG:
     DATABASES = {

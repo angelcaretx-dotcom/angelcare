@@ -28,13 +28,16 @@ Tracked honestly so nothing here is discovered by surprise later.
 - **No recurring trips.** Each `Trip` is one-to-one with one
   `TripRequest`; recurring transportation (Section 4) needs its own
   request/trip pair per occurrence for now.
-- **Document uploads are not production-durable yet** (ADR 0009).
-  Local filesystem storage works for local dev, but Fly.io's
-  containers have ephemeral disk — an uploaded file would be lost on
-  the next production deploy. A real object storage backend (Supabase
-  Storage is the natural fit) is needed before this feature is usable
-  in production. No version-chaining either — re-uploading creates a
-  new `Document` row, but there's no explicit link to what it replaced.
+- **Document uploads do not work in production at all** (ADR 0009,
+  ADR 0011). Local filesystem storage works for local dev, but the API
+  now runs on Vercel's serverless Python runtime, which has no
+  writable persistent disk -- not even "until the next deploy" the
+  way a container host would allow. A real object storage backend
+  (Supabase Storage is the natural fit, already used for the database)
+  is required before this feature is usable in production; until then
+  attempting a document upload in production will fail. No
+  version-chaining either — re-uploading creates a new `Document` row,
+  but there's no explicit link to what it replaced.
 - **No physical business address published**, per the owner's choice —
   revisit if that changes.
 - **Privacy Policy and Terms of Use pages are drafts**, explicitly
@@ -50,18 +53,20 @@ Tracked honestly so nothing here is discovered by surprise later.
   `EmailProvider` interface (`notifications/providers/`) is designed so
   adding them later doesn't require touching `NotificationService`'s
   callers.
-- **`api/` is not yet deployed to production.** This is expected and
-  not blocking anything — see ADR 0004: production hosting is a
-  deliberately separate, later step from development, never a
-  prerequisite for it. The full workflow (form -> API -> Postgres ->
-  admin) is proven working locally end to end. When production
-  deployment does happen: Supabase database is already live and
-  migrated; the Fly app still needs its one-time setup (`fly apps
-  create`, `fly secrets set`, `FLY_API_TOKEN` GitHub secret) done by
-  the account owner — see `docs/decisions/0003-supabase-and-flyio.md`.
-  Until then, `web/`'s trip request form has no live backend to submit
-  to in *production* specifically (local development is unaffected).
-- **`web/` is deployed** to Vercel (`angelcare` project, team `ACT`) and
-  `angelcaretransit.com` DNS points at it. `NEXT_PUBLIC_API_URL` is not
-  yet set in Vercel's environment variables — needs to be set once the
-  API is deployed (above), pointing at wherever it ends up.
+- **`api/` is deployed to production** (ADR 0011): Vercel project
+  `angelcare-api` (team `ACT`), database on Supabase via its
+  connection pooler. Verified working end to end for real, including a
+  real browser submitting the live trip request form on
+  angelcaretransit.com and a real admin login. Two things are NOT
+  fully production-ready yet, both flagged above and not silently
+  broken: document uploads (no object storage backend) and real email
+  sending (see below).
+- **Production email is not actually sending yet.** `DJANGO_EMAIL_BACKEND`
+  is set to the console backend in production (logs instead of
+  sending) because no real SMTP credentials have been provided. New
+  trip requests are still saved correctly; staff/customer notification
+  emails are not actually delivered until real SMTP config (or a
+  provider account) is supplied.
+- **`web/` is deployed** to Vercel (`angelcare` project, team `ACT`),
+  `angelcaretransit.com` DNS points at it, and `NEXT_PUBLIC_API_URL`
+  points at the production API above.

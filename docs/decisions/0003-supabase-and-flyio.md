@@ -1,6 +1,6 @@
 # ADR 0003: Supabase (Postgres) + Fly.io (app) instead of DigitalOcean, deployed via GitHub Actions
 
-- Status: Accepted
+- Status: Superseded by [ADR 0011](0011-vercel-hosted-api.md) (the *app hosting* part, Fly.io -- Supabase as the database is unchanged and still current)
 - Date: 2026-08-22
 - Supersedes: the DigitalOcean hosting decision in ADR 0002 (Django + PostgreSQL as the *stack* is unchanged; only *where it runs* changed)
 

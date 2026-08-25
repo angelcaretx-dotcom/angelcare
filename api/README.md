@@ -110,15 +110,31 @@ start without them when `DJANGO_DEBUG` is off).
 
 ## Deployment (production — not required for local development)
 
-`fly.toml` and `.github/workflows/deploy-api.yml` configure a Fly.io +
-Supabase production deployment. These files are inert during local
-development — nothing in `manage.py runserver`, the test suite, or the
-app's own code reads or depends on them. They only take effect when the
-GitHub Actions workflow actually runs on a push to `main`.
+Deployed to **Vercel** (project `angelcare-api`, team `ACT`), running
+via its Python serverless runtime (`wsgi_app.py`, `vercel.json`) —
+database on **Supabase**, connected through its connection pooler
+(required: Supabase's direct connection is IPv6-only, which Vercel's
+runtime can't reach — see ADR 0011). Verified working end to end,
+including a real trip request submitted through the live site and a
+real admin login.
 
-Fly.io/Supabase is the current production choice, not an architectural
+Vercel/Supabase is the current production choice, not an architectural
 requirement — see
-[`docs/decisions/0003-supabase-and-flyio.md`](../docs/decisions/0003-supabase-and-flyio.md)
-for why, and what it would take to swap it for a different host later
-(the app's env-var-driven config is what makes that swap possible
-without touching application code).
+[`docs/decisions/0011-vercel-hosted-api.md`](../docs/decisions/0011-vercel-hosted-api.md)
+for why (it replaced an earlier Fly.io attempt that hit repeated
+account-verification friction), and what it would take to swap it for
+a different host later (the app's env-var-driven config, unchanged
+since ADR 0002, is what makes that swap possible without touching
+application code).
+
+**Known gaps in production** (see known-limitations.md): document
+uploads don't work (no object storage backend configured yet — Vercel
+has no persistent disk), and email sending uses the console backend
+(no real SMTP credentials provided yet, so notifications log instead
+of sending).
+
+To deploy a change: `vercel deploy --prod --scope act-c1d1` from the
+repo root (for `web/`) or from `api/` (for the API). Environment
+variables are managed via `vercel env` — see ADR 0011 for what's set.
+After a schema change, run `manage.py migrate` against the production
+`DATABASE_URL` by hand; there's no automatic migrate-on-deploy hook.

@@ -21,8 +21,10 @@ is UNKNOWN and must not be assumed.
 | 2026-08-22 | Brand colors (derived from current logo) | Blue `#4fb1e4` / teal `#6bc9cd` (decorative, from the SVG artwork); accessible text/button variants `#2d6f91` / `#2f7377` (chosen separately to pass WCAG AA 4.5:1 on white — see `web/src/app/globals.css`) | Derived, not separately confirmed |
 | 2026-08-22 | GitHub repo visibility | Public (explicitly chosen, kept despite recommendation to go private) | Owner, chat |
 | 2026-08-22 | Frontend hosting | Vercel — deployed, project `angelcare` under team `ACT` (act-c1d1), domain angelcaretransit.com attached | Owner, chat |
-| 2026-08-22 | Backend/DB hosting (superseded) | DigitalOcean — replaced before deployment; doctl has no non-interactive login and the owner didn't want to share a full-account token | Owner, chat |
-| 2026-08-22 | Backend/DB hosting (current) | Fly.io (app, via GitHub Actions deploy) + Supabase (Postgres) — see ADR 0003. Chosen so the owner keeps sole control of both accounts' credentials | Owner, chat |
+| 2026-08-22 | Backend hosting (superseded #1) | DigitalOcean — replaced before deployment; doctl has no non-interactive login and the owner didn't want to share a full-account token | Owner, chat |
+| 2026-08-22 | Backend hosting (superseded #2) | Fly.io — replaced after deployment attempts hit a required payment card, then an account flagged "high risk" requiring manual verification; too much recurring friction | Owner, chat |
+| 2026-08-25 | Backend hosting (current) | Vercel (project `angelcare-api`, team `ACT`), Python serverless runtime — deployed, verified working end to end (real trip request via the live site, real admin login). See ADR 0011 | Owner, chat |
+| 2026-08-25 | Database (current) | Supabase Postgres, via its connection pooler (not the direct connection — that's IPv6-only, unreachable from Vercel's runtime). Production schema fully migrated | Owner, chat |
 | 2026-08-22 | Backend stack | Python / Django + PostgreSQL (unchanged by the hosting swap) | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)
