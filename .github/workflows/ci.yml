@@ -46,6 +46,12 @@ jobs:
       - name: Verify no missing migrations
         run: python manage.py makemigrations --check --dry-run
       - run: python manage.py migrate --noinput
+      # Required before tests: admin templates reference {% static %}
+      # tags resolved via whitenoise's manifest storage, which needs
+      # this to have run at least once. Local dev usually has a stale
+      # staticfiles/ dir lying around (gitignored) masking this; CI
+      # starts clean, so it's not optional here.
+      - run: python manage.py collectstatic --noinput
       - run: python manage.py test --noinput
 
   web-checks:
@@ -62,5 +68,10 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run lint
-      - run: npx tsc --noEmit
+      # No standalone `tsc --noEmit` here: `next build` already runs a
+      # full TypeScript check as part of its own build process (it
+      # would fail the build on any type error) -- a separate tsc step
+      # run beforehand is both redundant and actually broken, since
+      # Next's auto-generated route types (e.g. LayoutProps) don't
+      # exist until a build/dev run has generated them once.
       - run: npm run build
