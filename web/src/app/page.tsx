@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/Container";
 import { services, siteConfig } from "@/lib/site-config";
@@ -29,6 +30,19 @@ export default function Home() {
               Call {siteConfig.phone}
             </a>
           </div>
+        </Container>
+      </section>
+
+      <section className="py-12">
+        <Container>
+          <Image
+            src="/marketing/hero-compassionate-nemt.png"
+            alt="An AngelCare Transit driver helping a passenger who uses a wheelchair board a wheelchair-accessible van outside a medical center"
+            width={1672}
+            height={941}
+            className="w-full h-auto rounded-2xl"
+            priority
+          />
         </Container>
       </section>
 
@@ -76,6 +90,18 @@ export default function Home() {
           >
             View service area details &rarr;
           </Link>
+        </Container>
+      </section>
+
+      <section className="py-12">
+        <Container>
+          <Image
+            src="/marketing/hospital-discharge.png"
+            alt="An AngelCare Transit driver greeting a passenger and family member outside a hospital's main entrance for a discharge ride home"
+            width={1672}
+            height={941}
+            className="w-full h-auto rounded-2xl"
+          />
         </Container>
       </section>
 

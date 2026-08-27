@@ -16,6 +16,7 @@ is UNKNOWN and must not be assumed.
 | 2026-08-22 | Services offered | Ambulatory, Wheelchair, Stretcher transportation | Owner, chat |
 | 2026-08-24 | Services offered (addition) | Medical Supply & Equipment Delivery (e.g. wheelchairs, walkers, oxygen equipment, home-care equipment) added as a confirmed 4th service, alongside Ambulatory/Wheelchair/Stretcher | Owner, chat |
 | 2026-08-24 | Marketing imagery | Owner-provided banner images (AngelCare-branded, one per service + supporting themes) used as full hero/section banners across the site, unmodified/uncropped aside from responsive sizing | Owner, chat |
+| 2026-08-27 | Marketing imagery (placed) | 8 images placed live: homepage hero + discharge banner, and one per matching service on the Services page (Ambulatory, Wheelchair, Equipment Delivery — no image used for Stretcher, none of the 8 depict it) — see `web/public/marketing/` | Owner, chat |
 | 2026-08-22 | Logo (superseded) | An earlier PNG (red/maroon hands + cyan "ACT" wordmark) was sent first but replaced before use | Owner, chat |
 | 2026-08-22 | Logo (current) | Official vector mark `angelcaretransite-logo.svg`, blue/teal abstract "act" symbol — stored at `web/public/logo.svg`, used as-is, explicitly confirmed as the replacement | Owner, chat |
 | 2026-08-22 | Brand colors (derived from current logo) | Blue `#4fb1e4` / teal `#6bc9cd` (decorative, from the SVG artwork); accessible text/button variants `#2d6f91` / `#2f7377` (chosen separately to pass WCAG AA 4.5:1 on white — see `web/src/app/globals.css`) | Derived, not separately confirmed |
