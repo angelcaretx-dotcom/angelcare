@@ -1,0 +1,66 @@
+name: CI
+
+# Runs on every push and PR against main. This surfaces pass/fail
+# clearly in GitHub, but does NOT block Vercel's auto-deploy-on-push --
+# that would need branch protection + a PR-based workflow (this repo
+# currently pushes directly to main). See docs/decisions/0013-ci-pipeline.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: angelcare
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: angelcare
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U angelcare"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: api
+    env:
+      DATABASE_URL: postgresql://angelcare:ci-only-password@localhost:5432/angelcare
+      DJANGO_SECRET_KEY: ci-only-secret-key-not-used-anywhere-real
+      DJANGO_DEBUG: "True"
+      DJANGO_ALLOWED_HOSTS: localhost
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python manage.py check
+      - name: Verify no missing migrations
+        run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py migrate --noinput
+      - run: python manage.py test --noinput
+
+  web-checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run build

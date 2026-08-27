@@ -68,3 +68,8 @@ Tracked honestly so nothing here is discovered by surprise later.
 - **`web/` is deployed** to Vercel (`angelcare` project, team `ACT`),
   `angelcaretransit.com` DNS points at it, and `NEXT_PUBLIC_API_URL`
   points at the production API above.
+- **CI (ADR 0013) runs tests on every push but doesn't block deploys.**
+  Vercel deploys on push independent of GitHub Actions status; a
+  failing test currently means a red X in GitHub, not a stopped
+  deploy. Real gating needs branch protection + a pull-request-based
+  workflow, which this repo doesn't use yet (direct pushes to `main`).

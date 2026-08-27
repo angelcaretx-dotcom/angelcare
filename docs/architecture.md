@@ -12,6 +12,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0010](decisions/0010-organization-domain.md),
 [ADR 0011](decisions/0011-vercel-hosted-api.md),
 [ADR 0012](decisions/0012-supabase-storage.md),
+[ADR 0013](decisions/0013-ci-pipeline.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
