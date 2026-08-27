@@ -71,8 +71,10 @@ is identical to production, only the URL differs.
   ContentType framework, with a pending/verified/rejected review
   workflow. Upload from the Driver/Vehicle admin page directly (an
   inline); verify/reject in the standalone Documents list. Local
-  filesystem storage only — **not production-durable yet** (Fly.io's
-  disk is ephemeral), see `docs/decisions/0009-document-domain.md`.
+  filesystem storage in dev; production uses Supabase Storage
+  (`documents/storage.py`) — verified working end to end for real, see
+  `docs/decisions/0009-document-domain.md` and
+  `docs/decisions/0012-supabase-storage.md`.
 - `transportation/` — trip request intake domain (Phase 1). Public,
   create-only API at `POST /api/v1/trip-requests/`. Staff review
   submissions via `/admin/`, and can optionally link a request to a

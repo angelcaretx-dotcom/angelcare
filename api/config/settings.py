@@ -164,19 +164,25 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # --- User-uploaded files (documents/) ---
-# Local filesystem storage -- fine for local dev, but NOT durable in
-# production on Fly.io (containers have ephemeral disk; an uploaded
-# file would be lost on the next deploy/restart). Production needs a
-# real object storage backend (e.g. Supabase Storage, since Supabase
-# is already used for the database) wired in via STORAGES["default"]
-# before this is trustworthy for real uploads -- see
-# docs/decisions/0009-document-domain.md and known-limitations.md.
+# Local filesystem storage for local dev (ADR 0004: no cloud account
+# needed to develop). Production (Vercel has no persistent disk --
+# ADR 0011) uses Supabase Storage via documents.storage.SupabaseStorage
+# -- see docs/decisions/0012-supabase-storage.md.
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+SUPABASE_STORAGE_URL = os.environ.get("SUPABASE_STORAGE_URL", "")
+SUPABASE_STORAGE_KEY = os.environ.get("SUPABASE_STORAGE_KEY", "")
+SUPABASE_STORAGE_BUCKET = os.environ.get("SUPABASE_STORAGE_BUCKET", "Documents")
+
+if SUPABASE_STORAGE_URL and SUPABASE_STORAGE_KEY:
+    DEFAULT_FILE_STORAGE_BACKEND = "documents.storage.SupabaseStorage"
+else:
+    DEFAULT_FILE_STORAGE_BACKEND = "django.core.files.storage.FileSystemStorage"
+
 STORAGES = {
     "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "BACKEND": DEFAULT_FILE_STORAGE_BACKEND,
     },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",

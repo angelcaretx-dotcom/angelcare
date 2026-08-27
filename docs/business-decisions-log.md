@@ -26,6 +26,8 @@ is UNKNOWN and must not be assumed.
 | 2026-08-25 | Backend hosting (current) | Vercel (project `angelcare-api`, team `ACT`), Python serverless runtime — deployed, verified working end to end (real trip request via the live site, real admin login). See ADR 0011 | Owner, chat |
 | 2026-08-25 | Database (current) | Supabase Postgres, via its connection pooler (not the direct connection — that's IPv6-only, unreachable from Vercel's runtime). Production schema fully migrated | Owner, chat |
 | 2026-08-22 | Backend stack | Python / Django + PostgreSQL (unchanged by the hosting swap) | Owner, chat |
+| 2026-08-26 | Production email provider | Resend, SMTP relay, sending from `notifications@angelcaretransit.com` (domain verification with Resend in progress as of this date — real sends will start working automatically once it completes, no config change needed) | Owner, chat |
+| 2026-08-26 | Production file storage | Supabase Storage (bucket `Documents`, private), accessed via Supabase's own Storage REST API — verified working end to end for real (upload/download/sign/delete). See ADR 0012 | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)
 

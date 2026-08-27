@@ -28,15 +28,14 @@ Tracked honestly so nothing here is discovered by surprise later.
 - **No recurring trips.** Each `Trip` is one-to-one with one
   `TripRequest`; recurring transportation (Section 4) needs its own
   request/trip pair per occurrence for now.
-- **Document uploads do not work in production at all** (ADR 0009,
-  ADR 0011). Local filesystem storage works for local dev, but the API
-  now runs on Vercel's serverless Python runtime, which has no
-  writable persistent disk -- not even "until the next deploy" the
-  way a container host would allow. A real object storage backend
-  (Supabase Storage is the natural fit, already used for the database)
-  is required before this feature is usable in production; until then
-  attempting a document upload in production will fail. No
-  version-chaining either — re-uploading creates a new `Document` row,
+- **Document uploads now work in production** (ADR 0012): Supabase
+  Storage, via its own Storage REST API (not the S3-compatible
+  endpoint — those access keys weren't readily locatable in the
+  dashboard). Verified end to end for real: a real browser uploading
+  through the production admin, confirmed to actually land in the
+  Supabase bucket, with a working signed-URL link back to it. Local
+  dev still uses plain filesystem storage (ADR 0004). No
+  version-chaining still — re-uploading creates a new `Document` row,
   but there's no explicit link to what it replaced.
 - **No physical business address published**, per the owner's choice —
   revisit if that changes.
@@ -57,16 +56,15 @@ Tracked honestly so nothing here is discovered by surprise later.
   `angelcare-api` (team `ACT`), database on Supabase via its
   connection pooler. Verified working end to end for real, including a
   real browser submitting the live trip request form on
-  angelcaretransit.com and a real admin login. Two things are NOT
-  fully production-ready yet, both flagged above and not silently
-  broken: document uploads (no object storage backend) and real email
-  sending (see below).
-- **Production email is not actually sending yet.** `DJANGO_EMAIL_BACKEND`
-  is set to the console backend in production (logs instead of
-  sending) because no real SMTP credentials have been provided. New
-  trip requests are still saved correctly; staff/customer notification
-  emails are not actually delivered until real SMTP config (or a
-  provider account) is supplied.
+  angelcaretransit.com and a real admin login.
+- **Production email is configured (Resend SMTP) but not yet fully
+  active.** `DJANGO_EMAIL_BACKEND` points at Resend's SMTP relay with a
+  real API key, sending from `notifications@angelcaretransit.com`, but
+  that domain is still finishing DNS verification on Resend's side as
+  of 2026-08-26 — real sends currently fail with "domain is not
+  verified" until that completes (no code/config change needed once it
+  does; it'll just start working). New trip requests are still saved
+  correctly either way — only the notification email is affected.
 - **`web/` is deployed** to Vercel (`angelcare` project, team `ACT`),
   `angelcaretransit.com` DNS points at it, and `NEXT_PUBLIC_API_URL`
   points at the production API above.
