@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { Container } from "@/components/Container";
+import { ImageBanner } from "@/components/ImageBanner";
 import { services, siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
@@ -9,9 +9,9 @@ export const metadata: Metadata = {
   description: `Ambulatory, wheelchair, and stretcher non-emergency medical transportation from ${siteConfig.name}.`,
 };
 
-// Only services with a real, matching photo get one -- no image is
-// shown for a service we don't have matching imagery for (stretcher),
-// rather than using a mismatched picture.
+// Only services with a real, matching photo get a banner -- no image
+// is shown for a service we don't have matching imagery for
+// (stretcher), rather than using a mismatched picture.
 const serviceImages: Partial<Record<string, { src: string; alt: string }>> = {
   ambulatory: {
     src: "/marketing/hero-safe-reliable-rides.png",
@@ -38,24 +38,29 @@ export default function ServicesPage() {
         transportation services across {siteConfig.serviceAreaLower}.
       </p>
 
-      <div className="mt-12 space-y-12">
+      <div className="mt-12 space-y-8">
         {services.map((service) => {
           const image = serviceImages[service.slug];
+
+          if (image) {
+            return (
+              <div key={service.slug} id={service.slug}>
+                <ImageBanner src={image.src} alt={image.alt}>
+                  <h2 className="text-2xl font-semibold text-brand-blue-dark">
+                    {service.name}
+                  </h2>
+                  <p className="text-foreground/80">{service.summary}</p>
+                </ImageBanner>
+              </div>
+            );
+          }
+
           return (
             <div key={service.slug} id={service.slug} className="border-t border-black/10 pt-8">
               <h2 className="text-2xl font-semibold text-brand-blue-dark">
                 {service.name}
               </h2>
               <p className="mt-3 max-w-2xl text-foreground/80">{service.summary}</p>
-              {image && (
-                <Image
-                  src={image.src}
-                  alt={image.alt}
-                  width={1672}
-                  height={941}
-                  className="mt-6 w-full max-w-2xl h-auto rounded-2xl"
-                />
-              )}
             </div>
           );
         })}
