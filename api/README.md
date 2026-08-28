@@ -33,10 +33,19 @@ for production, which is a separate, later concern.
 
    python manage.py migrate
    python manage.py createsuperuser   # to access /admin/
+   python manage.py bootstrap_totp <username>   # required -- see MFA note below
    python manage.py runserver
    ```
 
 API is served at `http://localhost:8000/`. Admin at `/admin/`.
+
+**`/admin/` requires MFA (ADR 0014)**: a password alone isn't enough --
+every staff account needs a confirmed TOTP device. `createsuperuser`
+doesn't create one, so `bootstrap_totp` above is required before you
+can actually log into `/admin/` locally; it prints a QR code (and the
+raw `otpauth://` URL, if your terminal can't render the QR) to scan
+into an authenticator app (Google Authenticator, Authy, 1Password,
+etc.).
 
 The frontend (`web/`) talks to this exact same API over HTTP
 (`NEXT_PUBLIC_API_URL=http://localhost:8000` in `web/.env.local`) —
@@ -48,6 +57,9 @@ is identical to production, only the URL differs.
 - `python manage.py test transportation` — run tests
 - `python manage.py check` — Django system checks
 - `python manage.py makemigrations` / `migrate` — schema migrations
+- `python manage.py bootstrap_totp <username> [--replace]` — enroll (or
+  re-enroll) a staff account's MFA device; required before that account
+  can log into `/admin/` — see `docs/decisions/0014-staff-mfa.md`
 
 ## Structure
 
@@ -95,7 +107,10 @@ is identical to production, only the URL differs.
   `python manage.py createsuperuser` is for full admins only. For a
   scoped role: as an existing Administrator/superuser, create a regular
   `User` with `is_staff=True` via `/admin/auth/user/` and add them to
-  the `Dispatcher` group.
+  the `Dispatcher` group. Also (Phase 9) enforces TOTP-based MFA on
+  every staff account for `/admin/` access — see
+  `docs/decisions/0014-staff-mfa.md`. New accounts need
+  `manage.py bootstrap_totp <username>` run once before they can log in.
 - `healthz/` — unauthenticated health check endpoint
 
 Domains beyond `transportation` (organization, passengers, drivers,
@@ -140,3 +155,10 @@ repo root (for `web/`) or from `api/` (for the API). Environment
 variables are managed via `vercel env` — see ADR 0011 for what's set.
 After a schema change, run `manage.py migrate` against the production
 `DATABASE_URL` by hand; there's no automatic migrate-on-deploy hook.
+
+After deploying ADR 0014 (staff MFA) for the first time, every existing
+staff account needs `manage.py bootstrap_totp <username>` run once
+against the production database before they can log into `/admin/`
+again — the printed QR/URL contains a live secret, so hand it to the
+account holder over a channel that isn't logged or persisted (not
+email, not a ticket comment).

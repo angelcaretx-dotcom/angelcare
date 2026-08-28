@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 
+from accounts.otp_test_utils import login_with_otp
 from audit.models import AuditLog
 from drivers.models import Driver
 from passengers.models import Passenger
@@ -147,7 +148,7 @@ class TripAdminIntegrationTests(TestCase):
             username="dispatcher1", password="testpass123", is_staff=True
         )
         self.user.groups.add(Group.objects.get(name="Dispatcher"))
-        self.client.login(username="dispatcher1", password="testpass123")
+        login_with_otp(self.client, username="dispatcher1", password="testpass123")
 
         self.passenger = make_passenger()
         self.trip_request = make_trip_request(passenger=self.passenger)

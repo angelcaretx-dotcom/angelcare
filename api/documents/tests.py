@@ -8,6 +8,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
 
+from accounts.otp_test_utils import login_with_otp
 from audit.models import AuditLog
 from drivers.models import Driver
 
@@ -96,7 +97,7 @@ class DocumentAdminIntegrationTests(TestCase):
             username="admin1", password="testpass123", is_staff=True
         )
         self.admin_user.groups.add(Group.objects.get(name="Administrator"))
-        self.client.login(username="admin1", password="testpass123")
+        login_with_otp(self.client, username="admin1", password="testpass123")
         self.driver = make_driver()
 
     def test_uploading_document_via_driver_inline_sets_uploaded_by(self):
@@ -161,7 +162,7 @@ class DocumentAdminIntegrationTests(TestCase):
         )
         dispatcher.groups.add(Group.objects.get(name="Dispatcher"))
         self.client.logout()
-        self.client.login(username="dispatcher1", password="testpass123")
+        login_with_otp(self.client, username="dispatcher1", password="testpass123")
 
         document = Document.objects.create(
             content_object=self.driver,

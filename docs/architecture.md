@@ -13,6 +13,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0011](decisions/0011-vercel-hosted-api.md),
 [ADR 0012](decisions/0012-supabase-storage.md),
 [ADR 0013](decisions/0013-ci-pipeline.md),
+[ADR 0014](decisions/0014-staff-mfa.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -65,7 +66,8 @@ monolithic app. Currently:
   usable by any domain app, not tied to Django admin specifically.
 - `accounts/` — (Phase 3) seeds staff roles as Django Groups
   (`Dispatcher`, `Administrator`) with explicit permissions — see
-  ADR 0005.
+  ADR 0005. Also (Phase 9) enforces TOTP-based MFA for every staff
+  account on `/admin/`, via django-otp — see ADR 0014.
 
 Future domains, added only when there's a confirmed business need
 (never speculatively): organization, passengers, drivers, vehicles,

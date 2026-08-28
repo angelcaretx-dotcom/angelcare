@@ -1,6 +1,8 @@
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
 
+from accounts.otp_test_utils import login_with_otp
+
 from .models import Organization
 
 
@@ -26,7 +28,7 @@ class OrganizationAdminSingletonTests(TestCase):
         self.user = User.objects.create_superuser(
             username="super1", password="testpass123", email="super1@example.com"
         )
-        self.client.login(username="super1", password="testpass123")
+        login_with_otp(self.client, username="super1", password="testpass123")
 
     def test_cannot_add_a_second_organization(self):
         # The seed migration already created one.

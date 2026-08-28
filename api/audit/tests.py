@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AnonymousUser, Group, User
 from django.test import TestCase
 
+from accounts.otp_test_utils import login_with_otp
 from transportation.models import TripRequest
 
 from .models import AuditLog
@@ -73,7 +74,7 @@ class AuditLogAdminAccessTests(TestCase):
             username="admin1", password="testpass123", is_staff=True
         )
         self.user.groups.add(Group.objects.get(name="Administrator"))
-        self.client.login(username="admin1", password="testpass123")
+        login_with_otp(self.client, username="admin1", password="testpass123")
         self.log = record_change(
             actor=self.user,
             action="status_changed",
@@ -105,7 +106,7 @@ class TripRequestStatusChangeAuditIntegrationTests(TestCase):
             username="dispatcher1", password="testpass123", is_staff=True
         )
         self.admin_user.groups.add(Group.objects.get(name="Dispatcher"))
-        self.client.login(username="dispatcher1", password="testpass123")
+        login_with_otp(self.client, username="dispatcher1", password="testpass123")
         self.trip_request = make_trip_request()
 
     def test_changing_status_via_admin_creates_audit_entry(self):

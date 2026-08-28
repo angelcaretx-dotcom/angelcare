@@ -73,3 +73,13 @@ Tracked honestly so nothing here is discovered by surprise later.
   failing test currently means a red X in GitHub, not a stopped
   deploy. Real gating needs branch protection + a pull-request-based
   workflow, which this repo doesn't use yet (direct pushes to `main`).
+- **Staff MFA (ADR 0014) has no self-service enrollment or recovery.**
+  Every `TOTPDevice` is created out-of-band via
+  `manage.py bootstrap_totp <username>`, run by whoever has
+  server/database access — there's no in-app "set up your
+  authenticator" flow yet, and losing a device means someone with that
+  access re-running the command with `--replace`. No backup/static
+  recovery codes (django-otp's `otp_static` plugin covers that; not
+  added yet, out of scope for the baseline MFA requirement). Applies to
+  every staff account (Dispatcher and Administrator), not just
+  superusers.

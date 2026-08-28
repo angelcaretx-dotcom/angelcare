@@ -1,6 +1,7 @@
 from django.contrib.auth.models import Group, User
 from django.test import TestCase
 
+from accounts.otp_test_utils import login_with_otp
 from audit.models import AuditLog
 
 from .models import Passenger, PassengerStatus
@@ -47,7 +48,7 @@ class PassengerAdminAccessTests(TestCase):
 
     def test_dispatcher_can_view_and_add_passengers(self):
         self.make_staff_user(username="dispatcher1", groups=["Dispatcher"])
-        self.client.login(username="dispatcher1", password="testpass123")
+        login_with_otp(self.client, username="dispatcher1", password="testpass123")
 
         list_response = self.client.get("/admin/passengers/passenger/")
         self.assertEqual(list_response.status_code, 200)
@@ -57,14 +58,14 @@ class PassengerAdminAccessTests(TestCase):
 
     def test_dispatcher_cannot_delete_passengers(self):
         self.make_staff_user(username="dispatcher2", groups=["Dispatcher"])
-        self.client.login(username="dispatcher2", password="testpass123")
+        login_with_otp(self.client, username="dispatcher2", password="testpass123")
 
         response = self.client.get(f"/admin/passengers/passenger/{self.passenger.id}/delete/")
         self.assertEqual(response.status_code, 403)
 
     def test_administrator_can_delete_passengers(self):
         self.make_staff_user(username="admin1", groups=["Administrator"])
-        self.client.login(username="admin1", password="testpass123")
+        login_with_otp(self.client, username="admin1", password="testpass123")
 
         response = self.client.post(
             f"/admin/passengers/passenger/{self.passenger.id}/delete/",
@@ -80,7 +81,7 @@ class PassengerStatusChangeAuditIntegrationTests(TestCase):
             username="dispatcher1", password="testpass123", is_staff=True
         )
         self.user.groups.add(Group.objects.get(name="Dispatcher"))
-        self.client.login(username="dispatcher1", password="testpass123")
+        login_with_otp(self.client, username="dispatcher1", password="testpass123")
         self.passenger = make_passenger()
 
     def test_changing_status_via_admin_creates_audit_entry(self):
