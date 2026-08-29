@@ -56,7 +56,10 @@ export function ImageBanner({
           }}
         />
 
-        <div className="relative z-10 flex h-full max-w-lg flex-col justify-center gap-4 p-6 sm:p-10">
+        <div
+          className="relative z-10 flex h-full flex-col justify-center gap-4 p-6 sm:p-10"
+          style={{ maxWidth: "min(28rem, 60%)" }}
+        >
           {children}
         </div>
       </div>
