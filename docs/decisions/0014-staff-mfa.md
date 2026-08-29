@@ -91,6 +91,24 @@ buffer first, then writing it to the real stdout inside a
 fully usable (import-by-URL) even when the QR itself can't be
 displayed. Re-verified: the command completes successfully either way.
 
+**A third, more serious bug surfaced later, in actual production**:
+`requirements.txt` was never actually updated to list `django-otp`/
+`qrcode`, despite both being pip-installed locally, their code
+committed, and the local test suite passing -- the local venv had them
+installed outside of `requirements.txt`, masking the gap. This wasn't
+caught before the first production deploy of this phase (local
+verification ran against the already-primed venv, not a clean one,
+contradicting ADR 0013's own "test from truly clean state" practice).
+The result: every request to the production API returned 500
+(`ModuleNotFoundError: No module named 'django_otp'` during Django's
+app-registry population) until this was found via `vercel logs` and
+fixed -- see the `requirements.txt` fix commit. Re-verified correctly
+this time: a genuinely fresh venv, installed only from the corrected
+`requirements.txt`, `manage.py check` passing against it, before
+redeploying. Production `/healthz/`, `/admin/login/`, and the public
+trip-request endpoint were all confirmed responding correctly
+afterward.
+
 ## Consequences
 
 - Every staff account (Dispatcher and Administrator) now needs a
