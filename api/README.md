@@ -95,7 +95,13 @@ is identical to production, only the URL differs.
   + a swappable `EmailProvider` interface (Section 17 pattern) send a
   staff alert and a customer confirmation on every new trip request,
   and log every attempt to `NotificationLog` (visible in `/admin/`) so
-  a silent delivery failure is never invisible.
+  a silent delivery failure is never invisible. Every email is branded
+  HTML (with a plain-text alternative) — see
+  `docs/decisions/0015-branded-html-emails.md`. Adding a new
+  notification type: add a `NotificationType` choice, a `.txt` +
+  `.html` template pair under `templates/notifications/` (the `.html`
+  extends `email_base.html`), and a `_send_to_...` method in
+  `NotificationService`.
 - `audit/` — general-purpose audit trail (Phase 3). `record_change()`
   is called from anywhere a sensitive change happens (currently:
   trip request status changes in `/admin/`) and logs actor, before/

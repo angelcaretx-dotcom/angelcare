@@ -19,6 +19,13 @@ class NotificationService:
     caller, because a notification is a side effect of a business
     event, not the event itself. The underlying business record (e.g.
     the TripRequest) is already safely saved by the time this runs.
+
+    Every email is rendered as a branded HTML template (see
+    notifications/templates/notifications/email_base.html and ADR
+    0015) with a plain-text alternative always sent alongside it --
+    the .txt template is not a legacy leftover, it's the accessible/
+    deliverability-friendly fallback every professional transactional
+    email should still carry.
     """
 
     def __init__(self, email_provider: EmailProvider | None = None):
@@ -30,31 +37,64 @@ class NotificationService:
 
     def _send_to_staff(self, trip_request) -> None:
         subject = f"New trip request: {trip_request.full_name} ({trip_request.get_service_type_display()})"
-        body = render_to_string(
-            "notifications/staff_new_trip_request.txt",
-            {"trip_request": trip_request},
-        )
+        rows = self._staff_rows(trip_request)
+        context = {
+            "trip_request": trip_request,
+            "rows": rows,
+            "admin_url": f"{settings.SITE_URL}/admin/transportation/triprequest/{trip_request.id}/change/",
+            "website_url": settings.WEBSITE_URL,
+        }
         self._send(
             notification_type=NotificationType.NEW_TRIP_REQUEST_STAFF,
             to=settings.STAFF_NOTIFICATION_EMAIL,
             subject=subject,
-            body_text=body,
+            body_text=render_to_string("notifications/staff_new_trip_request.txt", context),
+            body_html=render_to_string("notifications/staff_new_trip_request.html", context),
             trip_request=trip_request,
         )
 
     def _send_to_customer(self, trip_request) -> None:
         subject = "We received your transportation request — AngelCare Transit"
-        body = render_to_string(
-            "notifications/customer_trip_request_confirmation.txt",
-            {"trip_request": trip_request},
-        )
+        rows = self._customer_rows(trip_request)
+        context = {
+            "trip_request": trip_request,
+            "rows": rows,
+            "website_url": settings.WEBSITE_URL,
+        }
         self._send(
             notification_type=NotificationType.NEW_TRIP_REQUEST_CUSTOMER,
             to=trip_request.email,
             subject=subject,
-            body_text=body,
+            body_text=render_to_string("notifications/customer_trip_request_confirmation.txt", context),
+            body_html=render_to_string("notifications/customer_trip_request_confirmation.html", context),
             trip_request=trip_request,
         )
+
+    @staticmethod
+    def _staff_rows(trip_request) -> list[tuple[str, str]]:
+        rows = [
+            ("Requester", trip_request.full_name),
+            ("Phone", trip_request.phone),
+            ("Email", trip_request.email),
+            ("Service type", trip_request.get_service_type_display()),
+            ("Requested pickup", trip_request.requested_datetime),
+            ("Pickup address", trip_request.pickup_address),
+            ("Drop-off address", trip_request.dropoff_address),
+        ]
+        if trip_request.mobility_notes:
+            rows.append(("Mobility notes", trip_request.mobility_notes))
+        if trip_request.additional_notes:
+            rows.append(("Additional notes", trip_request.additional_notes))
+        return rows
+
+    @staticmethod
+    def _customer_rows(trip_request) -> list[tuple[str, str]]:
+        return [
+            ("Service type", trip_request.get_service_type_display()),
+            ("Requested pickup", trip_request.requested_datetime),
+            ("Pickup address", trip_request.pickup_address),
+            ("Drop-off address", trip_request.dropoff_address),
+        ]
 
     def _send(
         self,
@@ -63,10 +103,11 @@ class NotificationService:
         to: str,
         subject: str,
         body_text: str,
+        body_html: str | None,
         trip_request,
     ) -> None:
         try:
-            self.email_provider.send(to=to, subject=subject, body_text=body_text)
+            self.email_provider.send(to=to, subject=subject, body_text=body_text, body_html=body_html)
         except Exception as exc:  # noqa: BLE001 - deliberately broad: any
             # provider failure must be caught here, logged, and never
             # propagate into the request/response cycle.

@@ -241,6 +241,21 @@ DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_DEFAULT_FROM_EMAIL", "angelcaretx@gm
 # Where new-trip-request notifications are sent for staff to review.
 STAFF_NOTIFICATION_EMAIL = os.environ.get("STAFF_NOTIFICATION_EMAIL", "angelcaretx@gmail.com")
 
+# Absolute base URLs used to build real, clickable links inside HTML
+# emails (e.g. "review this request" -> a specific /admin/ page).
+# Templates never hard-code a domain -- see ADR 0015. Defaults are the
+# actual current production values so this works out of the box; either
+# can be overridden via env var without a code change if the domain
+# ever moves (e.g. a future custom admin domain).
+SITE_URL = os.environ.get(
+    "DJANGO_SITE_URL",
+    "http://localhost:8000" if DEBUG else "https://angelcare-api.vercel.app",
+).rstrip("/")
+WEBSITE_URL = os.environ.get(
+    "DJANGO_WEBSITE_URL",
+    "http://localhost:3000" if DEBUG else "https://www.angelcaretransit.com",
+).rstrip("/")
+
 if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend" and not DEBUG:
     if not (EMAIL_HOST and EMAIL_HOST_USER and EMAIL_HOST_PASSWORD):
         raise RuntimeError(

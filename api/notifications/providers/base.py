@@ -16,9 +16,16 @@ class EmailProvider(ABC):
         to: str,
         subject: str,
         body_text: str,
+        body_html: str | None = None,
     ) -> None:
         """
-        Send an email. Must raise on failure (never fail silently) --
-        callers are responsible for catching and logging it.
+        Send an email. `body_text` is always required (the plain-text
+        part -- kept for accessibility and inbox deliverability, since
+        text-only fallbacks are still expected by some clients and
+        spam filters). `body_html` is optional: when given, the email
+        is sent as multipart/alternative with the HTML as the
+        preferred rendering; when omitted, the email is plain text
+        only. Must raise on failure (never fail silently) -- callers
+        are responsible for catching and logging it.
         """
         raise NotImplementedError

@@ -45,13 +45,14 @@ Tracked honestly so nothing here is discovered by surprise later.
   pricing/cancellation/service-level terms (none have been defined).
 - **No rate schedule, payer/broker integration, billing, or claims** —
   none of that exists yet.
-- **Notifications are email-only, plain text, no retry.** A new trip
-  request emails staff and the customer once; if the send fails it's
-  logged to `NotificationLog` (visible in `/admin/`) but not
-  automatically retried. SMS/push are not implemented — the
-  `EmailProvider` interface (`notifications/providers/`) is designed so
-  adding them later doesn't require touching `NotificationService`'s
-  callers.
+- **Notifications are email-only, no retry.** A new trip request emails
+  staff and the customer once; if the send fails it's logged to
+  `NotificationLog` (visible in `/admin/`) but not automatically
+  retried. SMS/push are not implemented — the `EmailProvider` interface
+  (`notifications/providers/`) is designed so adding them later doesn't
+  require touching `NotificationService`'s callers. Emails are now
+  branded HTML (ADR 0015) with a plain-text alternative, not plain text
+  only.
 - **`api/` is deployed to production** (ADR 0011): Vercel project
   `angelcare-api` (team `ACT`), database on Supabase via its
   connection pooler. Verified working end to end for real, including a

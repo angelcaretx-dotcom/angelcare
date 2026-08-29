@@ -14,6 +14,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0012](decisions/0012-supabase-storage.md),
 [ADR 0013](decisions/0013-ci-pipeline.md),
 [ADR 0014](decisions/0014-staff-mfa.md),
+[ADR 0015](decisions/0015-branded-html-emails.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -61,7 +62,9 @@ monolithic app. Currently:
   `EmailProvider` interface, and a `NotificationLog` audit trail of
   every send attempt. This is the first realized instance of the
   vendor-isolation pattern below: `transportation` calls
-  `NotificationService`, never an email vendor's SDK directly.
+  `NotificationService`, never an email vendor's SDK directly. Every
+  email is branded HTML with a plain-text alternative (Phase 10) — see
+  ADR 0015.
 - `audit/` — (Phase 3) general-purpose `AuditLog` + `record_change()`,
   usable by any domain app, not tied to Django admin specifically.
 - `accounts/` — (Phase 3) seeds staff roles as Django Groups

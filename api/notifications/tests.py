@@ -11,7 +11,7 @@ from .services import NotificationService
 
 
 class FailingEmailProvider(EmailProvider):
-    def send(self, *, to: str, subject: str, body_text: str) -> None:
+    def send(self, *, to: str, subject: str, body_text: str, body_html: str | None = None) -> None:
         raise RuntimeError("simulated provider outage")
 
 
@@ -21,8 +21,10 @@ class RecordingEmailProvider(EmailProvider):
     def __init__(self):
         self.sent = []
 
-    def send(self, *, to: str, subject: str, body_text: str) -> None:
-        self.sent.append({"to": to, "subject": subject, "body_text": body_text})
+    def send(self, *, to: str, subject: str, body_text: str, body_html: str | None = None) -> None:
+        self.sent.append(
+            {"to": to, "subject": subject, "body_text": body_text, "body_html": body_html}
+        )
 
 
 def make_trip_request(**overrides) -> TripRequest:
@@ -102,3 +104,70 @@ class NotificationServiceTests(TestCase):
         customer_email = next(m for m in provider.sent if m["to"] == "alex@example.com")
         self.assertIn("not a confirmed booking", customer_email["body_text"])
         self.assertIn("911", customer_email["body_text"])
+
+
+class NotificationHtmlEmailTests(TestCase):
+    """
+    Covers the branded HTML formatting added by ADR 0015 -- every email
+    is multipart/alternative (plain text + HTML), not text-only.
+    """
+
+    def test_every_send_includes_an_html_alternative(self):
+        provider = RecordingEmailProvider()
+        trip_request = make_trip_request()
+
+        NotificationService(email_provider=provider).notify_new_trip_request(trip_request)
+
+        self.assertEqual(len(provider.sent), 2)
+        for message in provider.sent:
+            self.assertIsNotNone(message["body_html"])
+            self.assertIn("<!DOCTYPE html>", message["body_html"])
+            # Shared branded header present in every email type.
+            self.assertIn("AngelCare Transit", message["body_html"])
+
+    def test_staff_html_contains_trip_details_and_admin_link(self):
+        provider = RecordingEmailProvider()
+        trip_request = make_trip_request(full_name="Jamie Chen")
+
+        NotificationService(email_provider=provider).notify_new_trip_request(trip_request)
+
+        staff_email = next(m for m in provider.sent if m["to"] == "angelcaretx@gmail.com")
+        self.assertIn("Jamie Chen", staff_email["body_html"])
+        self.assertIn(
+            f"/admin/transportation/triprequest/{trip_request.id}/change/",
+            staff_email["body_html"],
+        )
+        self.assertIn("Review in Admin", staff_email["body_html"])
+
+    def test_customer_html_contains_emergency_disclaimer(self):
+        provider = RecordingEmailProvider()
+        trip_request = make_trip_request()
+
+        NotificationService(email_provider=provider).notify_new_trip_request(trip_request)
+
+        customer_email = next(m for m in provider.sent if m["to"] == "alex@example.com")
+        self.assertIn("911", customer_email["body_html"])
+        self.assertIn("Medical emergency", customer_email["body_html"])
+
+    def test_django_email_provider_sends_real_multipart_message(self):
+        """
+        Exercises the actual DjangoEmailProvider (not the test double)
+        against Django's locmem test backend, proving the HTML part is
+        genuinely attached as multipart/alternative, not just present
+        in a mock's recorded kwargs.
+        """
+        from django.core import mail
+
+        trip_request = make_trip_request()
+
+        NotificationService().notify_new_trip_request(trip_request)
+
+        self.assertEqual(len(mail.outbox), 2)
+        for message in mail.outbox:
+            self.assertEqual(len(message.alternatives), 1)
+            html_body, mimetype = message.alternatives[0]
+            self.assertEqual(mimetype, "text/html")
+            self.assertIn("AngelCare Transit", html_body)
+            # The plain-text body (message.body) is still sent as the
+            # primary part -- multipart/alternative, not HTML-only.
+            self.assertTrue(message.body)

@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.core.mail import send_mail
+from django.core.mail import EmailMultiAlternatives
 
 from .base import EmailProvider
 
@@ -13,11 +13,13 @@ class DjangoEmailProvider(EmailProvider):
     directly; Django's SMTP backend works with any SMTP provider.
     """
 
-    def send(self, *, to: str, subject: str, body_text: str) -> None:
-        send_mail(
+    def send(self, *, to: str, subject: str, body_text: str, body_html: str | None = None) -> None:
+        message = EmailMultiAlternatives(
             subject=subject,
-            message=body_text,
+            body=body_text,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[to],
-            fail_silently=False,
+            to=[to],
         )
+        if body_html:
+            message.attach_alternative(body_html, "text/html")
+        message.send(fail_silently=False)
