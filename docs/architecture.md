@@ -15,6 +15,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0013](decisions/0013-ci-pipeline.md),
 [ADR 0014](decisions/0014-staff-mfa.md),
 [ADR 0015](decisions/0015-branded-html-emails.md),
+[ADR 0016](decisions/0016-unfold-admin-theme.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -70,7 +71,9 @@ monolithic app. Currently:
 - `accounts/` — (Phase 3) seeds staff roles as Django Groups
   (`Dispatcher`, `Administrator`) with explicit permissions — see
   ADR 0005. Also (Phase 9) enforces TOTP-based MFA for every staff
-  account on `/admin/`, via django-otp — see ADR 0014.
+  account on `/admin/`, via django-otp — see ADR 0014. Also (Phase 11)
+  hosts `AngelCareAdminSite`, the combined Unfold + MFA admin site
+  class registered as `admin.site` itself — see ADR 0016.
 
 Future domains, added only when there's a confirmed business need
 (never speculatively): organization, passengers, drivers, vehicles,

@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.contrib.admin.apps import AdminConfig
 from django.db.models.signals import post_migrate
 
 
@@ -11,25 +12,19 @@ class AccountsConfig(AppConfig):
 
         post_migrate.connect(roles.seed_roles, sender=self)
 
-        self._enforce_admin_mfa()
 
-    def _enforce_admin_mfa(self):
-        """
-        Require a verified OTP (TOTP) device to use /admin/ at all --
-        Section 13's "MFA capability" requirement. Applied to every
-        staff account, not just superusers, since Dispatcher accounts
-        will eventually hold real staff logins too.
+class AngelCareAdminConfig(AdminConfig):
+    """
+    Registered in INSTALLED_APPS in place of the bare "django.contrib.admin"
+    string. `default_site` is Django's documented mechanism for
+    swapping in a custom AdminSite class (see
+    django.contrib.admin.sites.DefaultAdminSite) -- `admin.site` ends
+    up being an instance of AngelCareAdminSite (accounts/admin_site.py),
+    which combines Unfold's admin UI with django-otp's MFA enforcement.
+    `name` is inherited as "django.contrib.admin" from AdminConfig, so
+    Django still recognizes this as configuring that app even though
+    the class itself lives here -- this is the same pattern Django's
+    own docs demonstrate for AdminConfig.default_site.
+    """
 
-        Uses django-otp's documented in-place technique (swap the
-        existing admin.site's class) rather than a second AdminSite
-        instance, so none of the project's existing admin.py files
-        (which all register against the default `admin.site`) need to
-        change. See docs/decisions/0014-staff-mfa.md for the bootstrap
-        process -- you can't enroll your first device through an admin
-        page that itself requires a verified device, so the first
-        device is created via `manage.py bootstrap_totp <username>`.
-        """
-        from django.contrib import admin
-        from django_otp.admin import OTPAdminSite
-
-        admin.site.__class__ = OTPAdminSite
+    default_site = "accounts.admin_site.AngelCareAdminSite"

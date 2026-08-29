@@ -32,10 +32,20 @@ for production, which is a separate, later concern.
    # pointing at localhost:5432 (see .env.example for the exact value)
 
    python manage.py migrate
+   python manage.py collectstatic --noinput   # required -- see note below
    python manage.py createsuperuser   # to access /admin/
    python manage.py bootstrap_totp <username>   # required -- see MFA note below
    python manage.py runserver
    ```
+
+   **`collectstatic` is required even for local dev, not just
+   production** (ADR 0016): the admin theme's logo is resolved via
+   `django.templatetags.static.static()` directly in
+   `config/settings.py` (not the `{% static %}` template tag), which
+   always goes through `STORAGES["staticfiles"]` (WhiteNoise's
+   manifest storage) regardless of `DJANGO_DEBUG` -- every `/admin/`
+   page, including the login page, 500s without having run this at
+   least once. Re-run it after adding or changing any static file.
 
 API is served at `http://localhost:8000/`. Admin at `/admin/`.
 
@@ -117,6 +127,12 @@ is identical to production, only the URL differs.
   every staff account for `/admin/` access — see
   `docs/decisions/0014-staff-mfa.md`. New accounts need
   `manage.py bootstrap_totp <username>` run once before they can log in.
+  Also (Phase 11) hosts `AngelCareAdminSite`
+  (`accounts/admin_site.py`) — combines django-unfold's admin theme
+  with MFA into the actual `admin.site` instance, registered via
+  `accounts/apps.py::AngelCareAdminConfig` — see
+  `docs/decisions/0016-unfold-admin-theme.md`. Sidebar navigation and
+  branding are configured in `config/settings.py`'s `UNFOLD` dict.
 - `healthz/` — unauthenticated health check endpoint
 
 Domains beyond `transportation` (organization, passengers, drivers,

@@ -74,6 +74,15 @@ Tracked honestly so nothing here is discovered by surprise later.
   failing test currently means a red X in GitHub, not a stopped
   deploy. Real gating needs branch protection + a pull-request-based
   workflow, which this repo doesn't use yet (direct pushes to `main`).
+- **Admin theme (ADR 0016) is visual/navigational only, no custom
+  dashboard yet.** `/admin/` uses django-unfold for branding and a
+  curated sidebar, but the "Site administration" landing page after
+  login still shows Django's stock flat app-list — a real KPI
+  dashboard (e.g. "N new trip requests today") is possible via
+  Unfold's `DASHBOARD_CALLBACK` but wasn't built, deliberately, to keep
+  that phase scoped to theming. `django-unfold` is pinned to `0.96.0`,
+  not latest, since newer releases require Django 5.2+ and this
+  project is still on 5.1.15.
 - **Staff MFA (ADR 0014) has no self-service enrollment or recovery.**
   Every `TOTPDevice` is created out-of-band via
   `manage.py bootstrap_totp <username>`, run by whoever has

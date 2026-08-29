@@ -150,6 +150,22 @@ class StaffMfaEnforcementTests(TestCase):
 
         self.assertIsInstance(admin.site, OTPAdminSite)
 
+    def test_admin_site_is_also_the_unfold_theme(self):
+        """
+        Regression test for a real bug caught during ADR 0016: Unfold's
+        default AppConfig (bare "unfold" in INSTALLED_APPS) overwrites
+        admin.site with a plain UnfoldAdminSite() in its own ready(),
+        silently discarding AngelCareAdminConfig.default_site (and with
+        it, MFA enforcement) regardless of app order. Fixed by using
+        unfold.apps.BasicAppConfig instead -- this test fails loudly if
+        that config setting is ever reverted to the bare "unfold" form.
+        """
+        from django.contrib import admin
+
+        from .admin_site import AngelCareAdminSite
+
+        self.assertIsInstance(admin.site, AngelCareAdminSite)
+
     def test_password_only_login_cannot_reach_admin_index(self):
         User.objects.create_superuser(
             username="unverified_super", password="testpass123", email="x@example.com"

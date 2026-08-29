@@ -53,7 +53,24 @@ ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
 # --- Applications ---
 
 INSTALLED_APPS = [
-    "django.contrib.admin",
+    # "unfold" must precede the admin app entry below -- it overrides
+    # admin/*.html templates, and Django's app_directories template
+    # loader checks apps in INSTALLED_APPS order (ADR 0016).
+    #
+    # Explicitly BasicAppConfig, not the bare "unfold" string: bare
+    # "unfold" resolves to unfold.apps.DefaultAppConfig (it sets
+    # `default = True`), whose ready() unconditionally overwrites
+    # `admin.site` with a plain UnfoldAdminSite() instance -- clobbering
+    # AngelCareAdminConfig.default_site below regardless of app order.
+    # BasicAppConfig is Unfold's own documented escape hatch for
+    # exactly this: combining Unfold with another package (django-otp)
+    # that also needs to control the admin.site instance.
+    "unfold.apps.BasicAppConfig",
+    # Replaces the bare "django.contrib.admin" string: registers
+    # AngelCareAdminSite (Unfold's UI + django-otp's MFA, ADR 0014 +
+    # 0016) as the real admin.site, via Django's documented
+    # AdminConfig.default_site mechanism.
+    "accounts.apps.AngelCareAdminConfig",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
@@ -72,7 +89,7 @@ INSTALLED_APPS = [
     "transportation",
     "trips",
     "notifications",
-    "accounts",
+    "accounts.apps.AccountsConfig",
 ]
 
 MIDDLEWARE = [
@@ -93,7 +110,12 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        # templates/ at the project root: currently just
+        # templates/admin/login.html, a project-level override of
+        # Unfold's own login page (ADR 0016) that adds the MFA
+        # otp_token field. DIRS is checked before each app's own
+        # templates/ dir, so this wins over Unfold's version.
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -193,6 +215,152 @@ STORAGES = {
 }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Only /admin/ has a login page in this project (no separate staff
+# frontend). Without this, a login reached without an explicit ?next=
+# falls back to Django's own default, /accounts/profile/, which this
+# project doesn't define -- a 404 immediately after a successful login.
+LOGIN_URL = "/admin/login/"
+LOGIN_REDIRECT_URL = "/admin/"
+
+
+# --- Admin theme (Unfold) ---
+# Branded, sidebar-navigation admin UI (ADR 0016) -- combined with MFA
+# (ADR 0014) via accounts/admin_site.py::AngelCareAdminSite, registered
+# as the real admin.site through accounts/apps.py::AngelCareAdminConfig.
+# Color values are plain hex; Unfold converts them internally. "primary"
+# is anchored at the two real brand colors also used on the public site
+# (web/src/app/globals.css: --color-brand-blue at 400, --color-brand-
+# blue-dark at 600), with a hand-built ramp around them for the rest --
+# not derived from a design tool, but visually consistent and using the
+# exact brand hex at its two known-good points.
+
+from django.templatetags.static import static  # noqa: E402
+from django.urls import reverse_lazy  # noqa: E402
+
+
+def _is_superuser(request):
+    return request.user.is_active and request.user.is_superuser
+
+
+UNFOLD = {
+    "SITE_TITLE": "AngelCare Transit Admin",
+    "SITE_HEADER": "AngelCare Transit",
+    "SITE_SUBHEADER": "Non-Emergency Medical Transportation",
+    "SITE_SYMBOL": "airport_shuttle",
+    "SITE_LOGO": lambda request: static("accounts/logo.svg"),
+    "SHOW_HISTORY": True,
+    "SHOW_VIEW_ON_SITE": True,
+    "COLORS": {
+        "primary": {
+            "50": "#f0f8fc",
+            "100": "#dbeef7",
+            "200": "#b8ddef",
+            "300": "#8ecfe8",
+            "400": "#4fb1e4",  # --color-brand-blue
+            "500": "#2d90c2",
+            "600": "#2d6f91",  # --color-brand-blue-dark
+            "700": "#235a75",
+            "800": "#1c485e",
+            "900": "#163a4b",
+            "950": "#0e2530",
+        },
+    },
+    "SIDEBAR": {
+        "show_search": True,
+        "command_search": True,
+        "show_all_applications": True,
+        "navigation": [
+            {
+                "title": "Operations",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Trip Requests",
+                        "icon": "inbox",
+                        "link": reverse_lazy("admin:transportation_triprequest_changelist"),
+                    },
+                    {
+                        "title": "Trips",
+                        "icon": "route",
+                        "link": reverse_lazy("admin:trips_trip_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "People & Fleet",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Passengers",
+                        "icon": "groups",
+                        "link": reverse_lazy("admin:passengers_passenger_changelist"),
+                    },
+                    {
+                        "title": "Drivers",
+                        "icon": "badge",
+                        "link": reverse_lazy("admin:drivers_driver_changelist"),
+                    },
+                    {
+                        "title": "Vehicles",
+                        "icon": "directions_car",
+                        "link": reverse_lazy("admin:vehicles_vehicle_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Compliance",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Documents",
+                        "icon": "description",
+                        "link": reverse_lazy("admin:documents_document_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Organization",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Organization",
+                        "icon": "business",
+                        "link": reverse_lazy("admin:organization_organization_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "System",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Notification Log",
+                        "icon": "mail",
+                        "link": reverse_lazy("admin:notifications_notificationlog_changelist"),
+                    },
+                    {
+                        "title": "Audit Log",
+                        "icon": "history",
+                        "link": reverse_lazy("admin:audit_auditlog_changelist"),
+                    },
+                    {
+                        "title": "Staff Users",
+                        "icon": "person",
+                        "link": reverse_lazy("admin:auth_user_changelist"),
+                        "permission": _is_superuser,
+                    },
+                    {
+                        "title": "Groups & Roles",
+                        "icon": "shield_person",
+                        "link": reverse_lazy("admin:auth_group_changelist"),
+                        "permission": _is_superuser,
+                    },
+                ],
+            },
+        ],
+    },
+}
 
 
 # --- CORS ---
