@@ -29,7 +29,7 @@ export function ImageBanner({
 
   return (
     <div className="relative overflow-hidden rounded-2xl">
-      <div className="relative aspect-[1672/941] w-full">
+      <div className="relative min-h-90 w-full sm:aspect-1672/941 sm:min-h-0">
         <Image src={src} alt={alt} fill sizes={sizes} className="object-cover" />
 
         {/* Blurred duplicate, masked to the left, fading out toward the right */}
