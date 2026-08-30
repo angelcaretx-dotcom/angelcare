@@ -172,11 +172,35 @@ has no persistent disk), and email sending uses the console backend
 (no real SMTP credentials provided yet, so notifications log instead
 of sending).
 
-To deploy a change: `vercel deploy --prod --scope act-c1d1` from the
-repo root (for `web/`) or from `api/` (for the API). Environment
-variables are managed via `vercel env` — see ADR 0011 for what's set.
-After a schema change, run `manage.py migrate` against the production
-`DATABASE_URL` by hand; there's no automatic migrate-on-deploy hook.
+To deploy a change: push to `main` — both `angelcare` and
+`angelcare-api` are on Vercel's GitHub integration and auto-deploy.
+(`vercel deploy --prod --scope act-c1d1` from within `api/` or `web/`
+looks like it should also work, but doesn't: each project's Root
+Directory is set to its subfolder — required for the git-triggered
+build to find the right `vercel.json`/`package.json` — and the CLI,
+run from inside that same subfolder, uploads only that subfolder's
+contents, so Vercel then fails looking for `api/api` or `web/web`.
+To manually re-trigger a deploy of the current `main` without a new
+commit, use `vercel redeploy <production-url-or-alias> --scope
+act-c1d1` instead.) Environment variables are managed via `vercel env`
+— see ADR 0011 for what's set. After a schema change, run
+`manage.py migrate` against the production `DATABASE_URL` by hand;
+there's no automatic migrate-on-deploy hook.
+
+**`api/staticfiles/` is committed to git, not gitignored** (unusual
+for a Django project, but required here): `vercel.json` uses the
+legacy `builds`/`routes` format, which — confirmed the hard way,
+2026-08-30 — makes Vercel silently ignore the project's Build Command
+entirely, so nothing ever runs `collectstatic` at deploy time. Without
+it, `STORAGES["staticfiles"]` (WhiteNoise's manifest storage, see the
+collectstatic note above) has no manifest to serve from, and every
+`/admin/` page 500s in production — `/healthz/` and the API endpoints
+stayed up throughout, since they render no templates and touch no
+static files, which is why this went unnoticed for a bit. Re-run
+`python manage.py collectstatic --noinput` and commit the result
+whenever a static file changes (a new admin/Unfold version, a new
+logo, etc.) — if you forget, `/admin/` breaks again on the next
+deploy.
 
 After deploying ADR 0014 (staff MFA) for the first time, every existing
 staff account needs `manage.py bootstrap_totp <username>` run once

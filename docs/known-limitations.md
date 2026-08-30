@@ -100,6 +100,12 @@ Tracked honestly so nothing here is discovered by surprise later.
   that phase scoped to theming. `django-unfold` is pinned to `0.96.0`,
   not latest, since newer releases require Django 5.2+ and this
   project is still on 5.1.15.
+- **`api/staticfiles/` is committed to git**, not gitignored (see ADR
+  0016's postscript and `api/README.md`): `vercel.json`'s legacy
+  `builds` format means Vercel never runs `collectstatic` at deploy
+  time, so the collected/manifested files have to ship with the code
+  instead. Forgetting to re-run `collectstatic` and commit the result
+  after a static file changes will 500 every `/admin/` page again.
 - **Staff MFA (ADR 0014) has no self-service enrollment or recovery.**
   Every `TOTPDevice` is created out-of-band via
   `manage.py bootstrap_totp <username>`, run by whoever has

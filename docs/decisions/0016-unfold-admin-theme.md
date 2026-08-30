@@ -161,3 +161,19 @@ disposable account was deleted afterward.
 - `django-unfold` is pinned below its latest release specifically to
   avoid an unplanned Django major-version upgrade; revisit the pin
   once/if a deliberate Django 5.2 upgrade happens.
+
+## Postscript: production outage (2026-08-30)
+
+This phase is the reason `/admin/` needs a working static-file
+manifest at all (its login page and templates are the first real
+consumers of `STORAGES["staticfiles"]`/WhiteNoise in this project).
+It surfaced a real gap during Phase 13 (Billing) work: `api/`'s
+`vercel.json` uses the legacy `builds`/`routes` format, which makes
+Vercel silently ignore the project's Build Command -- nothing was
+ever running `collectstatic` on deploy, so `/admin/` (including
+login) 500'd in production while `/healthz/` and the API endpoints
+stayed up (they render no templates, so they never touched the
+missing manifest). Fixed by committing `api/staticfiles/` directly
+(previously gitignored) so the collected, manifested files ship with
+the code -- see `api/README.md`'s deploy section for the "re-run
+after any static file changes" requirement this creates.

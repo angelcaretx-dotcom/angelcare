@@ -36,7 +36,6 @@ api/__pycache__/
 api/**/__pycache__/
 api/*.pyc
 api/db.sqlite3
-api/staticfiles/
 api/media/
 api/.pytest_cache/
 api/htmlcov/
