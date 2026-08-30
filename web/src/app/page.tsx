@@ -1,7 +1,17 @@
+import { Accessibility, BedSingle, Footprints, PackagePlus } from "lucide-react";
 import Link from "next/link";
 import { Container } from "@/components/Container";
 import { ImageBanner } from "@/components/ImageBanner";
 import { services, siteConfig } from "@/lib/site-config";
+
+// One icon per service, matched by slug -- see src/lib/site-config.ts.
+// Generic, professional glyphs (lucide-react), not brand-specific art.
+const serviceIcons: Record<string, typeof Footprints> = {
+  ambulatory: Footprints,
+  wheelchair: Accessibility,
+  stretcher: BedSingle,
+  "equipment-delivery": PackagePlus,
+};
 
 export default function Home() {
   return (
@@ -44,20 +54,32 @@ export default function Home() {
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Our Services
           </h2>
-          <div className="mt-8 grid gap-6 sm:grid-cols-3">
-            {services.map((service) => (
-              <div
-                key={service.slug}
-                className="rounded-2xl border border-black/10 p-6"
-              >
-                <h3 className="text-lg font-semibold text-brand-blue-dark">
-                  {service.name}
-                </h3>
-                <p className="mt-2 text-sm text-foreground/70">
-                  {service.summary}
-                </p>
-              </div>
-            ))}
+          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {services.map((service) => {
+              const Icon = serviceIcons[service.slug];
+              return (
+                <div
+                  key={service.slug}
+                  className="rounded-2xl border border-black/10 p-6 transition-shadow hover:shadow-md"
+                >
+                  {Icon && (
+                    <div className="flex size-11 items-center justify-center rounded-full bg-brand-blue/15">
+                      <Icon
+                        className="size-6 text-brand-blue-dark"
+                        strokeWidth={1.75}
+                        aria-hidden="true"
+                      />
+                    </div>
+                  )}
+                  <h3 className="mt-4 text-lg font-semibold text-brand-blue-dark">
+                    {service.name}
+                  </h3>
+                  <p className="mt-2 text-sm text-foreground/70">
+                    {service.summary}
+                  </p>
+                </div>
+              );
+            })}
           </div>
           <Link
             href="/services"
