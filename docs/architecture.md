@@ -16,6 +16,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0014](decisions/0014-staff-mfa.md),
 [ADR 0015](decisions/0015-branded-html-emails.md),
 [ADR 0016](decisions/0016-unfold-admin-theme.md),
+[ADR 0017](decisions/0017-payer-broker-domain.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -55,6 +56,10 @@ monolithic app. Currently:
 - `organization/` — (Phase 8) `Organization`: single record for
   AngelCare Transit itself, seeded from confirmed business facts.
   Does not replace `web/src/lib/site-config.ts` -- see ADR 0010.
+- `payers/` — (Phase 12) `Payer`: structural funding-source record
+  (Medicaid MCO / Broker / Private Pay / Facility Contract / Other),
+  optionally linked from `Passenger`. No rate schedules, billing, or
+  claims logic yet -- see ADR 0017.
 - `transportation/` — trip request intake (Phase 1: capture and store a
   request; not yet the full trip lifecycle / dispatch state machine).
   `TripRequest.passenger` optionally links to a `passengers.Passenger`,
@@ -76,9 +81,8 @@ monolithic app. Currently:
   class registered as `admin.site` itself — see ADR 0016.
 
 Future domains, added only when there's a confirmed business need
-(never speculatively): organization, passengers, drivers, vehicles,
-dispatch/trips, payers/brokers, billing, claims, compliance, documents,
-audit. Each gets its own app, its own models, and talks to other
+(never speculatively): billing, claims, compliance. Each gets its own
+app, its own models, and talks to other
 domains through explicit interfaces — not by reaching into another
 app's models directly once the domains get more coupled logic.
 

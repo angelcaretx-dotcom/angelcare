@@ -28,14 +28,26 @@ class Passenger(models.Model):
     standalone record independent of any one trip request -- so repeat
     customers, mobility profiles, and history are possible.
 
-    Deliberately does NOT yet include: authorized representatives,
-    facility relationships, payer information, or documents. None of
-    those have a home yet (no Facility/Payer/Document domain exists),
-    and there's no confirmed need for them -- see
-    docs/decisions/0006-passenger-domain.md.
+    Deliberately does NOT yet include: authorized representatives or
+    facility relationships. Neither has a home yet (no Facility domain
+    exists), and there's no confirmed need for them -- see
+    docs/decisions/0006-passenger-domain.md. `payer` was added in
+    ADR 0015 once a Payer domain existed.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Deliberately nullable and staff-set only -- a passenger's funding
+    # source isn't always known at intake, and this project never auto-
+    # infers business-critical relationships. See
+    # docs/decisions/0015-payer-broker-domain.md.
+    payer = models.ForeignKey(
+        "payers.Payer",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="passengers",
+    )
 
     legal_name = models.CharField(max_length=200)
     preferred_name = models.CharField(

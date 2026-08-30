@@ -42,6 +42,7 @@ def seed_roles(sender, **kwargs):
             "vehicles",
             "trips",
             "documents",
+            "payers",
         ]
     )
 
@@ -54,6 +55,9 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("drivers", "driver", ["view"]))
         + list(_permissions("vehicles", "vehicle", ["view"]))
         + list(_permissions("documents", "document", ["view"]))
+        # Same least-privilege reasoning as drivers/vehicles: payer
+        # records are administrative, not day-to-day dispatch work.
+        + list(_permissions("payers", "payer", ["view"]))
         # Scheduling trips IS dispatch work -- full access here.
         + list(_permissions("trips", "trip", ["view", "change", "add"]))
     )
@@ -66,6 +70,7 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("vehicles", "vehicle", ["view", "change", "add", "delete"]))
         + list(_permissions("trips", "trip", ["view", "change", "add", "delete"]))
         + list(_permissions("documents", "document", ["view", "change", "add", "delete"]))
+        + list(_permissions("payers", "payer", ["view", "change", "add", "delete"]))
         + list(_permissions("notifications", "notificationlog", ["view"]))
         + list(_permissions("audit", "auditlog", ["view"]))
     )

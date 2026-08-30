@@ -2,25 +2,23 @@ from django.contrib import admin
 
 from audit.services import record_change
 
-from .models import Passenger
+from .models import Payer
 
 
-@admin.register(Passenger)
-class PassengerAdmin(admin.ModelAdmin):
+@admin.register(Payer)
+class PayerAdmin(admin.ModelAdmin):
     list_display = (
-        "legal_name",
-        "preferred_name",
+        "name",
+        "payer_type",
+        "contact_name",
         "phone",
-        "preferred_service_type",
-        "payer",
         "status",
         "created_at",
     )
-    list_filter = ("status", "preferred_service_type", "payer")
-    search_fields = ("legal_name", "preferred_name", "phone", "email")
-    autocomplete_fields = ("payer",)
+    list_filter = ("status", "payer_type")
+    search_fields = ("name", "contact_name", "phone", "email")
     readonly_fields = ("id", "created_at", "updated_at")
-    ordering = ("legal_name",)
+    ordering = ("name",)
 
     def save_model(self, request, obj, form, change):
         previous_status = form.initial.get("status") if change else None
@@ -30,7 +28,7 @@ class PassengerAdmin(admin.ModelAdmin):
             record_change(
                 actor=request.user,
                 action="status_changed",
-                resource_type="Passenger",
+                resource_type="Payer",
                 resource_id=obj.id,
                 before={"status": previous_status},
                 after={"status": obj.status},

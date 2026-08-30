@@ -12,12 +12,21 @@ Tracked honestly so nothing here is discovered by surprise later.
   and `Passenger` status changes are wired into it so far — other
   edits (e.g. changing a phone number) aren't yet logged.
 - **Passenger domain is intentionally minimal** (ADR 0006): no
-  authorized representatives, no facility/payer/document relationships,
-  no field-level edit history beyond status. Trip requests are never
+  authorized representatives, no facility/document relationships, no
+  field-level edit history beyond status. Trip requests are never
   auto-linked to a passenger — staff link them manually in `/admin/`.
+  `payer` was added in ADR 0017.
 - **Driver/Vehicle domains are intentionally minimal** (ADR 0007): no
   insurance, background checks, training/certification records,
   maintenance/mileage history, or incident tracking.
+- **Payer domain is structural only** (ADR 0017): generic
+  name/type/contact/status fields and an optional link from
+  `Passenger`, so records can note a funding source. No rate
+  schedules, contract terms, authorization/eligibility verification,
+  EDI/billing-vendor integration, or claims — none of that is grounded
+  in a confirmed AngelCare relationship yet (real payer/broker
+  relationships remain explicitly UNKNOWN, see
+  `docs/business-decisions-log.md`).
 - **Trip status is intentionally coarse** (ADR 0008): `SCHEDULED ->
   IN_PROGRESS -> COMPLETED` (+ `CANCELLED`/`NO_SHOW`), not the project
   directive's full example machine (`ARRIVED`, `PASSENGER_ONBOARD`,
@@ -43,8 +52,9 @@ Tracked honestly so nothing here is discovered by surprise later.
   labeled "pending legal review" on the pages themselves. They describe
   actual data handling but are not attorney-reviewed and contain no
   pricing/cancellation/service-level terms (none have been defined).
-- **No rate schedule, payer/broker integration, billing, or claims** —
-  none of that exists yet.
+- **No rate schedule, billing, or claims** — a structural Payer domain
+  exists (ADR 0017), but rate schedules, EDI/billing-vendor
+  integration, and claims don't.
 - **Notifications are email-only, no retry.** A new trip request emails
   staff and the customer once; if the send fails it's logged to
   `NotificationLog` (visible in `/admin/`) but not automatically
