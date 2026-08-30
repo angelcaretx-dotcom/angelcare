@@ -27,6 +27,13 @@ Tracked honestly so nothing here is discovered by surprise later.
   in a confirmed AngelCare relationship yet (real payer/broker
   relationships remain explicitly UNKNOWN, see
   `docs/business-decisions-log.md`).
+- **Billing domain is structural only** (ADR 0018): `Invoice` records
+  a completed `Trip`'s bill (staff-entered `amount`, status, optional
+  `Payer`), but is never auto-created from a completed trip and has no
+  rate schedule to calculate `amount` from, no EDI/billing-vendor
+  integration, no payment processing (only that payment happened, not
+  how), and no PDF/emailing. `Dispatcher` has no access at all
+  (Administrator only) — billing is financial, not dispatch work.
 - **Trip status is intentionally coarse** (ADR 0008): `SCHEDULED ->
   IN_PROGRESS -> COMPLETED` (+ `CANCELLED`/`NO_SHOW`), not the project
   directive's full example machine (`ARRIVED`, `PASSENGER_ONBOARD`,
@@ -52,9 +59,9 @@ Tracked honestly so nothing here is discovered by surprise later.
   labeled "pending legal review" on the pages themselves. They describe
   actual data handling but are not attorney-reviewed and contain no
   pricing/cancellation/service-level terms (none have been defined).
-- **No rate schedule, billing, or claims** — a structural Payer domain
-  exists (ADR 0017), but rate schedules, EDI/billing-vendor
-  integration, and claims don't.
+- **No rate schedule or claims.** Structural Payer (ADR 0017) and
+  Billing (ADR 0018) domains exist, but rate schedules, EDI/billing-
+  vendor integration, payment processing, and claims don't.
 - **Notifications are email-only, no retry.** A new trip request emails
   staff and the customer once; if the send fails it's logged to
   `NotificationLog` (visible in `/admin/`) but not automatically

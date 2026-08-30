@@ -17,6 +17,11 @@ class TripAdmin(admin.ModelAdmin):
         "created_at",
     )
     list_filter = ("status",)
+    # search_fields is also required here so billing.InvoiceAdmin can
+    # autocomplete on `trip` (ADR 0018) -- Django's admin checks
+    # enforce this on whatever admin the target model is registered
+    # under, not on the referencing admin.
+    search_fields = ("trip_request__full_name", "trip_request__phone", "driver__legal_name")
     autocomplete_fields = ("trip_request", "driver", "vehicle")
     readonly_fields = ("id", "created_at", "updated_at")
     ordering = ("-scheduled_pickup_datetime",)

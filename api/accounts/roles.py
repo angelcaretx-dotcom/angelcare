@@ -43,6 +43,7 @@ def seed_roles(sender, **kwargs):
             "trips",
             "documents",
             "payers",
+            "billing",
         ]
     )
 
@@ -71,6 +72,10 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("trips", "trip", ["view", "change", "add", "delete"]))
         + list(_permissions("documents", "document", ["view", "change", "add", "delete"]))
         + list(_permissions("payers", "payer", ["view", "change", "add", "delete"]))
+        # Billing is administrative/financial -- Administrator only, no
+        # confirmed day-to-day dispatch need (least privilege, same
+        # reasoning ADR 0007 applied to Driver/Vehicle edit access).
+        + list(_permissions("billing", "invoice", ["view", "change", "add", "delete"]))
         + list(_permissions("notifications", "notificationlog", ["view"]))
         + list(_permissions("audit", "auditlog", ["view"]))
     )

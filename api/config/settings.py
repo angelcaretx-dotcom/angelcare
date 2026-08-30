@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     "documents",
     "organization",
     "payers",
+    "billing",
     "passengers",
     "drivers",
     "vehicles",
@@ -244,6 +245,10 @@ def _is_superuser(request):
     return request.user.is_active and request.user.is_superuser
 
 
+def _can_view_billing(request):
+    return request.user.has_perm("billing.view_invoice")
+
+
 UNFOLD = {
     "SITE_TITLE": "AngelCare Transit Admin",
     "SITE_HEADER": "AngelCare Transit",
@@ -311,6 +316,18 @@ UNFOLD = {
                         "title": "Payers",
                         "icon": "payments",
                         "link": reverse_lazy("admin:payers_payer_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Billing",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Invoices",
+                        "icon": "receipt_long",
+                        "link": reverse_lazy("admin:billing_invoice_changelist"),
+                        "permission": _can_view_billing,
                     },
                 ],
             },
