@@ -34,6 +34,12 @@ Tracked honestly so nothing here is discovered by surprise later.
   integration, no payment processing (only that payment happened, not
   how), and no PDF/emailing. `Dispatcher` has no access at all
   (Administrator only) — billing is financial, not dispatch work.
+- **Claims domain is structural only** (ADR 0019): `Claim` records
+  that an `Invoice` was submitted to a `Payer` (required), with
+  staff-entered amounts/status/dates. Never auto-created from an
+  invoice. No EDI (837/835), clearinghouse integration, automatic
+  status polling, appeals workflow, or remittance-advice parsing.
+  Same Administrator-only RBAC as Billing.
 - **Trip status is intentionally coarse** (ADR 0008): `SCHEDULED ->
   IN_PROGRESS -> COMPLETED` (+ `CANCELLED`/`NO_SHOW`), not the project
   directive's full example machine (`ARRIVED`, `PASSENGER_ONBOARD`,
@@ -59,9 +65,10 @@ Tracked honestly so nothing here is discovered by surprise later.
   labeled "pending legal review" on the pages themselves. They describe
   actual data handling but are not attorney-reviewed and contain no
   pricing/cancellation/service-level terms (none have been defined).
-- **No rate schedule or claims.** Structural Payer (ADR 0017) and
-  Billing (ADR 0018) domains exist, but rate schedules, EDI/billing-
-  vendor integration, payment processing, and claims don't.
+- **No rate schedule or EDI.** Structural Payer (ADR 0017), Billing
+  (ADR 0018), and Claims (ADR 0019) domains exist, but rate schedules,
+  EDI/clearinghouse/billing-vendor integration, and payment processing
+  don't.
 - **Notifications are email-only, no retry.** A new trip request emails
   staff and the customer once; if the send fails it's logged to
   `NotificationLog` (visible in `/admin/`) but not automatically

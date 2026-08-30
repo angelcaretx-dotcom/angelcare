@@ -44,6 +44,7 @@ def seed_roles(sender, **kwargs):
             "documents",
             "payers",
             "billing",
+            "claims",
         ]
     )
 
@@ -76,6 +77,7 @@ def seed_roles(sender, **kwargs):
         # confirmed day-to-day dispatch need (least privilege, same
         # reasoning ADR 0007 applied to Driver/Vehicle edit access).
         + list(_permissions("billing", "invoice", ["view", "change", "add", "delete"]))
+        + list(_permissions("claims", "claim", ["view", "change", "add", "delete"]))
         + list(_permissions("notifications", "notificationlog", ["view"]))
         + list(_permissions("audit", "auditlog", ["view"]))
     )

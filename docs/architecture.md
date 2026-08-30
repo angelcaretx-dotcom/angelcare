@@ -18,6 +18,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0016](decisions/0016-unfold-admin-theme.md),
 [ADR 0017](decisions/0017-payer-broker-domain.md),
 [ADR 0018](decisions/0018-billing-domain.md),
+[ADR 0019](decisions/0019-claims-domain.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -65,6 +66,11 @@ monolithic app. Currently:
   `Trip` (amount entered by staff, no rate schedule), optionally
   linked to a `Payer`. Never auto-created. No EDI, payment processing,
   or claims yet -- see ADR 0018.
+- `claims/` — (Phase 14) `Claim`: record that an `Invoice` was
+  submitted to a `Payer` for reimbursement (required, unlike Invoice's
+  optional payer). Multiple claims per invoice (FK, not OneToOne) --
+  denial/resubmission keeps real history. Never auto-created. No EDI,
+  clearinghouse integration, or appeals workflow -- see ADR 0019.
 - `transportation/` — trip request intake (Phase 1: capture and store a
   request; not yet the full trip lifecycle / dispatch state machine).
   `TripRequest.passenger` optionally links to a `passengers.Passenger`,
@@ -86,7 +92,7 @@ monolithic app. Currently:
   class registered as `admin.site` itself — see ADR 0016.
 
 Future domains, added only when there's a confirmed business need
-(never speculatively): claims, compliance. Each gets its own
+(never speculatively): compliance. Each gets its own
 app, its own models, and talks to other
 domains through explicit interfaces — not by reaching into another
 app's models directly once the domains get more coupled logic.

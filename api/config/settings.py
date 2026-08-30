@@ -85,6 +85,7 @@ INSTALLED_APPS = [
     "organization",
     "payers",
     "billing",
+    "claims",
     "passengers",
     "drivers",
     "vehicles",
@@ -249,6 +250,10 @@ def _can_view_billing(request):
     return request.user.has_perm("billing.view_invoice")
 
 
+def _can_view_claims(request):
+    return request.user.has_perm("claims.view_claim")
+
+
 UNFOLD = {
     "SITE_TITLE": "AngelCare Transit Admin",
     "SITE_HEADER": "AngelCare Transit",
@@ -328,6 +333,12 @@ UNFOLD = {
                         "icon": "receipt_long",
                         "link": reverse_lazy("admin:billing_invoice_changelist"),
                         "permission": _can_view_billing,
+                    },
+                    {
+                        "title": "Claims",
+                        "icon": "assignment_turned_in",
+                        "link": reverse_lazy("admin:claims_claim_changelist"),
+                        "permission": _can_view_claims,
                     },
                 ],
             },
