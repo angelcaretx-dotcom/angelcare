@@ -21,6 +21,7 @@ class OrganizationSeedMigrationTests(TestCase):
         self.assertEqual(org.phone, "817-766-9228")
         self.assertEqual(org.email, "angelcaretx@gmail.com")
         self.assertEqual(org.service_area, "State of Texas")
+        self.assertEqual(org.ein, "93-312-2590")
 
 
 class OrganizationAdminSingletonTests(TestCase):

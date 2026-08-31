@@ -29,6 +29,12 @@ class Organization(models.Model):
     phone = models.CharField(max_length=20)
     email = models.EmailField()
     service_area = models.CharField(max_length=200)
+    ein = models.CharField(
+        max_length=20,
+        blank=True,
+        verbose_name="EIN",
+        help_text="Internal use only -- not published on the public site.",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -5,7 +5,7 @@ from .models import Organization
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
-    list_display = ("legal_name", "phone", "email", "service_area", "updated_at")
+    list_display = ("legal_name", "phone", "email", "service_area", "ein", "updated_at")
     readonly_fields = ("id", "created_at", "updated_at")
 
     def has_add_permission(self, request):

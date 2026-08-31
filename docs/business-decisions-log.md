@@ -29,6 +29,7 @@ is UNKNOWN and must not be assumed.
 | 2026-08-22 | Backend stack | Python / Django + PostgreSQL (unchanged by the hosting swap) | Owner, chat |
 | 2026-08-26 | Production email provider | Resend, SMTP relay, sending from `notifications@angelcaretransit.com` (domain verification with Resend in progress as of this date — real sends will start working automatically once it completes, no config change needed) | Owner, chat |
 | 2026-08-26 | Production file storage | Supabase Storage (bucket `Documents`, private), accessed via Supabase's own Storage REST API — verified working end to end for real (upload/download/sign/delete). See ADR 0012 | Owner, chat |
+| 2026-08-31 | EIN | 93-312-2590 | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)
 
@@ -37,7 +38,7 @@ is UNKNOWN and must not be assumed.
 - Fleet size, vehicle details
 - Driver employment classification (employee vs. contractor)
 - Business hours
-- Legal entity type / EIN / state registration details
+- Legal entity type / state registration details (EIN is now confirmed — see the table above)
 - Insurance and credentialing specifics
 - Any regulatory claims (Medicaid enrollment status, state licensure numbers, etc.)
 
