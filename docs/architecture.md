@@ -19,6 +19,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0017](decisions/0017-payer-broker-domain.md),
 [ADR 0018](decisions/0018-billing-domain.md),
 [ADR 0019](decisions/0019-claims-domain.md),
+[ADR 0020](decisions/0020-compliance-domain.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -71,6 +72,12 @@ monolithic app. Currently:
   optional payer). Multiple claims per invoice (FK, not OneToOne) --
   denial/resubmission keeps real history. Never auto-created. No EDI,
   clearinghouse integration, or appeals workflow -- see ADR 0019.
+- `compliance/` — (Phase 15) `ComplianceRecord`: business-level
+  regulatory item (license/permit/insurance policy/certification/
+  registration), distinct from Driver/Vehicle's own per-entity
+  credentials. Reuses `documents.Document` for supporting evidence.
+  No real AngelCare license/policy data, no automatic expiration
+  blocking -- see ADR 0020.
 - `transportation/` — trip request intake (Phase 1: capture and store a
   request; not yet the full trip lifecycle / dispatch state machine).
   `TripRequest.passenger` optionally links to a `passengers.Passenger`,
@@ -91,11 +98,12 @@ monolithic app. Currently:
   hosts `AngelCareAdminSite`, the combined Unfold + MFA admin site
   class registered as `admin.site` itself — see ADR 0016.
 
-Future domains, added only when there's a confirmed business need
-(never speculatively): compliance. Each gets its own
-app, its own models, and talks to other
-domains through explicit interfaces — not by reaching into another
-app's models directly once the domains get more coupled logic.
+That completes the original Phase 0 roadmap's domain list. Future
+domains are added only when there's a confirmed business need (never
+speculatively) -- there isn't a queued list right now. Each new domain
+gets its own app, its own models, and talks to other domains through
+explicit interfaces — not by reaching into another app's models
+directly once the domains get more coupled logic.
 
 Third-party vendors (maps, SMS, email, payments, broker APIs) are
 isolated behind an interface when they're introduced — never called

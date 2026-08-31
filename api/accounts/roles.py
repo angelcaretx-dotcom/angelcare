@@ -45,6 +45,7 @@ def seed_roles(sender, **kwargs):
             "payers",
             "billing",
             "claims",
+            "compliance",
         ]
     )
 
@@ -60,6 +61,7 @@ def seed_roles(sender, **kwargs):
         # Same least-privilege reasoning as drivers/vehicles: payer
         # records are administrative, not day-to-day dispatch work.
         + list(_permissions("payers", "payer", ["view"]))
+        + list(_permissions("compliance", "compliancerecord", ["view"]))
         # Scheduling trips IS dispatch work -- full access here.
         + list(_permissions("trips", "trip", ["view", "change", "add"]))
     )
@@ -78,6 +80,11 @@ def seed_roles(sender, **kwargs):
         # reasoning ADR 0007 applied to Driver/Vehicle edit access).
         + list(_permissions("billing", "invoice", ["view", "change", "add", "delete"]))
         + list(_permissions("claims", "claim", ["view", "change", "add", "delete"]))
+        + list(
+            _permissions(
+                "compliance", "compliancerecord", ["view", "change", "add", "delete"]
+            )
+        )
         + list(_permissions("notifications", "notificationlog", ["view"]))
         + list(_permissions("audit", "auditlog", ["view"]))
     )

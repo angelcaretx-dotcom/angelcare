@@ -40,6 +40,14 @@ Tracked honestly so nothing here is discovered by surprise later.
   invoice. No EDI (837/835), clearinghouse integration, automatic
   status polling, appeals workflow, or remittance-advice parsing.
   Same Administrator-only RBAC as Billing.
+- **Compliance domain is structural only** (ADR 0020):
+  `ComplianceRecord` is a generic license/permit/insurance/
+  certification/registration record (name, generic type, issuing
+  authority, reference number, dates, status) with a `Document`
+  attached for evidence. No real AngelCare license/policy/EIN data is
+  in it (REQUIRES OFFICIAL SOURCE), no automatic expiration-based
+  blocking of anything, and no regulatory-body integration or renewal
+  reminders.
 - **Trip status is intentionally coarse** (ADR 0008): `SCHEDULED ->
   IN_PROGRESS -> COMPLETED` (+ `CANCELLED`/`NO_SHOW`), not the project
   directive's full example machine (`ARRIVED`, `PASSENGER_ONBOARD`,
