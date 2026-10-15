@@ -112,9 +112,10 @@ Tracked honestly so nothing here is discovered by surprise later.
   login still shows Django's stock flat app-list — a real KPI
   dashboard (e.g. "N new trip requests today") is possible via
   Unfold's `DASHBOARD_CALLBACK` but wasn't built, deliberately, to keep
-  that phase scoped to theming. `django-unfold` is pinned to `0.96.0`,
-  not latest, since newer releases require Django 5.2+ and this
-  project is still on 5.1.15.
+  that phase scoped to theming. (The old `0.96.0` pin, forced by
+  Django 5.1, was lifted on 2026-10-14 when the project moved to the
+  Django 5.2 LTS line; every admin page is now render-tested by
+  `accounts.tests.AdminPagesSmokeTests`.)
 - **`api/staticfiles/` is committed to git**, not gitignored (see ADR
   0016's postscript and `api/README.md`): `vercel.json`'s legacy
   `builds` format means Vercel never runs `collectstatic` at deploy

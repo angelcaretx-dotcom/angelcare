@@ -273,3 +273,44 @@ class BootstrapTotpCommandTests(TestCase):
 
         with self.assertRaises(CommandError):
             call_command("bootstrap_totp", "does_not_exist")
+
+
+class AdminPagesSmokeTests(TestCase):
+    """
+    Renders every registered admin's changelist and add page (plus the
+    change page for any row a migration seeds, e.g. Organization) as a
+    superuser. Catches breakage that per-domain tests don't reach: a
+    django-unfold or Django upgrade changing template/config APIs, a
+    bad `list_display` entry, or missing collected static files (the
+    cause of the every-/admin/-page 500 noted in ADR 0016).
+    """
+
+    def setUp(self):
+        User.objects.create_superuser(username="root", password="testpass123")
+        login_with_otp(self.client, username="root", password="testpass123")
+
+    def test_admin_index_renders(self):
+        self.assertEqual(self.client.get(reverse("admin:index")).status_code, 200)
+
+    def test_every_registered_admin_page_renders(self):
+        from django.contrib import admin
+
+        for model, model_admin in admin.site._registry.items():
+            opts = model._meta
+            prefix = f"admin:{opts.app_label}_{opts.model_name}"
+            urls = [reverse(f"{prefix}_changelist")]
+            if model_admin.has_add_permission(self._request()):
+                urls.append(reverse(f"{prefix}_add"))
+            existing = model._default_manager.first()
+            if existing is not None:
+                urls.append(reverse(f"{prefix}_change", args=[existing.pk]))
+            for url in urls:
+                with self.subTest(url=url):
+                    self.assertEqual(self.client.get(url).status_code, 200)
+
+    def _request(self):
+        from django.test import RequestFactory
+
+        request = RequestFactory().get("/admin/")
+        request.user = User.objects.get(username="root")
+        return request
