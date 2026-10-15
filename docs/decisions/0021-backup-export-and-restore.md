@@ -92,7 +92,16 @@ means restoring it:
 The full steps are in `api/README.md`. This drill was run on
 2026-10-15 against the local dev database: every row came back
 identical, and a second restore into the now-populated database was
-refused without writing anything. `backups/tests.py` covers the same
+refused without writing anything.
+
+**Production drill, 2026-10-15:** a real production export (16 rows
+across 6 models; no uploaded documents exist in production yet, so 0
+files) passed `verify_backup` and was restored into a throwaway local
+database. Re-exporting it gave identical row counts and identical rows.
+Production records no ghost migrations. The drill database and files
+were deleted afterwards. Document file restore has not yet been
+exercised against Supabase Storage with real files, only in CI against
+filesystem storage, because production has none to test with. `backups/tests.py` covers the same
 round trip in CI, including document files, plus corruption detection,
 missing-file handling, and every refusal path.
 
