@@ -70,6 +70,10 @@ is identical to production, only the URL differs.
 - `python manage.py bootstrap_totp <username> [--replace]` — enroll (or
   re-enroll) a staff account's MFA device; required before that account
   can log into `/admin/` — see `docs/decisions/0014-staff-mfa.md`
+- `python manage.py export_backup --output <dir>` /
+  `verify_backup <zip>` / `restore_backup <zip>` — full backup archive
+  (database + uploaded files) — see "Backups" below and
+  `docs/decisions/0021-backup-export-and-restore.md`
 
 ## Structure
 
@@ -133,6 +137,9 @@ is identical to production, only the URL differs.
   `accounts/apps.py::AngelCareAdminConfig` — see
   `docs/decisions/0016-unfold-admin-theme.md`. Sidebar navigation and
   branding are configured in `config/settings.py`'s `UNFOLD` dict.
+- `backups/` — backup export / verify / restore commands (Phase 16),
+  no models of its own — see "Backups" below and
+  `docs/decisions/0021-backup-export-and-restore.md`.
 - `healthz/` — unauthenticated health check endpoint
 
 Domains beyond `transportation` (organization, passengers, drivers,
@@ -208,3 +215,47 @@ against the production database before they can log into `/admin/`
 again — the printed QR/URL contains a live secret, so hand it to the
 account holder over a channel that isn't logged or persisted (not
 email, not a ticket comment).
+
+## Backups
+
+See `docs/decisions/0021-backup-export-and-restore.md` for the design.
+An archive contains passenger PII and password hashes: keep it
+somewhere private, never in this (public) repo. `angelcare-backup-*.zip`
+is gitignored as a safety net, not as a place to store backups.
+
+**Export production** (from your own terminal; Vercel can't run
+management commands). Use the production `DATABASE_URL` (pooler
+string, ADR 0011) plus the `SUPABASE_STORAGE_*` variables so document
+files are included:
+
+```powershell
+cd api
+$env:DATABASE_URL = "<production pooler URL>"
+$env:SUPABASE_STORAGE_URL = "<...>"; $env:SUPABASE_STORAGE_KEY = "<...>"
+.venv\Scripts\python manage.py export_backup --output C:\path\outside\the\repo
+.venv\Scripts\python manage.py verify_backup C:\path\outside\the\repo\angelcare-backup-<timestamp>.zip
+```
+
+**Restore drill** (proves the archive restores, into a throwaway local
+database; never touches production). Open a **new** terminal so none
+of the production variables above are set:
+
+```powershell
+cd api
+# create an empty database, e.g. in psql: CREATE DATABASE angelcare_restore_drill;
+$env:DATABASE_URL = "postgresql://angelcare:<local password>@localhost:5434/angelcare_restore_drill"
+$env:DJANGO_MEDIA_ROOT = "C:\path\outside\the\repo\drill-media"
+.venv\Scripts\python manage.py migrate
+.venv\Scripts\python manage.py restore_backup C:\path\outside\the\repo\angelcare-backup-<timestamp>.zip
+.venv\Scripts\python manage.py export_backup --output C:\path\outside\the\repo\drill
+```
+
+Then compare the two archives' `data.json` (row counts are printed by
+`verify_backup` on each). Drop the drill database and media directory
+afterwards; they hold real PII.
+
+**Real disaster recovery** follows the same steps against the new
+production database: `migrate`, then `restore_backup` (into an empty
+database, so don't run `createsuperuser` first), then
+`bootstrap_totp <username>` for each staff account, because MFA devices
+are not in backups.

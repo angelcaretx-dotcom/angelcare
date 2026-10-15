@@ -94,6 +94,7 @@ INSTALLED_APPS = [
     "trips",
     "notifications",
     "accounts.apps.AccountsConfig",
+    "backups",
 ]
 
 MIDDLEWARE = [
@@ -198,7 +199,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # ADR 0011) uses Supabase Storage via documents.storage.SupabaseStorage
 # -- see docs/decisions/0012-supabase-storage.md.
 MEDIA_URL = "media/"
-MEDIA_ROOT = BASE_DIR / "media"
+# Overridable so a backup restore drill (ADR 0021) can restore files
+# into a throwaway directory instead of the real local media/.
+MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT", BASE_DIR / "media"))
 
 SUPABASE_STORAGE_URL = os.environ.get("SUPABASE_STORAGE_URL", "")
 SUPABASE_STORAGE_KEY = os.environ.get("SUPABASE_STORAGE_KEY", "")

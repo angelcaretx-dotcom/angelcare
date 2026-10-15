@@ -43,3 +43,7 @@ api/.coverage
 
 # --- Vercel (web/, and this root link) ---
 .vercel/
+
+# --- Backup archives (ADR 0021): contain PII, never commit ---
+angelcare-backup-*.zip
+angelcare-backup-*.zip.partial

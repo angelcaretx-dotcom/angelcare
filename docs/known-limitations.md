@@ -67,6 +67,15 @@ Tracked honestly so nothing here is discovered by surprise later.
   dev still uses plain filesystem storage (ADR 0004). No
   version-chaining still — re-uploading creates a new `Document` row,
   but there's no explicit link to what it replaced.
+- **Backups are manual and unencrypted** (ADR 0021). `export_backup`
+  writes a full, checksummed archive (database + document files), and
+  `restore_backup` is tested end to end, but someone has to run it:
+  there's no schedule, because the obvious place for one (GitHub
+  Actions) would put PII in a public repo's artifacts. The zip is not
+  encrypted, so storing it securely is up to the operator. Staff MFA
+  secrets are deliberately excluded, so staff re-run `bootstrap_totp`
+  after a restore. Supabase's own platform backups (plan, retention,
+  point-in-time recovery) have never been checked or recorded.
 - **No physical business address published**, per the owner's choice —
   revisit if that changes.
 - **Privacy Policy and Terms of Use pages are drafts**, explicitly
