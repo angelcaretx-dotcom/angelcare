@@ -111,10 +111,17 @@ Tracked honestly so nothing here is discovered by surprise later.
   `angelcaretransit.com` DNS points at it, and `NEXT_PUBLIC_API_URL`
   points at the production API above.
 - **CI (ADR 0013) runs tests on every push but doesn't block deploys.**
-  Vercel deploys on push independent of GitHub Actions status; a
-  failing test currently means a red X in GitHub, not a stopped
-  deploy. Real gating needs branch protection + a pull-request-based
-  workflow, which this repo doesn't use yet (direct pushes to `main`).
+  Deploys are run by hand (`vercel deploy --prod`), not triggered by
+  pushes, and nothing stops a deploy while CI is red. Check GitHub
+  Actions is green first. Real gating needs branch protection, a
+  pull-request workflow, and Vercel's Git integration, none of which
+  this repo uses yet (direct pushes to `main`).
+- **web/ tests have no real browser** (ADR 0022). Component tests cover
+  the trip request form and API client, and built-HTML checks cover
+  every page's structure, links, sitemap, and contact details. But
+  nothing runs the site in an actual browser (no Playwright), so
+  layout, responsiveness, and client-side hydration aren't tested, and
+  there's no automated accessibility audit beyond h1 and alt text.
 - **Admin theme (ADR 0016) is visual/navigational only, no custom
   dashboard yet.** `/admin/` uses django-unfold for branding and a
   curated sidebar, but the "Site administration" landing page after

@@ -21,6 +21,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0019](decisions/0019-claims-domain.md),
 [ADR 0020](decisions/0020-compliance-domain.md),
 [ADR 0021](decisions/0021-backup-export-and-restore.md),
+[ADR 0022](decisions/0022-web-automated-tests.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 

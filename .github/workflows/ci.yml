@@ -68,6 +68,8 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run lint
+      # Component tests for the trip request form + API client (ADR 0022).
+      - run: npm test
       # No standalone `tsc --noEmit` here: `next build` already runs a
       # full TypeScript check as part of its own build process (it
       # would fail the build on any type error) -- a separate tsc step
@@ -75,3 +77,7 @@ jobs:
       # Next's auto-generated route types (e.g. LayoutProps) don't
       # exist until a build/dev run has generated them once.
       - run: npm run build
+      # Checks on the prerendered HTML the build just produced: titles,
+      # h1s, alt text, broken internal links, sitemap coverage, and that
+      # only the real contact details appear (ADR 0022).
+      - run: npm run test:build

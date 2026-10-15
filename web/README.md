@@ -17,6 +17,13 @@ npm run dev
 - `npm run build` — production build
 - `npm run lint` — ESLint
 - `npx tsc --noEmit` — type-check
+- `npm test` — component tests (Vitest + React Testing Library): the
+  trip request form and API client, in `src/**/*.test.tsx`
+- `npm run test:build` — checks on the real build output (run
+  `npm run build` first): every page's title/description/h1/alt text,
+  broken internal links, sitemap coverage, and that only the real
+  contact details from `site-config.ts` appear. See
+  `../docs/decisions/0022-web-automated-tests.md`.
 
 ## Structure
 
