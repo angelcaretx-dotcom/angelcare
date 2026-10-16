@@ -3,7 +3,10 @@ import json
 import shutil
 import tempfile
 import zipfile
+from datetime import datetime, timedelta
+from datetime import timezone as dt_timezone
 from pathlib import Path
+from unittest import mock
 
 from django.apps import apps
 from django.contrib.auth.models import Group, User
@@ -24,6 +27,7 @@ from documents.models import Document
 from organization.models import Organization
 from passengers.models import Passenger
 
+from . import offsite
 from .archive import (
     MERGED_SEEDED_MODELS,
     BackupError,
@@ -243,3 +247,115 @@ class BackupArchiveTests(TestCase):
         rewrite_member(archive, "data.json", lambda b: b + b" ")
         with self.assertRaisesMessage(CommandError, "Verification FAILED"):
             call_command("verify_backup", str(archive), stdout=io.StringIO())
+
+
+class FakeSupabaseStorage:
+    """In-memory stand-in for the Supabase Storage REST endpoints offsite.py uses."""
+
+    def __init__(self, buckets=None):
+        self.buckets = buckets if buckets is not None else {}  # name -> {"public": bool, "objects": {}}
+
+    class Response:
+        def __init__(self, status_code, payload=None):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    def _path(self, url):
+        return url.split("/storage/v1/", 1)[1]
+
+    def get(self, url, **kwargs):
+        name = self._path(url).removeprefix("bucket/")
+        if name in self.buckets:
+            return self.Response(200, {"id": name, "public": self.buckets[name]["public"]})
+        return self.Response(404, {})
+
+    def post(self, url, headers=None, json=None, data=None, **kwargs):
+        path = self._path(url)
+        if path == "bucket":
+            self.buckets[json["id"]] = {"public": json["public"], "objects": {}}
+            return self.Response(200, {})
+        if path.startswith("object/list/"):
+            bucket = path.removeprefix("object/list/")
+            return self.Response(200, [{"name": n} for n in sorted(self.buckets[bucket]["objects"])])
+        bucket, name = path.removeprefix("object/").split("/", 1)
+        self.buckets[bucket]["objects"][name] = data.read()
+        return self.Response(200, {"Key": f"{bucket}/{name}"})
+
+    def delete(self, url, json=None, **kwargs):
+        bucket = self._path(url).removeprefix("object/")
+        for name in json["prefixes"]:
+            self.buckets[bucket]["objects"].pop(name, None)
+        return self.Response(200, [])
+
+
+@override_settings(SUPABASE_STORAGE_URL="https://example.supabase.co", SUPABASE_STORAGE_KEY="test-key")
+class OffsiteStoreTests(TestCase):
+    NOW = datetime(2026, 11, 2, 8, 0, tzinfo=dt_timezone.utc)
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.fake = FakeSupabaseStorage()
+        for method in ("get", "post", "delete"):
+            patcher = mock.patch(f"backups.offsite.requests.{method}", getattr(self.fake, method))
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def archive(self, when):
+        path = self.tmp / f"angelcare-backup-{when:%Y%m%dT%H%M%SZ}.zip.enc"
+        path.write_bytes(b"encrypted bytes")
+        return path
+
+    def test_creates_a_private_bucket_and_stores_the_archive(self):
+        result = offsite.store(self.archive(self.NOW), now=self.NOW)
+        self.assertEqual(self.fake.buckets["backups"]["public"], False)
+        self.assertEqual(list(self.fake.buckets["backups"]["objects"]), [result.stored])
+        self.assertEqual(self.fake.buckets["backups"]["objects"][result.stored], b"encrypted bytes")
+
+    def test_prunes_backups_older_than_the_retention_window(self):
+        seeded_at = self.NOW - timedelta(days=41)  # seed without pruning anything yet
+        for days in (40, 31, 29, 1):
+            offsite.store(self.archive(self.NOW - timedelta(days=days)), now=seeded_at)
+        result = offsite.store(self.archive(self.NOW), now=self.NOW, keep_days=30)
+        kept = sorted(self.fake.buckets["backups"]["objects"])
+        self.assertEqual(len(result.deleted), 2)
+        self.assertEqual(len(kept), 3)
+        self.assertTrue(all(offsite.backup_time(n) >= self.NOW - timedelta(days=30) for n in kept))
+
+    def test_never_deletes_the_newest_backup_even_if_old(self):
+        # A job that was broken for weeks must not prune away the last good backup.
+        old = self.NOW - timedelta(days=90)
+        offsite.store(self.archive(old), now=old)
+        self.fake.buckets["backups"]["objects"]["unrelated-notes.txt"] = b"x"
+        result = offsite.store(self.archive(old + timedelta(seconds=1)), now=self.NOW)
+        self.assertEqual(len(result.deleted), 1)
+        self.assertIn(result.stored, self.fake.buckets["backups"]["objects"])
+        self.assertIn("unrelated-notes.txt", self.fake.buckets["backups"]["objects"])  # not ours: untouched
+
+    def test_refuses_a_public_bucket(self):
+        self.fake.buckets["backups"] = {"public": True, "objects": {}}
+        with self.assertRaisesMessage(offsite.OffsiteError, "public"):
+            offsite.store(self.archive(self.NOW), now=self.NOW)
+        self.assertEqual(self.fake.buckets["backups"]["objects"], {})
+
+    def test_refuses_unencrypted_or_misnamed_files(self):
+        plain = self.tmp / "angelcare-backup-20261102T080000Z.zip"
+        plain.write_bytes(b"PK")
+        with self.assertRaises(offsite.OffsiteError):
+            offsite.store(plain, now=self.NOW)
+        self.assertEqual(self.fake.buckets, {})
+
+
+class QuietCommandTests(TestCase):
+    @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
+    def test_verbosity_zero_prints_nothing(self):
+        out_dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, out_dir, ignore_errors=True)
+        out = io.StringIO()
+        call_command("export_backup", output=str(out_dir), verbosity=0, stdout=out)
+        (archive,) = out_dir.glob("angelcare-backup-*.zip")
+        call_command("verify_backup", str(archive), verbosity=0, stdout=out)
+        self.assertEqual(out.getvalue(), "")

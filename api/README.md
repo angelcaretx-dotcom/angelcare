@@ -270,6 +270,23 @@ Then compare the two archives' `data.json` (row counts are printed by
 `verify_backup` on each). Drop the drill database and media directory
 afterwards; they hold real PII.
 
+**Nightly encrypted backups** (ADR 0026) run automatically in GitHub
+Actions (`.github/workflows/backup.yml`) and land in the private
+`backups` bucket in Supabase Storage, kept for 30 days. To use one:
+download the newest `angelcare-backup-...zip.enc` from the Supabase
+dashboard (Storage → `backups`), then in **Git Bash** (it includes
+OpenSSL):
+
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000   -in angelcare-backup-<timestamp>.zip.enc -out angelcare-backup-<timestamp>.zip
+# asks for the backup passphrase (password manager: "AngelCare backup passphrase")
+```
+
+Then `verify_backup` and the restore drill above on the decrypted
+`.zip`. To run a backup right now: GitHub → Actions → "Nightly backup"
+→ "Run workflow". To see why a run failed (its logs are public, so they
+say nothing specific), run `export_backup` locally as above.
+
 **Real disaster recovery** follows the same steps against the new
 production database: `migrate`, then `restore_backup` (into an empty
 database, so don't run `createsuperuser` first), then

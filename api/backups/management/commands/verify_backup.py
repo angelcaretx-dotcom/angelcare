@@ -30,6 +30,8 @@ class Command(BaseCommand):
         if not result.ok:
             raise CommandError("Verification FAILED:\n  " + "\n  ".join(result.problems))
 
+        if options["verbosity"] == 0:
+            return  # success is the exit code; print nothing (public CI logs)
         rows = sum(manifest["model_counts"].values())
         self.stdout.write(
             self.style.SUCCESS(

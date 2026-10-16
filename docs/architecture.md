@@ -25,6 +25,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0023](decisions/0023-admin-dashboard.md),
 [ADR 0024](decisions/0024-mfa-recovery-and-self-service.md),
 [ADR 0025](decisions/0025-staff-onboarding.md),
+[ADR 0026](decisions/0026-scheduled-encrypted-backups.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -113,7 +114,10 @@ monolithic app. Currently:
 - `backups/` — (Phase 16) no models. `export_backup` /
   `verify_backup` / `restore_backup` commands: one provider-independent
   zip with every row plus every uploaded file, checksummed, and a
-  tested restore into an empty database — see ADR 0021.
+  tested restore into an empty database — see ADR 0021. Runs nightly,
+  encrypted, into a private Supabase bucket via
+  `.github/workflows/backup.yml` and `store_backup` (Phase 21) — see
+  ADR 0026.
 
 That completes the original Phase 0 roadmap's domain list. Future
 domains are added only when there's a confirmed business need (never

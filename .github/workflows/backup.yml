@@ -1,0 +1,95 @@
+name: Nightly backup
+
+# Encrypted, verified, off-database backup of all AngelCare data
+# (ADR 0026, building on ADR 0021). Runs nightly and on demand
+# ("Run workflow" in the Actions tab).
+#
+# THIS REPOSITORY IS PUBLIC, SO ARE THESE LOGS. Every step that touches
+# data sends its output to /dev/null and prints only a generic
+# success/failure line. To see details of a failure, run the same
+# commands locally (api/README.md, "Backups").
+#
+# Secrets (Settings > Secrets and variables > Actions):
+#   BACKUP_DATABASE_URL   production pooler URL, session mode (port 5432)
+#   SUPABASE_STORAGE_URL  https://<project-ref>.supabase.co
+#   SUPABASE_STORAGE_KEY  Supabase service-role / secret key
+#   BACKUP_PASSPHRASE     encryption passphrase; the owner keeps a copy
+#                         (without it, no backup can ever be opened)
+
+on:
+  schedule:
+    - cron: "17 8 * * *" # 08:17 UTC = 3:17 AM CDT / 2:17 AM CST
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-backup
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: api
+    env:
+      DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      SUPABASE_STORAGE_URL: ${{ secrets.SUPABASE_STORAGE_URL }}
+      SUPABASE_STORAGE_KEY: ${{ secrets.SUPABASE_STORAGE_KEY }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      DJANGO_DEBUG: "False"
+      # Settings require a key when DEBUG is off; nothing here signs anything.
+      DJANGO_SECRET_KEY: nightly-backup-job-only-not-used-for-anything-${{ github.run_id }}
+      DJANGO_ALLOWED_HOSTS: localhost
+      # This job sends no email; production settings otherwise insist on SMTP credentials.
+      DJANGO_EMAIL_BACKEND: django.core.mail.backends.dummy.EmailBackend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet -r requirements.txt
+
+      - name: Check secrets are set
+        run: |
+          for name in DATABASE_URL SUPABASE_STORAGE_URL SUPABASE_STORAGE_KEY BACKUP_PASSPHRASE; do
+            if [ -z "${!name}" ]; then echo "Missing secret for $name"; exit 1; fi
+          done
+
+      - name: Export
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          python manage.py export_backup --output "$RUNNER_TEMP/out" -v 0 >/dev/null 2>&1 \
+            || { echo "Export failed (run export_backup locally for details)."; exit 1; }
+          echo "Export OK."
+
+      - name: Encrypt, then prove it decrypts to a valid archive
+        run: |
+          set -o pipefail
+          cd "$RUNNER_TEMP/out"
+          plain=$(ls angelcare-backup-*.zip)
+          openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt \
+            -in "$plain" -out "$plain.enc" -pass env:BACKUP_PASSPHRASE
+          mkdir check
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 \
+            -in "$plain.enc" -out "check/$plain" -pass env:BACKUP_PASSPHRASE
+          cmp -s "$plain" "check/$plain" || { echo "Decrypted copy differs."; exit 1; }
+          cd "$GITHUB_WORKSPACE/api"
+          python manage.py verify_backup "$RUNNER_TEMP/out/check/$plain" -v 0 >/dev/null 2>&1 \
+            || { echo "Verification failed (run verify_backup locally for details)."; exit 1; }
+          # Only the encrypted file leaves this machine.
+          rm -f "$RUNNER_TEMP/out/$plain" "$RUNNER_TEMP/out/check/$plain"
+          echo "Encrypted and verified."
+
+      - name: Store in private Supabase bucket (keeps 30 days)
+        run: |
+          python manage.py store_backup "$RUNNER_TEMP"/out/angelcare-backup-*.zip.enc --keep-days 30 >/dev/null 2>&1 \
+            || { echo "Upload failed (run store_backup locally for details)."; exit 1; }
+          echo "Stored."
+
+      - name: Clean up
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/out"

@@ -31,12 +31,17 @@ class Command(BaseCommand):
         )
 
     def handle(self, output, allow_missing_files, **options):
+        # -v 0: print nothing but errors (the nightly job's logs are public).
+        quiet = options["verbosity"] == 0
         db = settings.DATABASES["default"]
-        self.stdout.write(f"Exporting from {db.get('HOST') or db['NAME']} ...")
+        if not quiet:
+            self.stdout.write(f"Exporting from {db.get('HOST') or db['NAME']} ...")
         try:
             path, manifest = export_archive(output, allow_missing_files=allow_missing_files)
         except BackupError as exc:
             raise CommandError(str(exc)) from exc
+        if quiet:
+            return
 
         rows = sum(manifest["model_counts"].values())
         self.stdout.write(
