@@ -187,6 +187,12 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
+# Where "today" is reckoned for operational views such as the admin
+# dashboard (ADR 0023). Storage and the API stay UTC. Central time
+# covers nearly all of the State of Texas service area
+# (docs/business-decisions-log.md); far-west Texas is Mountain time.
+OPERATIONS_TIME_ZONE = "America/Chicago"
+
 
 # --- Static files ---
 
@@ -266,6 +272,8 @@ UNFOLD = {
     "SITE_LOGO": lambda request: static("accounts/logo.svg"),
     "SHOW_HISTORY": True,
     "SHOW_VIEW_ON_SITE": True,
+    # Admin home page: what needs attention today (ADR 0023).
+    "DASHBOARD_CALLBACK": "accounts.dashboard.dashboard_callback",
     "COLORS": {
         "primary": {
             "50": "#f0f8fc",

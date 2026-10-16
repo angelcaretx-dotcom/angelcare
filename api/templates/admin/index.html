@@ -1,0 +1,85 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Admin home page (ADR 0023). Overrides Unfold's admin/index.html (DIRS
+wins over app templates) to put "what needs attention today" above
+Unfold's default app list + recent-actions panel, which stay below.
+Data comes from accounts/dashboard.py via Unfold's DASHBOARD_CALLBACK.
+Only CSS classes present in Unfold's precompiled stylesheet may be used
+here -- accounts.tests.DashboardTemplateTests checks that.
+{% endcomment %}
+{% load i18n %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+{% if dashboard %}
+<div class="flex flex-col gap-6 mb-8">
+    <p class="text-subtle text-sm">
+        Today is {{ dashboard.today|date:"l, F j, Y" }} (Central time).
+    </p>
+
+    {% if dashboard.stats %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-dashboard="stats">
+        {% for stat in dashboard.stats %}
+        <a href="{{ stat.url }}" class="bg-white block border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+            <div class="text-subtle text-sm">{{ stat.label }}</div>
+            <div class="font-semibold mt-1 text-3xl {% if stat.alert %}text-red-600 dark:text-red-400{% else %}text-important{% endif %}">{{ stat.value }}</div>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if dashboard.finance_stats %}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" data-dashboard="finance">
+        {% for stat in dashboard.finance_stats %}
+        <a href="{{ stat.url }}" class="bg-white block border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+            <div class="text-subtle text-sm">{{ stat.label }}</div>
+            <div class="font-semibold mt-1 text-2xl {% if stat.alert %}text-red-600 dark:text-red-400{% else %}text-important{% endif %}">{{ stat.value }}</div>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% for panel in dashboard.panels %}
+    <div class="bg-white border border-base-200 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-dashboard="panel">
+        <h2 class="border-b border-base-200 font-semibold px-6 py-4 text-important dark:border-base-800">{{ panel.title }}</h2>
+        {% if panel.rows %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr>
+                        {% for header in panel.headers %}
+                        <th class="border-b border-base-200 font-semibold px-6 py-2 text-left whitespace-nowrap dark:border-base-800">{{ header }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in panel.rows %}
+                    <tr class="{% if row.alert %}text-red-600 dark:text-red-400{% endif %}">
+                        {% for cell in row.cells %}
+                        <td class="border-b border-base-200 px-6 py-2 dark:border-base-800">
+                            {% if forloop.first %}<a href="{{ row.url }}" class="text-primary-600 underline">{{ cell }}</a>{% else %}{{ cell }}{% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if panel.more_count %}
+        <p class="px-6 py-2 text-sm"><a href="{{ panel.more_url }}" class="text-primary-600 underline">and {{ panel.more_count }} more</a></p>
+        {% endif %}
+        {% else %}
+        <p class="px-6 py-4 text-subtle text-sm">{{ panel.empty_text }}</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% include "unfold/helpers/dashboard_default.html" %}
+{% endblock %}

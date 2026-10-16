@@ -125,15 +125,15 @@ Tracked honestly so nothing here is discovered by surprise later.
   nothing runs the site in an actual browser (no Playwright), so
   layout, responsiveness, and client-side hydration aren't tested, and
   there's no automated accessibility audit beyond h1 and alt text.
-- **Admin theme (ADR 0016) is visual/navigational only, no custom
-  dashboard yet.** `/admin/` uses django-unfold for branding and a
-  curated sidebar, but the "Site administration" landing page after
-  login still shows Django's stock flat app-list — a real KPI
-  dashboard (e.g. "N new trip requests today") is possible via
-  Unfold's `DASHBOARD_CALLBACK` but wasn't built, deliberately, to keep
-  that phase scoped to theming. (The old `0.96.0` pin, forced by
-  Django 5.1, was lifted on 2026-10-14 when the project moved to the
-  Django 5.2 LTS line; every admin page is now render-tested by
+- **The admin dashboard (ADR 0023) is counts and lists only.** The
+  `/admin/` home page shows what needs attention today (new requests,
+  today's and upcoming trips, pending documents, failed emails,
+  expiring credentials, and for Administrators unpaid invoices and
+  claims), filtered by each user's permissions. There are no charts or
+  trends yet, and "today" is Central time (`OPERATIONS_TIME_ZONE`), so
+  the far-west Texas Mountain-time strip would be an hour off. (The old
+  `django-unfold` `0.96.0` pin was lifted on 2026-10-14 with the move
+  to Django 5.2 LTS; every admin page is render-tested by
   `accounts.tests.AdminPagesSmokeTests`.)
 - **`api/staticfiles/` is committed to git**, not gitignored (see ADR
   0016's postscript and `api/README.md`): `vercel.json`'s legacy

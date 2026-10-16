@@ -22,6 +22,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0020](decisions/0020-compliance-domain.md),
 [ADR 0021](decisions/0021-backup-export-and-restore.md),
 [ADR 0022](decisions/0022-web-automated-tests.md),
+[ADR 0023](decisions/0023-admin-dashboard.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -98,7 +99,10 @@ monolithic app. Currently:
   ADR 0005. Also (Phase 9) enforces TOTP-based MFA for every staff
   account on `/admin/`, via django-otp — see ADR 0014. Also (Phase 11)
   hosts `AngelCareAdminSite`, the combined Unfold + MFA admin site
-  class registered as `admin.site` itself — see ADR 0016.
+  class registered as `admin.site` itself — see ADR 0016. Also
+  (Phase 18) builds the admin home page dashboard
+  (`accounts/dashboard.py`), permission-filtered per user — see
+  ADR 0023.
 - `backups/` — (Phase 16) no models. `export_backup` /
   `verify_backup` / `restore_backup` commands: one provider-independent
   zip with every row plus every uploaded file, checksummed, and a

@@ -137,6 +137,9 @@ is identical to production, only the URL differs.
   `accounts/apps.py::AngelCareAdminConfig` — see
   `docs/decisions/0016-unfold-admin-theme.md`. Sidebar navigation and
   branding are configured in `config/settings.py`'s `UNFOLD` dict.
+  The `/admin/` home page dashboard (Phase 18) is built in
+  `accounts/dashboard.py` and rendered by `templates/admin/index.html`
+  — see `docs/decisions/0023-admin-dashboard.md`.
 - `backups/` — backup export / verify / restore commands (Phase 16),
   no models of its own — see "Backups" below and
   `docs/decisions/0021-backup-export-and-restore.md`.
