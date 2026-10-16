@@ -110,6 +110,9 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django_otp.middleware.OTPMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
+    # First-login gate: replace temporary password, then set up an
+    # authenticator (ADR 0025). Needs auth, OTP and messages above.
+    "accounts.middleware.StaffSetupMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 

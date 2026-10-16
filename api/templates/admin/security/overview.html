@@ -42,8 +42,8 @@
 
 {% if request.user.is_superuser %}
 <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-security="staff">
-    <h2 class="font-semibold mb-2 text-important">Locked-out colleagues (superusers only)</h2>
-    <p class="mb-4 text-sm text-subtle">If a staff member has lost their authenticator and has no backup codes, issue recovery codes for them here.</p>
+    <h2 class="font-semibold mb-2 text-important">Staff accounts (superusers only)</h2>
+    <p class="mb-4 text-sm text-subtle">Add a new staff member, or issue recovery codes for someone who has lost their authenticator and has no backup codes.</p>
     {% if staff %}
     <table class="text-sm w-full">
         <thead>
@@ -68,6 +68,10 @@
     {% else %}
     <p class="text-sm text-subtle">No other staff accounts.</p>
     {% endif %}
+    <div class="mt-4">
+        {% url 'admin:security_add_staff' as add_staff_url %}
+        {% component "unfold/components/button.html" with href=add_staff_url variant="primary" %}Add a staff member{% endcomponent %}
+    </div>
 </div>
 {% endif %}
 {% endblock %}

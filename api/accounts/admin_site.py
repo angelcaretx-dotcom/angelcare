@@ -57,6 +57,16 @@ class AngelCareAdminSite(UnfoldAdminSite, OTPAdminSite):
     login_form = UnfoldOTPAdminAuthenticationForm
     login_template = None
 
+    def password_change(self, request, extra_context=None):
+        response = super().password_change(request, extra_context)
+        # A successful change redirects; that's when a temporary password
+        # from "Add staff member" stops being required (ADR 0025).
+        if request.method == "POST" and response.status_code == 302:
+            from .onboarding import mark_password_changed
+
+            mark_password_changed(request.user)
+        return response
+
     def get_urls(self):
         # "My security" pages (ADR 0024), ahead of the admin's own
         # patterns so nothing there can shadow them.

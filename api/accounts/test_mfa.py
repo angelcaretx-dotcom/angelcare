@@ -38,7 +38,9 @@ def real_login(client, username, code):
         "/admin/login/?next=/admin/",
         {"username": username, "password": "testpass123", "otp_token": code},
     )
-    return response.status_code == 302 and client.get("/admin/").status_code == 200
+    # Accepted logins redirect on; rejected ones re-render the form (200).
+    # (Where they land next can be the first-login gate, ADR 0025.)
+    return response.status_code == 302 and response.headers["Location"] == "/admin/"
 
 
 class BackupCodeServiceTests(TestCase):
@@ -105,6 +107,12 @@ class BackupCodeLoginTests(TestCase):
         user = staff("sam", totp=False)
         code = mfa.generate_backup_codes(user, actor=user)[0]
         self.assertTrue(real_login(self.client, "sam", code))
+        # ...and is then sent straight to set up a new authenticator (ADR 0025).
+        self.assertRedirects(
+            self.client.get("/admin/"),
+            "/admin/security/authenticators/add/",
+            fetch_redirect_response=False,
+        )
 
     def test_wrong_authenticator_codes_never_throttle_backup_codes(self):
         user = staff("sam")

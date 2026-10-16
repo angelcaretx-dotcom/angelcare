@@ -11,6 +11,7 @@ password, so an unlocked, unattended browser isn't enough.
 import base64
 
 from django import forms
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
@@ -20,7 +21,7 @@ from django.utils.safestring import mark_safe
 from django.views.decorators.cache import never_cache
 from unfold.widgets import BASE_INPUT_CLASSES
 
-from . import mfa
+from . import mfa, onboarding
 
 INPUT_CLASS = " ".join(BASE_INPUT_CLASSES)
 
@@ -57,6 +58,21 @@ class AddAuthenticatorForm(forms.Form):
         widget=forms.TextInput(
             attrs={"class": INPUT_CLASS, "autocomplete": "one-time-code", "inputmode": "numeric"}
         ),
+    )
+
+
+class AddStaffForm(forms.Form):
+    email = forms.EmailField(
+        label="Email address (this is their username)",
+        widget=forms.EmailInput(attrs={"class": INPUT_CLASS, "autocomplete": "off"}),
+    )
+    first_name = forms.CharField(max_length=150, widget=forms.TextInput(attrs={"class": INPUT_CLASS}))
+    last_name = forms.CharField(max_length=150, widget=forms.TextInput(attrs={"class": INPUT_CLASS}))
+    role = forms.ChoiceField(
+        choices=[(r, r) for r in onboarding.ROLES],
+        help_text="Dispatcher: trip requests, trips, passengers. Administrator: "
+        "everything except managing staff accounts, including billing and claims.",
+        widget=forms.Select(attrs={"class": INPUT_CLASS}),
     )
 
 
@@ -199,6 +215,30 @@ def issue_recovery_codes(site, request, user_id):
     )
 
 
+def add_staff_member(site, request):
+    if not request.user.is_superuser:
+        raise PermissionDenied
+    form = AddStaffForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            user, password, codes = onboarding.create_staff_member(actor=request.user, **form.cleaned_data)
+        except onboarding.OnboardingError as exc:
+            form.add_error(None, str(exc))
+        else:
+            return _render(
+                site,
+                request,
+                "handover.html",
+                f"Handover sheet for {user.get_full_name() or user.get_username()}",
+                new_user=user,
+                role=form.cleaned_data["role"],
+                password=password,
+                codes=codes,
+                login_url=settings.SITE_URL,
+            )
+    return _render(site, request, "add_staff.html", "Add a staff member", form=form)
+
+
 def urls(site):
     """URL patterns for AngelCareAdminSite.get_urls()."""
     from django.urls import path
@@ -215,6 +255,7 @@ def urls(site):
             view(remove_authenticator),
             name="security_remove_authenticator",
         ),
+        path("security/staff/add/", view(add_staff_member), name="security_add_staff"),
         path(
             "security/recovery/<int:user_id>/",
             view(issue_recovery_codes),

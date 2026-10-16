@@ -131,9 +131,10 @@ is identical to production, only the URL differs.
   the `Dispatcher` group. Also (Phase 9) enforces TOTP-based MFA on
   every staff account for `/admin/` access — see
   `docs/decisions/0014-staff-mfa.md`. New staff accounts: a superuser
-  issues them recovery codes on **My security** (sidebar → Account),
-  they log in with one and add their authenticator app there
-  themselves; the same page has backup codes and phone replacement —
+  uses **My security → Add a staff member** (sidebar → Account), which
+  prints a one-time handover sheet (temporary password + recovery
+  codes); on first login the new person must choose their own password
+  and add their authenticator app before anything else (ADR 0025); the same page has backup codes and phone replacement —
   see `docs/decisions/0024-mfa-recovery-and-self-service.md`. Only the
   very first superuser needs `manage.py bootstrap_totp <username>`.
   Also (Phase 11) hosts `AngelCareAdminSite`
