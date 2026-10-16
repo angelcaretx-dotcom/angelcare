@@ -224,6 +224,58 @@ class StaffMfaEnforcementTests(TestCase):
         return user
 
 
+def current_totp_code(device) -> str:
+    """The code an authenticator app would show right now for `device`."""
+    from django_otp.oath import TOTP
+
+    totp = TOTP(device.bin_key, device.step, device.t0, device.digits, device.drift)
+    return f"{totp.token():0{device.digits}d}"
+
+
+class RealLoginFormTests(TestCase):
+    """
+    End-to-end logins through the actual /admin/login/ form, exactly as a
+    person submits it: username, password, and the current code -- no
+    device picker (our template doesn't render one) and no test helper.
+
+    Regression for a real production outage: django-otp 1.7.4 stopped
+    falling back to "try every device" when no device is chosen, so
+    every real staff login failed with "Please select a device." while
+    all other tests (which use login_with_otp) stayed green.
+    """
+
+    def setUp(self):
+        from django_otp.plugins.otp_totp.models import TOTPDevice
+
+        self.user = User.objects.create_user(
+            username="staff1", password="testpass123", is_staff=True
+        )
+        self.user.groups.add(Group.objects.get(name="Administrator"))
+        self.device = TOTPDevice.objects.create(user=self.user, name="phone", confirmed=True)
+
+    def login(self, code):
+        return self.client.post(
+            "/admin/login/?next=/admin/",
+            {"username": "staff1", "password": "testpass123", "otp_token": code},
+        )
+
+    def test_correct_code_logs_in(self):
+        response = self.login(current_totp_code(self.device))
+        self.assertEqual(response.status_code, 302, response.content.decode()[-2000:])
+        self.assertEqual(response.headers["Location"], "/admin/")
+        self.assertEqual(self.client.get("/admin/").status_code, 200)
+
+    def test_wrong_code_is_rejected(self):
+        response = self.login("000000" if current_totp_code(self.device) != "000000" else "111111")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.get("/admin/").status_code, 302)
+
+    def test_missing_code_is_rejected(self):
+        response = self.login("")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.get("/admin/").status_code, 302)
+
+
 class BootstrapTotpCommandTests(TestCase):
     """
     Covers the out-of-band enrollment command that exists precisely

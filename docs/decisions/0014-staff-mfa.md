@@ -131,3 +131,24 @@ afterward.
   the production database once this deploys, and getting the printed
   QR/URL to the real admin account holder through a channel that isn't
   logged or persisted (the command deliberately warns about this).
+
+## Postscript (2026-10-16): login broken by the django-otp 1.7.4 upgrade
+
+The 2026-10-15 security upgrade moved django-otp from 1.7.0 to 1.7.4.
+1.7.4 removed the fallback of trying every one of a user's devices when
+the login form's `otp_device` field is blank; it now raises "Please
+select a device." Our login page never renders a device picker (one
+code box only), so **every real staff login failed** from that deploy
+until this fix. No test caught it, because every admin test logs in
+through `login_with_otp`, which writes the verified device straight
+into the session and never submits the real form.
+
+Fix: `UnfoldOTPAdminAuthenticationForm._verify_token`
+(`accounts/forms.py`) picks the device from what was typed: a 6-digit
+number is checked against the user's authenticator (TOTP) devices, and
+anything else against their other devices (such as backup codes).
+Upstream's reason for the change is kept: a wrong code is only counted
+against devices of the matching kind, so mistyped authenticator codes
+can't throttle backup codes. `accounts.tests.RealLoginFormTests` now
+submits the actual login form with a live code, confirmed to fail
+without the fix.
