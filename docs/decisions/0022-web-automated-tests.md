@@ -87,5 +87,6 @@ run caught. No production dependencies changed, and
 - A change that breaks the form's payload, its error display, a link,
   the sitemap, or puts an unsourced phone number or email on any page
   now fails CI.
-- CI still doesn't block deploys (ADR 0013): deploys are manual, so
-  check that CI is green before running `vercel deploy`.
+- CI still doesn't block deploys (ADR 0013): Vercel deploys every push
+  to `main` in parallel with CI, so a failing test shows up as a red X,
+  not a stopped deploy.
