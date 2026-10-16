@@ -376,3 +376,8 @@ class CanonicalAdminHostTests(TestCase):
         from django.conf import settings
 
         self.assertIn(urlparse(settings.SITE_URL).hostname, settings.ALLOWED_HOSTS)
+
+    def test_bare_address_redirects_to_the_admin(self):
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers["Location"], "/admin/")

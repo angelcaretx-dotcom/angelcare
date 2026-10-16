@@ -159,7 +159,8 @@ start without them when `DJANGO_DEBUG` is off).
 
 ## Deployment (production — not required for local development)
 
-The admin is at **https://admin.angelcaretransit.com/admin/** (a custom
+The admin is at **https://admin.angelcaretransit.com** (the bare address
+redirects to `/admin/`; a custom
 domain on the `angelcare-api` Vercel project, DNS `A admin 76.76.21.21`
 at Namecheap, added 2026-10-16). `https://angelcare-api.vercel.app` still
 works and is what `web/`'s `NEXT_PUBLIC_API_URL` points at. The canonical

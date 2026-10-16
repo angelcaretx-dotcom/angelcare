@@ -3,6 +3,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.http import JsonResponse
 from django.urls import include, path
+from django.views.generic import RedirectView
 
 
 def health_check(request):
@@ -10,6 +11,10 @@ def health_check(request):
 
 
 urlpatterns = [
+    # The bare address (e.g. admin.angelcaretransit.com) goes straight to
+    # the admin, so nobody has to type ".../admin/". Not permanent (302):
+    # the root stays free for something else later.
+    path("", RedirectView.as_view(url="/admin/", permanent=False)),
     path("admin/", admin.site.urls),
     path("healthz/", health_check, name="health-check"),
     path("api/v1/", include("transportation.urls")),
