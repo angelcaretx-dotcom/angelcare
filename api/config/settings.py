@@ -9,6 +9,7 @@ dev, staging, and production.
 
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 import dj_database_url
 from dotenv import load_dotenv
@@ -465,11 +466,22 @@ STAFF_NOTIFICATION_EMAIL = os.environ.get("STAFF_NOTIFICATION_EMAIL", "angelcare
 # Templates never hard-code a domain -- see ADR 0015. Defaults are the
 # actual current production values so this works out of the box; either
 # can be overridden via env var without a code change if the domain
-# ever moves (e.g. a future custom admin domain).
+# ever moves.
+#
+# SITE_URL is the canonical address of this API/admin. Since 2026-10-16
+# that's admin.angelcaretransit.com (a Vercel domain on the
+# angelcare-api project, DNS A record at Namecheap); the old
+# angelcare-api.vercel.app address keeps working via
+# DJANGO_ALLOWED_HOSTS.
 SITE_URL = os.environ.get(
     "DJANGO_SITE_URL",
-    "http://localhost:8000" if DEBUG else "https://angelcare-api.vercel.app",
+    "http://localhost:8000" if DEBUG else "https://admin.angelcaretransit.com",
 ).rstrip("/")
+# Always accept requests for SITE_URL's own host, so changing the
+# canonical address is one setting, not two that must be kept in sync.
+_site_host = urlparse(SITE_URL).hostname
+if _site_host and _site_host not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(_site_host)
 WEBSITE_URL = os.environ.get(
     "DJANGO_WEBSITE_URL",
     "http://localhost:3000" if DEBUG else "https://www.angelcaretransit.com",

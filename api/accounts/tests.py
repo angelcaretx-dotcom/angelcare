@@ -366,3 +366,13 @@ class AdminPagesSmokeTests(TestCase):
         request = RequestFactory().get("/admin/")
         request.user = User.objects.get(username="root")
         return request
+
+
+class CanonicalAdminHostTests(TestCase):
+    def test_site_url_host_is_always_an_allowed_host(self):
+        """Changing DJANGO_SITE_URL alone must be enough to move the admin."""
+        from urllib.parse import urlparse
+
+        from django.conf import settings
+
+        self.assertIn(urlparse(settings.SITE_URL).hostname, settings.ALLOWED_HOSTS)

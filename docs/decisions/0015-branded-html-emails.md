@@ -56,6 +56,9 @@ carry) plus a new branded HTML rendering as the preferred part.
   `https://www.angelcaretransit.com`) so the staff email's "Review in
   Admin" button is a genuine, working absolute link without requiring
   new production configuration.
+  (2026-10-16: the `SITE_URL` default is now
+  `https://admin.angelcaretransit.com`, the admin's custom domain;
+  its host is added to `ALLOWED_HOSTS` automatically.)
 
 ## Verification
 
