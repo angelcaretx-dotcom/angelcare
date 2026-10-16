@@ -141,13 +141,18 @@ Tracked honestly so nothing here is discovered by surprise later.
   time, so the collected/manifested files have to ship with the code
   instead. Forgetting to re-run `collectstatic` and commit the result
   after a static file changes will 500 every `/admin/` page again.
-- **Staff MFA (ADR 0014) has no self-service enrollment or recovery.**
-  Every `TOTPDevice` is created out-of-band via
-  `manage.py bootstrap_totp <username>`, run by whoever has
-  server/database access — there's no in-app "set up your
-  authenticator" flow yet, and losing a device means someone with that
-  access re-running the command with `--replace`. No backup/static
-  recovery codes (django-otp's `otp_static` plugin covers that; not
-  added yet, out of scope for the baseline MFA requirement). Applies to
-  every staff account (Dispatcher and Administrator), not just
-  superusers.
+- **Staff MFA recovery has limits** (ADR 0024). Staff manage their own
+  backup codes and authenticator apps on the My security page, and a
+  superuser can issue recovery codes for a locked-out colleague. But
+  a superuser who loses their phone *and* their backup codes, with no
+  other superuser to help, still needs someone with server access to
+  run `manage.py bootstrap_totp --replace`. The same goes for the very
+  first superuser on a new deployment. Only TOTP apps and backup codes
+  are supported (no passkeys, no SMS codes), and backup codes aren't
+  mandatory: the dashboard nudges, it doesn't block.
+- **The committed static manifest has some Windows-style paths.**
+  `api/staticfiles/staticfiles.json` is regenerated on a Windows
+  machine, so about 50 entries (images, fonts, license files; no CSS or
+  JS) use `\` separators. Browsers treat `\` as `/` in URLs, so
+  everything loads (checked on the live login page, 2026-10-16), but
+  the next `collectstatic` should ideally run on Linux, or in CI.

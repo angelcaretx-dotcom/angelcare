@@ -81,6 +81,8 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_otp",
     "django_otp.plugins.otp_totp",
+    # Single-use backup / recovery codes (ADR 0024).
+    "django_otp.plugins.otp_static",
     "audit",
     "documents",
     "organization",
@@ -193,6 +195,10 @@ USE_TZ = True
 # covers nearly all of the State of Texas service area
 # (docs/business-decisions-log.md); far-west Texas is Mountain time.
 OPERATIONS_TIME_ZONE = "America/Chicago"
+
+# Shown as the account name's issuer in authenticator apps for newly
+# enrolled devices (ADR 0024).
+OTP_TOTP_ISSUER = "AngelCare Transit"
 
 
 # --- Static files ---
@@ -407,6 +413,18 @@ UNFOLD = {
                         "icon": "shield_person",
                         "link": reverse_lazy("admin:auth_group_changelist"),
                         "permission": _is_superuser,
+                    },
+                ],
+            },
+            {
+                "title": "Account",
+                "separator": True,
+                "items": [
+                    {
+                        # Backup codes, authenticators, recovery (ADR 0024).
+                        "title": "My security",
+                        "icon": "encrypted",
+                        "link": reverse_lazy("admin:security"),
                     },
                 ],
             },

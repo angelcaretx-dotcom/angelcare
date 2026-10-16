@@ -68,8 +68,9 @@ is identical to production, only the URL differs.
 - `python manage.py check` — Django system checks
 - `python manage.py makemigrations` / `migrate` — schema migrations
 - `python manage.py bootstrap_totp <username> [--replace]` — enroll (or
-  re-enroll) a staff account's MFA device; required before that account
-  can log into `/admin/` — see `docs/decisions/0014-staff-mfa.md`
+  re-enroll) a staff account's MFA device from the command line. Since
+  ADR 0024 this is only needed for the first superuser on a new
+  deployment; everyone else is handled in the browser (see below)
 - `python manage.py export_backup --output <dir>` /
   `verify_backup <zip>` / `restore_backup <zip>` — full backup archive
   (database + uploaded files) — see "Backups" below and
@@ -129,8 +130,12 @@ is identical to production, only the URL differs.
   `User` with `is_staff=True` via `/admin/auth/user/` and add them to
   the `Dispatcher` group. Also (Phase 9) enforces TOTP-based MFA on
   every staff account for `/admin/` access — see
-  `docs/decisions/0014-staff-mfa.md`. New accounts need
-  `manage.py bootstrap_totp <username>` run once before they can log in.
+  `docs/decisions/0014-staff-mfa.md`. New staff accounts: a superuser
+  issues them recovery codes on **My security** (sidebar → Account),
+  they log in with one and add their authenticator app there
+  themselves; the same page has backup codes and phone replacement —
+  see `docs/decisions/0024-mfa-recovery-and-self-service.md`. Only the
+  very first superuser needs `manage.py bootstrap_totp <username>`.
   Also (Phase 11) hosts `AngelCareAdminSite`
   (`accounts/admin_site.py`) — combines django-unfold's admin theme
   with MFA into the actual `admin.site` instance, registered via
@@ -267,5 +272,6 @@ afterwards; they hold real PII.
 **Real disaster recovery** follows the same steps against the new
 production database: `migrate`, then `restore_backup` (into an empty
 database, so don't run `createsuperuser` first), then
-`bootstrap_totp <username>` for each staff account, because MFA devices
-are not in backups.
+`bootstrap_totp <username>` for one superuser, because MFA devices and
+backup codes are not in backups. That superuser then issues recovery
+codes to everyone else from My security.

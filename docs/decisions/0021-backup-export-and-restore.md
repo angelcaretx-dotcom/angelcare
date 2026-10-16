@@ -52,9 +52,11 @@ built on `backups/archive.py`:
   the row counts again before committing.
 
 **Left out of archives on purpose:**
-- `otp_totp`: staff MFA secrets. A leaked archive must not also give
-  away everyone's second factor. After a restore, staff re-enroll with
-  `bootstrap_totp` (ADR 0014).
+- `otp_totp` and `otp_static`: staff MFA secrets and backup codes
+  (`otp_static` added with ADR 0024). A leaked archive must not also
+  give away everyone's second factor. After a restore, one superuser
+  re-enrolls with `bootstrap_totp` (ADR 0014) and issues recovery
+  codes to everyone else.
 - `sessions`: temporary data.
 - `contenttypes` and `auth.permission`: `migrate` recreates them on any
   target, and everything that references them goes through natural

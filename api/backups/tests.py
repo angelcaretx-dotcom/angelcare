@@ -16,6 +16,7 @@ from django.db.models import ProtectedError
 from django.test import TestCase, override_settings
 from django_otp.plugins.otp_totp.models import TOTPDevice
 
+from accounts.mfa import generate_backup_codes
 from audit.models import AuditLog
 from claims.tests import make_claim
 from compliance.models import ComplianceRecord
@@ -96,6 +97,7 @@ class BackupArchiveTests(TestCase):
         )
         self.staff.groups.add(Group.objects.get(name="Administrator"))
         TOTPDevice.objects.create(user=self.staff, name="phone", confirmed=True)
+        self.backup_codes = generate_backup_codes(self.staff, actor=self.staff)
 
         claim = make_claim()
         self.driver = claim.invoice.trip.driver
@@ -151,11 +153,14 @@ class BackupArchiveTests(TestCase):
             self.assertGreaterEqual(counts.get(label, 0), 1, label)
         for label in counts:
             self.assertFalse(
-                label.startswith(("otp_totp.", "sessions.", "contenttypes.")), label
+                label.startswith(("otp_totp.", "otp_static.", "sessions.", "contenttypes.")), label
             )
             self.assertNotEqual(label, "auth.permission")
         with zipfile.ZipFile(archive) as zf:
-            self.assertNotIn(b"otpauth", zf.read("data.json"))
+            data = zf.read("data.json")
+            self.assertNotIn(b"otpauth", data)
+            for code in self.backup_codes:
+                self.assertNotIn(code.encode(), data)
             self.assertIn("files/" + self.document.file.name, zf.namelist())
 
     def test_verify_detects_a_corrupted_file(self):

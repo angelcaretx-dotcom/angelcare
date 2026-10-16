@@ -18,9 +18,10 @@ What's left out, on purpose (EXCLUDED_MODELS):
 - contenttypes / auth.permission: recreated by `migrate` on any target;
   everything referencing them uses natural keys instead of raw ids.
 - sessions: ephemeral.
-- otp_totp: staff MFA secrets. A stolen archive must not also hand over
-  everyone's second factor; after a restore, staff re-enroll via
-  `manage.py bootstrap_totp` (ADR 0014).
+- otp_totp, otp_static: staff MFA secrets and backup codes (ADR 0024).
+  A stolen archive must not also hand over everyone's second factor;
+  after a restore, one superuser re-enrolls via `manage.py
+  bootstrap_totp` (ADR 0014) and issues recovery codes to the rest.
 """
 
 import hashlib
@@ -45,7 +46,7 @@ from django.utils import timezone
 
 FORMAT_VERSION = 1
 
-EXCLUDED_MODELS = ["contenttypes", "auth.permission", "sessions", "otp_totp"]
+EXCLUDED_MODELS = ["contenttypes", "auth.permission", "sessions", "otp_totp", "otp_static"]
 
 # Rows `migrate` itself creates on a fresh database. A restore target is
 # allowed to already contain these (and only these):

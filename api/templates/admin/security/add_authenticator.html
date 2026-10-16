@@ -1,0 +1,27 @@
+{% extends 'admin/security/_layout.html' %}
+{% load unfold %}
+
+{% block page %}
+<div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+    <ol class="flex flex-col gap-4 text-sm">
+        <li><strong>1.</strong> Open your authenticator app (Microsoft Authenticator, Google Authenticator, etc.) and choose to add an account by scanning a QR code.</li>
+        <li>
+            <strong>2.</strong> Scan this code:
+            <div class="bg-white mt-2 p-2 rounded-default" style="width: 232px">{{ qr }}</div>
+            <p class="mt-2 text-subtle">Can't scan? Choose "enter a setup key" and type: <span class="text-important" style="font-family: ui-monospace, Consolas, monospace">{{ secret }}</span></p>
+        </li>
+        <li><strong>3.</strong> Enter the 6-digit code the app now shows for AngelCare Transit:</li>
+    </ol>
+    <form method="post" class="mt-4">
+        {% csrf_token %}
+        {% include "unfold/helpers/field.html" with field=form.name %}
+        {% include "unfold/helpers/field.html" with field=form.code %}
+        <div class="flex gap-2 mt-6">
+            {% component "unfold/components/button.html" with submit=1 variant="primary" %}Add authenticator{% endcomponent %}
+            {% url 'admin:security' as cancel_url %}
+            {% component "unfold/components/button.html" with href=cancel_url variant="default" %}Cancel{% endcomponent %}
+        </div>
+    </form>
+    <p class="mt-4 text-sm text-subtle">Keep this page private: the QR code and setup key are a secret.</p>
+</div>
+{% endblock %}

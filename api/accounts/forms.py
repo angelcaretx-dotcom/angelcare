@@ -4,6 +4,8 @@ from django_otp.admin import OTPAdminAuthenticationForm
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from unfold.widgets import BASE_INPUT_CLASSES
 
+from .mfa import normalize_backup_code
+
 
 class UnfoldOTPAdminAuthenticationForm(OTPAdminAuthenticationForm):
     """
@@ -41,6 +43,8 @@ class UnfoldOTPAdminAuthenticationForm(OTPAdminAuthenticationForm):
         if token.isdigit() and len(token) == 6:
             candidates = [d for d in confirmed if isinstance(d, TOTPDevice)]
         else:
+            # Backup codes (ADR 0024), however they were retyped.
+            token = normalize_backup_code(token)
             candidates = [d for d in confirmed if not isinstance(d, TOTPDevice)]
 
         error = forms.ValidationError(
@@ -62,5 +66,7 @@ class UnfoldOTPAdminAuthenticationForm(OTPAdminAuthenticationForm):
         self.fields["password"].widget.attrs["class"] = css_class
         self.fields["otp_token"].widget.attrs["class"] = css_class
         self.fields["otp_token"].widget.attrs["autocomplete"] = "one-time-code"
-        self.fields["otp_token"].widget.attrs["inputmode"] = "numeric"
         self.fields["otp_token"].label = "Authentication code"
+        self.fields["otp_token"].help_text = (
+            "The 6-digit code from your authenticator app, or one of your backup codes."
+        )

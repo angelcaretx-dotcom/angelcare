@@ -1,0 +1,73 @@
+{% extends 'admin/security/_layout.html' %}
+{% load unfold %}
+
+{% block page %}
+<div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-security="authenticators">
+    <h2 class="font-semibold mb-2 text-important">Authenticator apps</h2>
+    <p class="mb-4 text-sm text-subtle">The app on your phone that shows a new 6-digit code every 30 seconds.</p>
+    {% if authenticators %}
+    <table class="mb-4 text-sm w-full">
+        <tbody>
+        {% for device in authenticators %}
+            <tr>
+                <td class="border-b border-base-200 py-2 dark:border-base-800">{{ device.name }}</td>
+                <td class="border-b border-base-200 py-2 text-subtle dark:border-base-800">
+                    {% if device.last_used_at %}Last used {{ device.last_used_at|date:"M j, Y" }}{% else %}Added {{ device.created_at|date:"M j, Y" }}{% endif %}
+                </td>
+                <td class="border-b border-base-200 py-2 text-right dark:border-base-800">
+                    {% if authenticators|length > 1 %}<a href="{% url 'admin:security_remove_authenticator' device.pk %}" class="text-red-600 underline">Remove</a>{% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="mb-4 text-red-600 text-sm">You have no authenticator app set up.</p>
+    {% endif %}
+    {% url 'admin:security_add_authenticator' as add_url %}
+    {% component "unfold/components/button.html" with href=add_url variant="default" %}Add an authenticator (e.g. a new phone){% endcomponent %}
+</div>
+
+<div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-security="backup-codes">
+    <h2 class="font-semibold mb-2 text-important">Backup codes</h2>
+    <p class="mb-4 text-sm text-subtle">Single-use codes for when your phone is lost, broken, or out of battery. Type one in the code box when logging in. Keep them somewhere safe, away from your phone.</p>
+    {% if backup_codes %}
+    <p class="mb-4 text-sm">You have <strong>{{ backup_codes }}</strong> of {{ backup_code_count }} backup codes left.</p>
+    {% else %}
+    <p class="mb-4 text-red-600 text-sm">You have no backup codes. If you lose your phone, you won't be able to log in.</p>
+    {% endif %}
+    {% url 'admin:security_backup_codes' as backup_url %}
+    {% component "unfold/components/button.html" with href=backup_url variant="primary" %}{% if backup_codes %}Replace backup codes{% else %}Create backup codes{% endif %}{% endcomponent %}
+</div>
+
+{% if request.user.is_superuser %}
+<div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-security="staff">
+    <h2 class="font-semibold mb-2 text-important">Locked-out colleagues (superusers only)</h2>
+    <p class="mb-4 text-sm text-subtle">If a staff member has lost their authenticator and has no backup codes, issue recovery codes for them here.</p>
+    {% if staff %}
+    <table class="text-sm w-full">
+        <thead>
+            <tr>
+                <th class="border-b border-base-200 font-semibold py-2 text-left dark:border-base-800">Staff member</th>
+                <th class="border-b border-base-200 font-semibold py-2 text-left dark:border-base-800">Authenticators</th>
+                <th class="border-b border-base-200 font-semibold py-2 text-left dark:border-base-800">Backup codes</th>
+                <th class="border-b border-base-200 py-2 dark:border-base-800"></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in staff %}
+            <tr>
+                <td class="border-b border-base-200 py-2 dark:border-base-800">{{ row.user.get_username }}</td>
+                <td class="border-b border-base-200 py-2 dark:border-base-800 {% if not row.authenticators %}text-red-600{% endif %}">{{ row.authenticators }}</td>
+                <td class="border-b border-base-200 py-2 dark:border-base-800">{{ row.backup_codes }}</td>
+                <td class="border-b border-base-200 py-2 text-right dark:border-base-800"><a href="{% url 'admin:security_issue_recovery_codes' row.user.pk %}" class="text-primary-600 underline">Issue recovery codes</a></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="text-sm text-subtle">No other staff accounts.</p>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

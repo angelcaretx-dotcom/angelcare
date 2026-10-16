@@ -22,6 +22,9 @@ from .dashboard import EXPIRY_WARNING_DAYS, build_dashboard
 from .otp_test_utils import login_with_otp
 
 CENTRAL = ZoneInfo("America/Chicago")
+# Behaviour hooks, not styling: copied verbatim from Unfold's own login
+# template, which uses them the same way.
+HOOK_CLASSES = {"submit-row", "password-reset-link"}
 # Noon Central on a Monday after DST has ended (UTC-6).
 NOW = datetime(2026, 11, 2, 12, 0, tzinfo=CENTRAL)
 TODAY = date(2026, 11, 2)
@@ -188,17 +191,27 @@ class DashboardTemplateTests(TestCase):
         use simply has no CSS. Guards the template (and Unfold upgrades)
         against silently unstyled dashboards.
         """
-        template = Path(settings.BASE_DIR, "templates/admin/index.html").read_text()
         stylesheet = Path(unfold.__file__).parent.joinpath(
             "static/unfold/css/styles.css"
         ).read_text(encoding="utf-8")
-        classes = set()
-        for attr in re.findall(r'class="([^"]*)"', template):
-            attr = re.sub(r"{%.*?%}", " ", attr)
-            classes.update(attr.split())
-        self.assertIn("md:grid-cols-2", classes)  # extraction sanity check
-        missing = sorted(c for c in classes if not _css_has_class(stylesheet, c))
-        self.assertEqual(missing, [])
+        # Every project admin template: the dashboard, the login page,
+        # and the My security pages (ADR 0024).
+        templates = sorted(Path(settings.BASE_DIR, "templates/admin").rglob("*.html"))
+        self.assertGreaterEqual(len(templates), 6)
+        missing = {}
+        for template in templates:
+            classes = set()
+            for attr in re.findall(r'class="([^"]*)"', template.read_text(encoding="utf-8")):
+                attr = re.sub(r"{%.*?%}|{{.*?}}", " ", attr)
+                classes.update(attr.split())
+            if template.name == "index.html":
+                self.assertIn("md:grid-cols-2", classes)  # extraction sanity check
+            absent = sorted(
+                c for c in classes - HOOK_CLASSES if not _css_has_class(stylesheet, c)
+            )
+            if absent:
+                missing[str(template.relative_to(settings.BASE_DIR))] = absent
+        self.assertEqual(missing, {})
 
     def test_css_class_check_itself(self):
         css = ".lg\\:grid-cols-1{x}.text-sm,.dark\\:text-red-400:where(.dark *){y}"
@@ -212,6 +225,6 @@ class DashboardTemplateTests(TestCase):
 def _css_has_class(stylesheet: str, name: str) -> bool:
     """True if `.name` (CSS-escaped) appears as a complete class selector."""
     selector = "." + name
-    for char in "/:[]":
+    for char in "/:[]*":
         selector = selector.replace(char, "\\" + char)
     return re.search(re.escape(selector) + r"(?![\w-])", stylesheet) is not None

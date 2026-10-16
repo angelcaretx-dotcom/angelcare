@@ -23,6 +23,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0021](decisions/0021-backup-export-and-restore.md),
 [ADR 0022](decisions/0022-web-automated-tests.md),
 [ADR 0023](decisions/0023-admin-dashboard.md),
+[ADR 0024](decisions/0024-mfa-recovery-and-self-service.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -102,7 +103,9 @@ monolithic app. Currently:
   class registered as `admin.site` itself — see ADR 0016. Also
   (Phase 18) builds the admin home page dashboard
   (`accounts/dashboard.py`), permission-filtered per user — see
-  ADR 0023.
+  ADR 0023. Also (Phase 19) staff MFA self-service: backup codes,
+  adding/removing authenticators, superuser-issued recovery codes
+  (`accounts/mfa.py`, the My security pages) — see ADR 0024.
 - `backups/` — (Phase 16) no models. `export_backup` /
   `verify_backup` / `restore_backup` commands: one provider-independent
   zip with every row plus every uploaded file, checksummed, and a

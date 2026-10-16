@@ -56,3 +56,10 @@ class AngelCareAdminSite(UnfoldAdminSite, OTPAdminSite):
 
     login_form = UnfoldOTPAdminAuthenticationForm
     login_template = None
+
+    def get_urls(self):
+        # "My security" pages (ADR 0024), ahead of the admin's own
+        # patterns so nothing there can shadow them.
+        from .security_views import urls as security_urls
+
+        return security_urls(self) + super().get_urls()

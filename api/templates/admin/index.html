@@ -18,6 +18,12 @@ here -- accounts.tests.DashboardTemplateTests checks that.
 {% block content %}
 {% if dashboard %}
 <div class="flex flex-col gap-6 mb-8">
+    {% if dashboard.no_backup_codes %}
+    <a href="{% url 'admin:security' %}" class="bg-white block border border-red-600 p-6 rounded-default text-red-600 dark:bg-base-900" data-dashboard="mfa-warning">
+        <strong>You have no backup codes.</strong> If you lose your phone you won't be able to log in. Create them on your My security page.
+    </a>
+    {% endif %}
+
     <p class="text-subtle text-sm">
         Today is {{ dashboard.today|date:"l, F j, Y" }} (Central time).
     </p>

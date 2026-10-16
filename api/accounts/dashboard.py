@@ -33,6 +33,8 @@ from transportation.models import TripRequest, TripRequestStatus
 from trips.models import Trip, TripStatus
 from vehicles.models import Vehicle, VehicleStatus
 
+from .mfa import backup_codes_remaining
+
 # Look-ahead windows. Operational choices, not business facts: change
 # freely if staff want a longer or shorter horizon.
 UPCOMING_TRIP_DAYS = 7
@@ -69,6 +71,8 @@ class Panel:
 @dataclass
 class Dashboard:
     today: date
+    # Shown to the viewer about their own account (ADR 0024).
+    no_backup_codes: bool = False
     stats: list[Stat] = field(default_factory=list)
     finance_stats: list[Stat] = field(default_factory=list)
     panels: list[Panel] = field(default_factory=list)
@@ -115,7 +119,7 @@ def build_dashboard(user, now: datetime | None = None) -> Dashboard:
     today = timezone.localtime(now, tz).date()
     day_start = datetime.combine(today, time.min, tzinfo=tz)
     day_end = day_start + timedelta(days=1)
-    dash = Dashboard(today=today)
+    dash = Dashboard(today=today, no_backup_codes=backup_codes_remaining(user) == 0)
 
     # --- Headline numbers -------------------------------------------------
     if _can_view(user, TripRequest):
