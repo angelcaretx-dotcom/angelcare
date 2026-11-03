@@ -26,7 +26,10 @@ Write-Host "`nStep 1/3: checking the password..." -ForegroundColor Cyan
 if ($LASTEXITCODE -ne 0) { throw "That password didn't work. Nothing was changed." }
 
 Write-Host "Step 2/3: saving it to Vercel..." -ForegroundColor Cyan
-vercel env add DATABASE_URL production --value $url --force --sensitive --yes | Out-Null
+# The vercel CLI writes its banner to stderr, which PowerShell 5.1 treats
+# as a fatal error under "Stop" -- rely on exit codes from here on.
+$ErrorActionPreference = "Continue"
+vercel env add DATABASE_URL production --value $url --force --sensitive --yes 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Saving to Vercel failed (see above). Run 'vercel login' if it asked you to log in." }
 $url = $null
 Write-Host "  OK"
@@ -34,7 +37,7 @@ Write-Host "  OK"
 Write-Host "Step 3/3: redeploying the API (about a minute)..." -ForegroundColor Cyan
 $latest = vercel ls angelcare-api --environment production 2>$null | Select-Object -First 1
 if (-not $latest) { throw "Couldn't find the current deployment. The password IS saved; push any commit to redeploy." }
-vercel redeploy $latest.Trim() --target production
+vercel redeploy $latest.Trim() --target production 2>$null
 if ($LASTEXITCODE -ne 0) { throw "Redeploy failed (see above). The password IS saved; push any commit to redeploy." }
 
 Write-Host "`nDone. The website can reach the database again." -ForegroundColor Green
