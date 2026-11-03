@@ -140,7 +140,7 @@ class TripRequestNotificationIntegrationTests(APITestCase):
         self.assertEqual(len(mail.outbox), 2)
 
         recipients = {email.to[0] for email in mail.outbox}
-        self.assertEqual(recipients, {"angelcaretx@gmail.com", "jane@example.com"})
+        self.assertEqual(recipients, {"angelcaretransit@hotmail.com", "jane@example.com"})
 
     def test_submitting_a_request_creates_notification_log_entries(self):
         response = self.client.post(self.url, valid_payload(), format="json")

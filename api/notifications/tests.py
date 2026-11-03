@@ -49,7 +49,7 @@ class NotificationServiceTests(TestCase):
         NotificationService(email_provider=provider).notify_new_trip_request(trip_request)
 
         recipients = [msg["to"] for msg in provider.sent]
-        self.assertIn("angelcaretx@gmail.com", recipients)
+        self.assertIn("angelcaretransit@hotmail.com", recipients)
         self.assertIn("alex@example.com", recipients)
         self.assertEqual(len(provider.sent), 2)
 
@@ -91,7 +91,7 @@ class NotificationServiceTests(TestCase):
 
         NotificationService(email_provider=provider).notify_new_trip_request(trip_request)
 
-        staff_email = next(m for m in provider.sent if m["to"] == "angelcaretx@gmail.com")
+        staff_email = next(m for m in provider.sent if m["to"] == "angelcaretransit@hotmail.com")
         self.assertIn("Jamie Chen", staff_email["body_text"])
         self.assertIn(str(trip_request.id), staff_email["body_text"])
 
@@ -131,7 +131,7 @@ class NotificationHtmlEmailTests(TestCase):
 
         NotificationService(email_provider=provider).notify_new_trip_request(trip_request)
 
-        staff_email = next(m for m in provider.sent if m["to"] == "angelcaretx@gmail.com")
+        staff_email = next(m for m in provider.sent if m["to"] == "angelcaretransit@hotmail.com")
         self.assertIn("Jamie Chen", staff_email["body_html"])
         self.assertIn(
             f"/admin/transportation/triprequest/{trip_request.id}/change/",

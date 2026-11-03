@@ -480,7 +480,11 @@ EMAIL_USE_TLS = env_bool("DJANGO_EMAIL_USE_TLS", True)
 
 DEFAULT_FROM_EMAIL = os.environ.get("DJANGO_DEFAULT_FROM_EMAIL", "angelcaretx@gmail.com")
 # Where new-trip-request notifications are sent for staff to review.
-STAFF_NOTIFICATION_EMAIL = os.environ.get("STAFF_NOTIFICATION_EMAIL", "angelcaretx@gmail.com")
+# Owner-confirmed 2026-11-03 (docs/business-decisions-log.md); separate
+# from the public contact email on the website.
+STAFF_NOTIFICATION_EMAIL = os.environ.get(
+    "STAFF_NOTIFICATION_EMAIL", "angelcaretransit@hotmail.com"
+)
 
 # Absolute base URLs used to build real, clickable links inside HTML
 # emails (e.g. "review this request" -> a specific /admin/ page).

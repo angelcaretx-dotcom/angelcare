@@ -12,6 +12,7 @@ is UNKNOWN and must not be assumed.
 | 2026-08-22 | Service area | Full state of Texas | Owner, chat |
 | 2026-08-22 | Business phone | 817-766-9228 | Owner, chat |
 | 2026-08-22 | Business email | angelcaretx@gmail.com | Owner, chat |
+| 2026-11-03 | Staff notification email (new trip request alerts) | angelcaretransit@hotmail.com | Owner, chat |
 | 2026-08-22 | Physical address | Not provided — intentionally omitted from public site | Owner, chat |
 | 2026-08-22 | Services offered | Ambulatory, Wheelchair, Stretcher transportation | Owner, chat |
 | 2026-08-24 | Services offered (addition) | Medical Supply & Equipment Delivery (e.g. wheelchairs, walkers, oxygen equipment, home-care equipment) added as a confirmed 4th service, alongside Ambulatory/Wheelchair/Stretcher | Owner, chat |
