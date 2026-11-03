@@ -108,9 +108,9 @@ Phases 27 and 28 can move earlier if a contract starts sooner than the driver ap
 
 | # | Decision | Needed by |
 |---|---|---|
-| 1 | Hosting plans that include a BAA (Supabase, Vercel, Resend) — budget | Phase 22 |
-| 2 | Do drivers use their own smartphones? Android, iPhone, or both? | Phase 24 |
-| 3 | Which payer goes live first: MTM, SafeRide, or HHSC direct? Get a sample trip export file from that portal | Phase 28 |
+| 1 | Hosting plans that include a BAA (Supabase, Vercel, Resend) — budget. **Decided 2026-11-03:** strip PHI from staff emails now; owner checks BAA plans/costs before the first Medicaid trip | Phase 22 |
+| 2 | Do drivers use their own smartphones? Android, iPhone, or both? **Decided 2026-11-03:** drivers' own phones, mixed Android + iPhone → mobile web app | Phase 24 |
+| 3 | Which payer goes live first? **Decided 2026-11-03:** all four at once — MTM, SafeRide, HHSC direct, private/facility. Still needed: a sample trip export file from the MTM and SafeRide portals | Phase 28 |
 | 4 | Each payer's rates (from the contracts) | Phase 29 |
 | 5 | HHSC claim route: TexMedConnect web entry, or a clearinghouse (837P file)? | Phase 30 |
 | 6 | Driver pay model (per trip / per mile / hourly) | Phase 32 |
