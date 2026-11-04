@@ -1,0 +1,106 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Day board (ADR 0028). Only CSS classes present in Unfold's precompiled
+stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n tz %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block branding %}
+    {% include "unfold/helpers/site_branding.html" %}
+{% endblock %}
+
+{% block content %}
+{% timezone zone %}
+<div class="flex flex-col gap-6" data-board="{{ day|date:'Y-m-d' }}">
+    <div class="flex flex-wrap gap-4 items-center justify-between">
+        <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+        <div class="flex flex-wrap gap-3 items-center text-sm">
+            <a href="?date={{ previous_day|date:'Y-m-d' }}" class="text-primary-600 underline">&larr; Previous day</a>
+            {% if day != today %}<a href="?date={{ today|date:'Y-m-d' }}" class="text-primary-600 underline">Today</a>{% endif %}
+            <a href="?date={{ next_day|date:'Y-m-d' }}" class="text-primary-600 underline">Next day &rarr;</a>
+            <form method="get" class="flex gap-2 items-center">
+                <input type="date" name="date" value="{{ day|date:'Y-m-d' }}" class="border border-base-200 px-2 py-1 rounded-default text-sm dark:bg-base-900 dark:border-base-800">
+                <button type="submit" class="border border-base-200 cursor-pointer px-3 py-1 rounded-default text-sm dark:border-base-800">Go</button>
+            </form>
+            <a href="{{ add_url }}" class="bg-primary-600 font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">+ New trip</a>
+        </div>
+    </div>
+
+    <p class="text-sm text-subtle">
+        {{ trip_count }} trip{{ trip_count|pluralize }} on this day{% if closed_count %}, {{ closed_count }} cancelled or no-show{% endif %}.
+        Times are Texas (Central) time.
+    </p>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-board-section="unassigned">
+        <h2 class="font-semibold mb-2 text-important">Needs a driver ({{ unassigned|length }})</h2>
+        {% if unassigned %}
+        <table class="text-sm w-full">
+            <tbody>
+            {% for trip in unassigned %}
+                <tr data-trip="{{ trip.pk }}">
+                    <td class="align-top border-b border-base-200 font-semibold py-2 whitespace-nowrap dark:border-base-800">
+                        {{ trip.scheduled_pickup_datetime|time:"g:i A" }}{% if trip.will_call %} <span class="font-medium text-red-600">will-call</span>{% endif %}
+                    </td>
+                    <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">
+                        <a href="{% url 'admin:trips_trip_change' trip.pk %}" class="font-medium text-primary-600 underline">{{ trip.passenger.legal_name }}</a>
+                        <div class="text-subtle text-xs">{{ trip.get_service_type_display }} · {{ trip.get_source_display }}{% if trip.broker_trip_number %} #{{ trip.broker_trip_number }}{% endif %}{% if trip.appointment_datetime %} · appt {{ trip.appointment_datetime|time:"g:i A" }}{% endif %}</div>
+                        <div class="text-subtle text-xs">{{ trip.pickup_address|truncatechars:45 }} &rarr; {{ trip.dropoff_address|truncatechars:45 }}</div>
+                    </td>
+                    <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">
+                        {% if can_assign %}
+                        <form method="post" action="{% url 'admin:trips_trip_board_assign' trip.pk %}" class="flex flex-wrap gap-2 items-center">
+                            {% csrf_token %}
+                            <select name="driver" required class="border border-base-200 px-2 py-1 rounded-default text-sm w-40 dark:bg-base-900 dark:border-base-800">
+                                <option value="">Driver…</option>
+                                {% for d in active_drivers %}<option value="{{ d.pk }}">{{ d.legal_name }}</option>{% endfor %}
+                            </select>
+                            <select name="vehicle" required class="border border-base-200 px-2 py-1 rounded-default text-sm w-40 dark:bg-base-900 dark:border-base-800">
+                                <option value="">Vehicle…</option>
+                                {% for v in active_vehicles %}<option value="{{ v.pk }}">{{ v.make }} {{ v.model }} ({{ v.license_plate }})</option>{% endfor %}
+                            </select>
+                            <button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Assign</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-sm text-subtle">Every trip on this day has a driver.</p>
+        {% endif %}
+    </div>
+
+    {% if drivers %}
+    <div class="gap-6 grid lg:grid-cols-2 xl:grid-cols-3">
+        {% for column in drivers %}
+        <div class="bg-white border border-base-200 p-4 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-board-driver="{{ column.driver.pk }}">
+            <h2 class="font-semibold mb-2 text-important">{{ column.driver.legal_name }} <span class="font-medium text-sm text-subtle">· {{ column.trips|length }} trip{{ column.trips|length|pluralize }}</span></h2>
+            <table class="text-sm w-full">
+                <tbody>
+                {% for trip in column.trips %}
+                    <tr data-trip="{{ trip.pk }}">
+                        <td class="align-top border-b border-base-200 font-semibold py-2 whitespace-nowrap dark:border-base-800">
+                            {{ trip.scheduled_pickup_datetime|time:"g:i A" }}
+                        </td>
+                        <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">
+                            <a href="{% url 'admin:trips_trip_change' trip.pk %}" class="font-medium text-primary-600 underline">{{ trip.passenger.legal_name }}</a>{% if trip.will_call %} <span class="font-medium text-red-600">will-call</span>{% endif %}
+                            <div class="text-subtle text-xs">{{ trip.get_service_type_display }} · {{ trip.vehicle.make }} {{ trip.vehicle.model }} ({{ trip.vehicle.license_plate }})</div>
+                            <div class="text-subtle text-xs">{{ trip.pickup_address|truncatechars:40 }} &rarr; {{ trip.dropoff_address|truncatechars:40 }}</div>
+                        </td>
+                        <td class="align-top border-b border-base-200 py-2 text-right whitespace-nowrap dark:border-base-800 {% if trip.status == 'cancelled' or trip.status == 'no_show' %}text-red-600{% elif trip.status == 'completed' %}text-green-700{% else %}text-subtle{% endif %}">
+                            {{ trip.get_status_display }}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endtimezone %}
+{% endblock %}

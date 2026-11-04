@@ -228,7 +228,7 @@ def build_dashboard(user, now: datetime | None = None) -> Dashboard:
                 scheduled_pickup_datetime__gte=now,
                 scheduled_pickup_datetime__lt=day_start + timedelta(days=UPCOMING_TRIP_DAYS + 1),
             )
-            .select_related("trip_request", "driver", "vehicle")
+            .select_related("passenger", "driver", "vehicle")
             .order_by("scheduled_pickup_datetime")
         )
         total = upcoming.count()
@@ -240,9 +240,11 @@ def build_dashboard(user, now: datetime | None = None) -> Dashboard:
                     Row(
                         [
                             _local(t.scheduled_pickup_datetime),
-                            t.trip_request.full_name,
-                            t.driver.legal_name,
-                            f"{t.vehicle.make} {t.vehicle.model} ({t.vehicle.license_plate})",
+                            t.passenger.legal_name if t.passenger_id else "—",
+                            t.driver.legal_name if t.driver_id else "Needs a driver",
+                            f"{t.vehicle.make} {t.vehicle.model} ({t.vehicle.license_plate})"
+                            if t.vehicle_id
+                            else "—",
                         ],
                         _change(t),
                     )

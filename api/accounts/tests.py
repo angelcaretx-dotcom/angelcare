@@ -34,6 +34,9 @@ class RoleSeedingTests(TestCase):
                 "view_trip",
                 "change_trip",
                 "add_trip",
+                "view_turndown",
+                "change_turndown",
+                "add_turndown",
             },
         )
 
@@ -63,6 +66,10 @@ class RoleSeedingTests(TestCase):
                 "change_trip",
                 "add_trip",
                 "delete_trip",
+                "view_turndown",
+                "change_turndown",
+                "add_turndown",
+                "delete_turndown",
                 "view_document",
                 "change_document",
                 "add_document",

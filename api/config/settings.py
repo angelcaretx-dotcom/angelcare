@@ -314,9 +314,19 @@ UNFOLD = {
                         "link": reverse_lazy("admin:transportation_triprequest_changelist"),
                     },
                     {
+                        "title": "Day board",
+                        "icon": "view_kanban",
+                        "link": reverse_lazy("admin:trips_trip_board"),
+                    },
+                    {
                         "title": "Trips",
                         "icon": "route",
                         "link": reverse_lazy("admin:trips_trip_changelist"),
+                    },
+                    {
+                        "title": "Turn-downs",
+                        "icon": "do_not_disturb_on",
+                        "link": reverse_lazy("admin:trips_turndown_changelist"),
                     },
                 ],
             },

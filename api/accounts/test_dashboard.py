@@ -53,7 +53,10 @@ class DashboardDataTests(TestCase):
     def make_trip(self, pickup, status=TripStatus.SCHEDULED, **request_overrides):
         n = Trip.objects.count()
         return Trip.objects.create(
-            trip_request=make_trip_request(passenger=make_passenger(), **request_overrides),
+            trip_request=make_trip_request(
+                passenger=make_passenger(legal_name=request_overrides.get("full_name", "Morgan Lee")),
+                **request_overrides,
+            ),
             driver=make_driver(license_number=f"TX-DL-{n}"),
             vehicle=make_vehicle(vin=f"1HGCM82633A12345{n}", license_plate=f"TX-{n}"),
             scheduled_pickup_datetime=pickup,

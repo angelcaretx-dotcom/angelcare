@@ -64,6 +64,8 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("compliance", "compliancerecord", ["view"]))
         # Scheduling trips IS dispatch work -- full access here.
         + list(_permissions("trips", "trip", ["view", "change", "add"]))
+        # Logging a declined broker offer is part of answering the offer.
+        + list(_permissions("trips", "turndown", ["view", "change", "add"]))
     )
 
     administrator, _ = Group.objects.get_or_create(name="Administrator")
@@ -73,6 +75,7 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("drivers", "driver", ["view", "change", "add", "delete"]))
         + list(_permissions("vehicles", "vehicle", ["view", "change", "add", "delete"]))
         + list(_permissions("trips", "trip", ["view", "change", "add", "delete"]))
+        + list(_permissions("trips", "turndown", ["view", "change", "add", "delete"]))
         + list(_permissions("documents", "document", ["view", "change", "add", "delete"]))
         + list(_permissions("payers", "payer", ["view", "change", "add", "delete"]))
         # Billing is administrative/financial -- Administrator only, no

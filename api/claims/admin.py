@@ -19,7 +19,7 @@ class ClaimAdmin(AccessLoggedAdminMixin, admin.ModelAdmin):
         "created_at",
     )
     list_filter = ("status", "payer")
-    search_fields = ("claim_number", "invoice__trip__trip_request__full_name")
+    search_fields = ("claim_number", "invoice__trip__passenger__legal_name")
     autocomplete_fields = ("invoice", "payer")
     readonly_fields = ("id", "created_at", "updated_at")
     ordering = ("-created_at",)

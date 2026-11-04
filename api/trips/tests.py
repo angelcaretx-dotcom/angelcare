@@ -167,6 +167,8 @@ class TripAdminIntegrationTests(TestCase):
                 "scheduled_pickup_datetime_0": "2027-01-01",
                 "scheduled_pickup_datetime_1": "10:00:00",
                 "status": "scheduled",
+                "source": "website",
+                "leg": "one_way",
                 "notes": "",
             },
         )
@@ -196,6 +198,8 @@ class TripAdminIntegrationTests(TestCase):
                 "scheduled_pickup_datetime_0": "2027-01-01",
                 "scheduled_pickup_datetime_1": "10:00:00",
                 "status": "scheduled",
+                "source": "website",
+                "leg": "one_way",
                 "notes": "",
             },
         )
@@ -221,6 +225,8 @@ class TripAdminIntegrationTests(TestCase):
                 "scheduled_pickup_datetime_0": "2027-01-01",
                 "scheduled_pickup_datetime_1": "10:00:00",
                 "status": "completed",
+                "source": "website",
+                "leg": "one_way",
                 "notes": "",
             },
         )
