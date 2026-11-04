@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from accounts.admin_base import AngelCareModelAdmin
 from audit.services import record_change
 from documents.admin import DocumentInline, DocumentUploaderAdminMixin
 
@@ -7,7 +8,7 @@ from .models import Vehicle
 
 
 @admin.register(Vehicle)
-class VehicleAdmin(DocumentUploaderAdminMixin, admin.ModelAdmin):
+class VehicleAdmin(DocumentUploaderAdminMixin, AngelCareModelAdmin):
     list_display = (
         "__str__",
         "vin",

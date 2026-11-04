@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from accounts.admin_base import AngelCareModelAdmin
 from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 from transportation.models import TripRequestStatus
@@ -8,7 +9,7 @@ from .models import Trip, TurnDown
 
 
 @admin.register(Trip)
-class TripAdmin(AccessLoggedAdminMixin, admin.ModelAdmin):
+class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
     list_display = (
         "scheduled_pickup_datetime",
         "passenger",
@@ -45,8 +46,8 @@ class TripAdmin(AccessLoggedAdminMixin, admin.ModelAdmin):
                     "pickup_address",
                     "dropoff_address",
                 ),
-                "description": "Coming from a website request? Choose it and leave the "
-                "other fields blank -- they're filled in from the request.",
+                "description": "Creating this trip from a website request? Select it and "
+                "the passenger, service type and addresses are filled in for you.",
             },
         ),
         ("When", {"fields": ("scheduled_pickup_datetime", "appointment_datetime", "leg", "outbound_trip", "will_call")}),
@@ -128,7 +129,7 @@ def _id(value):
 
 
 @admin.register(TurnDown)
-class TurnDownAdmin(admin.ModelAdmin):
+class TurnDownAdmin(AngelCareModelAdmin):
     list_display = ("offered_at", "source", "broker_trip_number", "service_type", "reason", "recorded_by")
     list_filter = ("source", "reason", "service_type", "payer")
     search_fields = ("broker_trip_number",)

@@ -367,6 +367,21 @@ class AdminPagesSmokeTests(TestCase):
                 with self.subTest(url=url):
                     self.assertEqual(self.client.get(url).status_code, 200)
 
+    def test_every_admin_screen_uses_unfolds_styled_base(self):
+        """
+        A plain django.contrib.admin.ModelAdmin renders raw browser
+        inputs and oversized related-object icons inside Unfold's frame.
+        """
+        from django.contrib import admin
+        from unfold.admin import ModelAdmin
+
+        plain = [
+            model._meta.label
+            for model, model_admin in admin.site._registry.items()
+            if not isinstance(model_admin, ModelAdmin)
+        ]
+        self.assertEqual(plain, [])
+
     def _request(self):
         from django.test import RequestFactory
 

@@ -1,12 +1,13 @@
 from django.contrib import admin
 
+from accounts.admin_base import AngelCareModelAdmin
 from audit.admin_mixins import AccessLoggedAdminMixin
 
 from .models import NotificationLog
 
 
 @admin.register(NotificationLog)
-class NotificationLogAdmin(AccessLoggedAdminMixin, admin.ModelAdmin):
+class NotificationLogAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
     list_display = (
         "notification_type",
         "recipient",

@@ -1,10 +1,12 @@
 from django.contrib import admin
 
+from accounts.admin_base import AngelCareModelAdmin
+
 from .models import Organization
 
 
 @admin.register(Organization)
-class OrganizationAdmin(admin.ModelAdmin):
+class OrganizationAdmin(AngelCareModelAdmin):
     list_display = ("legal_name", "phone", "email", "service_area", "ein", "updated_at")
     readonly_fields = ("id", "created_at", "updated_at")
 

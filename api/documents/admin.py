@@ -1,7 +1,8 @@
 from django.contrib import admin
-from django.contrib.contenttypes.admin import GenericTabularInline
 from django.utils import timezone
+from unfold.admin import GenericTabularInline
 
+from accounts.admin_base import AngelCareModelAdmin
 from audit.services import record_change
 
 from .models import Document, DocumentStatus
@@ -52,7 +53,7 @@ class DocumentUploaderAdminMixin:
 
 
 @admin.register(Document)
-class DocumentAdmin(admin.ModelAdmin):
+class DocumentAdmin(AngelCareModelAdmin):
     list_display = (
         "document_type",
         "content_object",

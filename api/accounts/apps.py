@@ -28,3 +28,11 @@ class AngelCareAdminConfig(AdminConfig):
     """
 
     default_site = "accounts.admin_site.AngelCareAdminSite"
+
+    def ready(self):
+        super().ready()  # autodiscovers every app's admin.py
+        from django.contrib import admin
+
+        from .admin import restyle_builtin_admins
+
+        restyle_builtin_admins(admin.site)

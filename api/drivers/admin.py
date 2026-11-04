@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from accounts.admin_base import AngelCareModelAdmin
 from audit.services import record_change
 from documents.admin import DocumentInline, DocumentUploaderAdminMixin
 
@@ -7,7 +8,7 @@ from .models import Driver
 
 
 @admin.register(Driver)
-class DriverAdmin(DocumentUploaderAdminMixin, admin.ModelAdmin):
+class DriverAdmin(DocumentUploaderAdminMixin, AngelCareModelAdmin):
     list_display = (
         "legal_name",
         "phone",

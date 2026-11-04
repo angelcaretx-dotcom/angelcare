@@ -1,12 +1,13 @@
 from django.contrib import admin
 
+from accounts.admin_base import AngelCareModelAdmin
 from audit.services import record_change
 
 from .models import Payer
 
 
 @admin.register(Payer)
-class PayerAdmin(admin.ModelAdmin):
+class PayerAdmin(AngelCareModelAdmin):
     list_display = (
         "name",
         "payer_type",

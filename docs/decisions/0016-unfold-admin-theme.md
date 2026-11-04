@@ -177,3 +177,18 @@ missing manifest). Fixed by committing `api/staticfiles/` directly
 (previously gitignored) so the collected, manifested files ship with
 the code -- see `api/README.md`'s deploy section for the "re-run
 after any static file changes" requirement this creates.
+
+## Addendum (2026-11-03): every admin on Unfold's ModelAdmin
+
+The theme was applied to the admin *site* only: every project admin
+still subclassed `django.contrib.admin.ModelAdmin`, so forms rendered
+inside Unfold's frame with raw browser inputs, unstyled selects and
+date pickers, and Django's large stacked related-object icons. All
+project admins now subclass `accounts.admin_base.AngelCareModelAdmin`
+(Unfold's `ModelAdmin`, with `compressed_fields` and
+`warn_unsaved_form`); the document inline uses Unfold's
+`GenericTabularInline`; and the built-in User, Group and django-otp
+device admins are re-registered with Unfold-styled versions
+(`accounts/admin.py`, swapped in `AngelCareAdminConfig.ready()` after
+autodiscovery). `AdminPagesSmokeTests` now fails if any registered
+admin isn't an Unfold `ModelAdmin`.

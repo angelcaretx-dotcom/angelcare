@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from accounts.admin_base import AngelCareModelAdmin
 from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 
@@ -7,7 +8,7 @@ from .models import TripRequest
 
 
 @admin.register(TripRequest)
-class TripRequestAdmin(AccessLoggedAdminMixin, admin.ModelAdmin):
+class TripRequestAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
     list_display = (
         "full_name",
         "phone",

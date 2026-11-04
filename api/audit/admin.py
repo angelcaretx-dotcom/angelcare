@@ -1,10 +1,12 @@
 from django.contrib import admin
 
+from accounts.admin_base import AngelCareModelAdmin
+
 from .models import AuditLog
 
 
 @admin.register(AuditLog)
-class AuditLogAdmin(admin.ModelAdmin):
+class AuditLogAdmin(AngelCareModelAdmin):
     list_display = (
         "created_at",
         "actor",
