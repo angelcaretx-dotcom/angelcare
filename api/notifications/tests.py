@@ -124,14 +124,31 @@ class NotificationServiceTests(TestCase):
             ):
                 self.assertNotIn(detail, staff_email[part], f"{detail!r} leaked into {part}")
 
-    def test_customer_confirmation_still_shows_their_own_request(self):
+    def test_customer_confirmation_carries_only_the_reference(self):
+        """ADR 0027: no PHI in the rider's confirmation either."""
         provider = RecordingEmailProvider()
-        trip_request = make_trip_request()
+        trip_request = make_trip_request(
+            full_name="Jamie Chen",
+            phone="817-555-0199",
+            email="jamie.chen@example.com",
+            pickup_address="77 Oak Lane, Arlington, TX",
+            dropoff_address="9 Dialysis Center Dr, Fort Worth, TX",
+            mobility_notes="Uses a power wheelchair",
+            additional_notes="Kidney dialysis three times a week",
+        )
 
         NotificationService(email_provider=provider).notify_new_trip_request(trip_request)
 
-        customer_email = next(m for m in provider.sent if m["to"] == "alex@example.com")
-        self.assertIn("1 Main St", customer_email["body_text"])
+        customer_email = next(m for m in provider.sent if m["to"] == "jamie.chen@example.com")
+        reference = f"#{str(trip_request.id)[:8].upper()}"
+        for part in ("subject", "body_text", "body_html"):
+            for detail in (
+                "Jamie", "Chen", "555-0199", "Oak Lane", "Dialysis Center",
+                "power wheelchair", "Kidney", "Wheelchair",
+            ):
+                self.assertNotIn(detail, customer_email[part], f"{detail!r} leaked into {part}")
+        self.assertIn(reference, customer_email["body_text"])
+        self.assertIn(reference, customer_email["body_html"])
 
     def test_customer_email_contains_disclaimer(self):
         provider = RecordingEmailProvider()

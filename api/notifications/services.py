@@ -87,14 +87,11 @@ class NotificationService:
             ("Submitted", trip_request.created_at),
         ]
 
-    @staticmethod
-    def _customer_rows(trip_request) -> list[tuple[str, str]]:
-        return [
-            ("Service type", trip_request.get_service_type_display()),
-            ("Requested pickup", trip_request.requested_datetime),
-            ("Pickup address", trip_request.pickup_address),
-            ("Drop-off address", trip_request.dropoff_address),
-        ]
+    @classmethod
+    def _customer_rows(cls, trip_request) -> list[tuple[str, str]]:
+        # Reference only (ADR 0027): Resend has no confirmed BAA, so the
+        # rider's name, addresses and pickup time stay out of email.
+        return [("Reference", cls._reference(trip_request))]
 
     def _send(
         self,

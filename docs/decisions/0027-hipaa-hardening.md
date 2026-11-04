@@ -34,9 +34,15 @@ Staff already have to log in to act on a request, so nothing is lost.
 A test feeds a request full of identifying details and asserts none of
 them reach the subject, text or HTML.
 
-**The customer's own confirmation is unchanged.** It is sent to the
-address they typed and repeats their own request back to them. It
-still passes through Resend, so it's on the BAA checklist below.
+**The rider's confirmation carries no PHI either** (owner decision,
+same day). Resend has no confirmed BAA, so the confirmation says
+"Hello," (no name), confirms the request is not a booking, gives the
+reference number and the 911 warning, and asks the rider to call with
+that reference. No name, phone, addresses, pickup time or service type.
+"Reply to this email" was dropped too, to steer conversations to the
+phone instead of an inbox without a BAA. A test asserts the same
+identifying details never reach it. This is reversible if Resend signs
+a BAA.
 
 **View logging** (`audit/admin_mixins.py`, `AccessLoggedAdminMixin`) on
 every admin holding PHI: trip requests, passengers, trips, invoices,
@@ -66,6 +72,9 @@ fills in the status from each vendor.
   old `viewed` rows can be archived, never silently dropped.
 - The log records views in the **admin** only. The driver app
   (Phase 24) must log its own reads when it shows rider details.
+- Even a PHI-free email says that this address booked medical
+  transport, so a BAA-covered email provider is still the clean
+  long-term answer.
 - Removing PHI from email doesn't make the system HIPAA-compliant on
   its own. Signed BAAs with the database, hosting and email vendors,
   plus the policies in hipaa.md, are still required before Medicaid
