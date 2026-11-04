@@ -1,0 +1,25 @@
+{% extends 'admin/security/_layout.html' %}
+{% load unfold %}
+
+{% block page %}
+<div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-driver-login="handover">
+    <p class="font-semibold mb-4 text-red-600 text-sm">This sheet is shown only once. Print it or copy it now, and give it to {{ driver.legal_name }} in person. Don't email or text the password.</p>
+    <table class="mb-6 text-sm w-full">
+        <tbody>
+            <tr><td class="border-b border-base-200 py-2 text-subtle dark:border-base-800">Driver</td><td class="border-b border-base-200 py-2 dark:border-base-800">{{ driver.legal_name }}</td></tr>
+            <tr><td class="border-b border-base-200 py-2 text-subtle dark:border-base-800">Open on your phone</td><td class="border-b border-base-200 py-2 dark:border-base-800">{{ login_url }}</td></tr>
+            <tr><td class="border-b border-base-200 py-2 text-subtle dark:border-base-800">Sign in with</td><td class="border-b border-base-200 py-2 dark:border-base-800">{% if driver.email %}{{ driver.email }} or {% endif %}{{ driver.phone }}</td></tr>
+            <tr><td class="border-b border-base-200 py-2 text-subtle dark:border-base-800">Temporary password</td><td class="border-b border-base-200 py-2 text-important dark:border-base-800" style="font-family: ui-monospace, Consolas, monospace; font-size: 1.25rem">{{ password }}</td></tr>
+        </tbody>
+    </table>
+    <h2 class="font-semibold mb-2 text-important">First sign-in</h2>
+    <ol class="flex flex-col gap-2 mb-6 text-sm">
+        <li><strong>1.</strong> On your phone, open the address above and sign in with your email or phone number and the temporary password.</li>
+        <li><strong>2.</strong> Choose your own password when asked.</li>
+        <li><strong>3.</strong> Add it to your home screen (iPhone: Share → Add to Home Screen; Android: ⋮ → Add to Home screen).</li>
+        <li><strong>4.</strong> When your phone asks to share your location with this site, choose <strong>Allow</strong> — it's how each pickup and drop-off is proven.</li>
+    </ol>
+    {% url 'admin:drivers_driver_change' driver.pk as done_url %}
+    {% component "unfold/components/button.html" with href=done_url variant="primary" %}Done{% endcomponent %}
+</div>
+{% endblock %}

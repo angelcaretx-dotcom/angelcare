@@ -31,7 +31,7 @@ before the push; vendors sit behind an interface.
 - **Day board**: one page per day, trips grouped by driver, unassigned trips on top, quick assign.
 - Turn-down log: a trip offered by a broker and declined, with a reason (feeds the SLA numbers in Phase 31).
 
-### Phase 24: Driver app — the day
+### Phase 24: Driver app — the day — ✅ built 2026-11-03 (ADR 0029)
 - **Login with email or phone number** + password (owner decision 2026-11-03). No authenticator app for drivers; instead lockout after repeated failures, idle timeout, and drivers only ever see their own trips.
 - Driver logins (a Driver linked to a user account; phone-friendly sign-in).
 - Mobile web app at `admin.angelcaretransit.com/driver/` — no app store, works on any smartphone, can be added to the home screen.

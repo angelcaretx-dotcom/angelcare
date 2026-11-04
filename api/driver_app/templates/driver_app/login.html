@@ -1,0 +1,14 @@
+{% extends "driver_app/base.html" %}
+{% block title %}Sign in · AngelCare Driver{% endblock %}
+{% block content %}
+<h1>Driver sign in</h1>
+<form method="post" class="card" autocomplete="on">
+  {% csrf_token %}
+  <label for="identifier">Email or phone number</label>
+  <input type="text" id="identifier" name="identifier" value="{{ identifier|default:'' }}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus>
+  <label for="password">Password</label>
+  <input type="password" id="password" name="password" autocomplete="current-password" required>
+  <button type="submit" class="btn btn-primary">Sign in</button>
+</form>
+<p class="muted small">Forgot your password or locked out? Call dispatch — they can reset it.</p>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends 'admin/security/_layout.html' %}
+{% load unfold %}
+
+{% block page %}
+<div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-driver-login="confirm">
+    {% if driver.user %}
+    <p class="mb-4 text-sm">{{ driver.legal_name }} already has a driver app login. Resetting gives them a new temporary password; the old one stops working immediately.</p>
+    {% else %}
+    <p class="mb-4 text-sm">This creates a driver app login for {{ driver.legal_name }}. They sign in at <strong>{{ login_url }}</strong> with the email or phone number on their driver record and a temporary password you hand them, then choose their own.</p>
+    {% endif %}
+    <table class="mb-6 text-sm w-full">
+        <tbody>
+            <tr><td class="border-b border-base-200 py-2 text-subtle dark:border-base-800">Email</td><td class="border-b border-base-200 py-2 dark:border-base-800">{{ driver.email|default:"— (they'll use their phone number)" }}</td></tr>
+            <tr><td class="border-b border-base-200 py-2 text-subtle dark:border-base-800">Phone</td><td class="border-b border-base-200 py-2 dark:border-base-800">{{ driver.phone }}</td></tr>
+        </tbody>
+    </table>
+    <form method="post" class="flex flex-wrap gap-3 items-center">
+        {% csrf_token %}
+        <button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-4 py-2 rounded-default text-sm text-white">{% if driver.user %}Reset password{% else %}Create app login{% endif %}</button>
+        <a href="{% url 'admin:drivers_driver_change' driver.pk %}" class="text-primary-600 text-sm underline">Cancel</a>
+    </form>
+</div>
+{% endblock %}

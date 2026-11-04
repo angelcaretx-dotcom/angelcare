@@ -1,0 +1,92 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2d6f91">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AngelCare Driver">
+<meta name="robots" content="noindex">
+<title>{% block title %}AngelCare Driver{% endblock %}</title>
+<style>
+  :root {
+    --brand: #2d6f91; --brand-dark: #235a75; --ink: #1f2933; --muted: #5f6b7a;
+    --line: #dde3ea; --bg: #f4f7fa; --card: #fff;
+    --ok: #1f7a4d; --ok-bg: #e8f5ee; --warn: #9a5b00; --warn-bg: #fff6e5;
+    --bad: #b42318; --bad-bg: #fdecea;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 17px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  header {
+    background: var(--brand); color: #fff;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header a, header button { color: #fff; }
+  .brand { font-weight: 700; font-size: 18px; text-decoration: none; }
+  .link-button { background: none; border: 0; font: inherit; font-size: 15px; text-decoration: underline; cursor: pointer; padding: 8px 0; }
+  main { max-width: 640px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 22px; margin: 4px 0 12px; }
+  h2 { font-size: 17px; margin: 0 0 8px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 12px; }
+  a.card { display: block; color: inherit; text-decoration: none; }
+  a.card:active { background: #eef3f7; }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .time { font-size: 20px; font-weight: 700; }
+  .pill { display: inline-block; font-size: 13px; font-weight: 600; border-radius: 999px; padding: 2px 10px; background: #e7eef4; color: var(--brand-dark); white-space: nowrap; }
+  .pill.ok { background: var(--ok-bg); color: var(--ok); }
+  .pill.bad { background: var(--bad-bg); color: var(--bad); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); }
+  .msg { border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; font-size: 15px; }
+  .msg.success { background: var(--ok-bg); color: var(--ok); }
+  .msg.error { background: var(--bad-bg); color: var(--bad); }
+  .msg.warning, .msg.info { background: var(--warn-bg); color: var(--warn); }
+  .btn {
+    display: block; width: 100%; text-align: center; border: 0; border-radius: 14px;
+    font: inherit; font-weight: 700; font-size: 19px; padding: 18px 16px; cursor: pointer;
+    text-decoration: none; margin-top: 10px; min-height: 60px;
+  }
+  .btn-primary { background: var(--brand); color: #fff; }
+  .btn-primary:active { background: var(--brand-dark); }
+  .btn-secondary { background: #fff; color: var(--brand-dark); border: 2px solid var(--brand); }
+  .btn-danger { background: #fff; color: var(--bad); border: 2px solid #f1b4ad; font-size: 17px; }
+  .btn[disabled] { opacity: .6; }
+  label { display: block; font-weight: 600; margin: 14px 0 6px; font-size: 15px; }
+  input[type=text], input[type=password], input[type=email], input[type=tel], select, textarea {
+    width: 100%; font: inherit; padding: 14px; border: 1px solid #b9c4cf; border-radius: 12px; background: #fff; color: var(--ink);
+  }
+  textarea { min-height: 80px; }
+  .errorlist { color: var(--bad); font-size: 14px; margin: 6px 0 0; padding-left: 18px; }
+  .helptext, .help { color: var(--muted); font-size: 13px; display: block; margin-top: 6px; }
+  .address { font-size: 17px; margin: 2px 0 8px; }
+  .kv { margin: 0; }
+  .kv dt { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-top: 10px; }
+  .kv dd { margin: 2px 0 0; }
+  ol.timeline { list-style: none; margin: 0; padding: 0; }
+  ol.timeline li { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+  ol.timeline li:last-child { border-bottom: 0; }
+  details summary { cursor: pointer; font-weight: 600; color: var(--bad); padding: 12px 0; }
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="{% url 'driver_app:home' %}">AngelCare Driver</a>
+  {% if request.user.is_authenticated and request.user.driver_profile %}
+  <form method="post" action="{% url 'driver_app:logout' %}">{% csrf_token %}<button class="link-button" type="submit">Sign out</button></form>
+  {% endif %}
+</header>
+<main>
+  {% for message in messages %}<div class="msg {{ message.tags }}" role="status">{{ message }}</div>{% endfor %}
+  {% block content %}{% endblock %}
+</main>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,115 @@
+{% extends "driver_app/base.html" %}
+{% load tz %}
+{% block title %}Trip · AngelCare Driver{% endblock %}
+{% block content %}
+{% timezone zone %}
+<p class="small"><a href="{% url 'driver_app:home' %}">← Today's trips</a></p>
+<div class="row">
+  <h1>{{ trip.scheduled_pickup_datetime|time:"g:i A" }} pickup</h1>
+  <span class="pill {% if trip.status == 'completed' %}ok{% elif trip.status == 'cancelled' or trip.status == 'no_show' %}bad{% endif %}">{{ trip.get_status_display }}</span>
+</div>
+
+<div class="card">
+  <h2>{{ trip.passenger.preferred_name|default:trip.passenger.legal_name }}{% if trip.passenger.preferred_name %} <span class="muted small">({{ trip.passenger.legal_name }})</span>{% endif %}</h2>
+  <div class="muted">{{ trip.get_service_type_display }}{% if trip.will_call %} · will-call: rider phones when ready{% endif %}{% if trip.appointment_datetime %} · appointment {{ trip.appointment_datetime|time:"g:i A" }}{% endif %}</div>
+  {% if trip.passenger.mobility_notes %}<p style="margin:10px 0 0"><strong>Mobility:</strong> {{ trip.passenger.mobility_notes }}</p>{% endif %}
+  {% if trip.notes %}<p style="margin:10px 0 0"><strong>Dispatch notes:</strong> {{ trip.notes }}</p>{% endif %}
+  {% if trip.passenger.phone %}<a class="btn btn-secondary" href="tel:{{ trip.passenger.phone }}">Call rider · {{ trip.passenger.phone }}</a>{% endif %}
+</div>
+
+<div class="card">
+  <dl class="kv">
+    <dt>Pickup</dt>
+    <dd class="address">{{ trip.pickup_address }}</dd>
+    <dt>Drop-off</dt>
+    <dd class="address">{{ trip.dropoff_address }}</dd>
+  </dl>
+  {% if heading_to_dropoff %}
+  <a class="btn btn-secondary" href="{{ dropoff_maps_url }}" target="_blank" rel="noopener">Directions to drop-off</a>
+  {% else %}
+  <a class="btn btn-secondary" href="{{ pickup_maps_url }}" target="_blank" rel="noopener">Directions to pickup</a>
+  {% endif %}
+</div>
+
+{% if forward_steps or end_steps %}
+<div class="card">
+  {% for step in forward_steps %}
+  <form method="post" action="{% url 'driver_app:step' trip.pk %}" data-step-form>
+    {% csrf_token %}
+    <input type="hidden" name="event_type" value="{{ step.value }}">
+    <input type="hidden" name="latitude"><input type="hidden" name="longitude"><input type="hidden" name="accuracy">
+    <button type="submit" class="btn {% if forloop.first %}btn-primary{% else %}btn-secondary{% endif %}">{{ step.label }}</button>
+  </form>
+  {% endfor %}
+
+  {% if end_steps %}
+  <details>
+    <summary>Rider not riding?</summary>
+    <form method="post" action="{% url 'driver_app:step' trip.pk %}" data-step-form>
+      {% csrf_token %}
+      <input type="hidden" name="latitude"><input type="hidden" name="longitude"><input type="hidden" name="accuracy">
+      <label for="reason">Reason</label>
+      <select id="reason" name="reason" required>
+        <option value="">Choose…</option>
+        {% for value, label in reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+      <label for="note">Note (optional)</label>
+      <textarea id="note" name="note" placeholder="e.g. knocked and called twice, no answer"></textarea>
+      {% for step in end_steps %}
+      <button type="submit" name="event_type" value="{{ step.value }}" class="btn btn-danger">Record: {{ step.label }}</button>
+      {% endfor %}
+    </form>
+  </details>
+  {% endif %}
+  <p class="small muted" style="margin:10px 0 0">Each tap saves the time and your location as proof of service.</p>
+</div>
+{% endif %}
+
+{% if events %}
+<div class="card">
+  <h2>Timeline</h2>
+  <ol class="timeline">
+    {% for event in events %}
+    <li><strong>{{ event.occurred_at|time:"g:i A" }}</strong> — {{ event.get_event_type_display }}{% if event.reason %} ({{ event.get_reason_display }}){% endif %}{% if not event.has_location %} <span class="pill warn">no location</span>{% endif %}</li>
+    {% endfor %}
+  </ol>
+</div>
+{% endif %}
+{% endtimezone %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Attach the phone's GPS position to each step. If location is off or
+// slow, the step is still saved (flagged "no location") -- a driver is
+// never stuck at a door because of GPS.
+document.querySelectorAll("form[data-step-form]").forEach(function (form) {
+  form.addEventListener("submit", function (event) {
+    if (form.dataset.located) return;
+    event.preventDefault();
+    var submitter = event.submitter;
+    form.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+    if (submitter) {
+      submitter.dataset.label = submitter.textContent;
+      submitter.textContent = "Saving…";
+    }
+    function send() {
+      form.dataset.located = "1";
+      if (submitter && submitter.name) {
+        var hidden = document.createElement("input");
+        hidden.type = "hidden"; hidden.name = submitter.name; hidden.value = submitter.value;
+        form.appendChild(hidden);
+      }
+      form.submit();
+    }
+    if (!("geolocation" in navigator)) { send(); return; }
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      form.elements.latitude.value = pos.coords.latitude;
+      form.elements.longitude.value = pos.coords.longitude;
+      form.elements.accuracy.value = pos.coords.accuracy;
+      send();
+    }, send, { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
+  });
+});
+</script>
+{% endblock %}

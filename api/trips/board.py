@@ -51,6 +51,7 @@ def day_trips(day: date):
             scheduled_pickup_datetime__lt=start + timedelta(days=1),
         )
         .select_related("passenger", "driver", "vehicle", "payer")
+        .prefetch_related("events")
         .order_by("scheduled_pickup_datetime")
     )
 
@@ -58,6 +59,8 @@ def day_trips(day: date):
 def build_board(day: date) -> dict:
     unassigned, columns, closed = [], {}, 0
     for trip in day_trips(day):
+        events = list(trip.events.all())
+        trip.last_event = events[-1] if events else None
         if trip.status in (TripStatus.CANCELLED, TripStatus.NO_SHOW):
             closed += 1
         if trip.is_assigned:

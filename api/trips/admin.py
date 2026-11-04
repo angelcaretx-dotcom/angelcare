@@ -1,11 +1,47 @@
 from django.contrib import admin
+from django.utils.html import format_html
+from unfold.admin import TabularInline
 
 from accounts.admin_base import AngelCareModelAdmin
 from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 from transportation.models import TripRequestStatus
 
-from .models import Trip, TurnDown
+from .models import Trip, TripEvent, TurnDown
+
+
+class TripEventInline(TabularInline):
+    """
+    The driver app's timeline for this trip (ADR 0029). Read-only and
+    append-only: it's proof of service, so mistakes are explained in the
+    trip's notes, never edited away.
+    """
+
+    model = TripEvent
+    extra = 0
+    can_delete = False
+    verbose_name = "timeline step"
+    verbose_name_plural = "Timeline (from the driver app)"
+    fields = ("occurred_at", "event_type", "reason", "note", "location", "recorded_by")
+    readonly_fields = fields
+    ordering = ("occurred_at",)
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description="Location")
+    def location(self, event):
+        if not event.has_location:
+            return "— not shared"
+        accuracy = f" (±{event.accuracy_m:.0f} m)" if event.accuracy_m is not None else ""
+        return format_html(
+            '<a href="https://www.google.com/maps?q={},{}" target="_blank" rel="noopener" '
+            'class="text-primary-600 underline">{}, {}</a>{}',
+            event.latitude, event.longitude, event.latitude, event.longitude, accuracy,
+        )
 
 
 @admin.register(Trip)
@@ -35,6 +71,7 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
     autocomplete_fields = ("trip_request", "passenger", "payer", "driver", "vehicle", "outbound_trip")
     readonly_fields = ("id", "created_at", "updated_at")
     ordering = ("-scheduled_pickup_datetime",)
+    inlines = [TripEventInline]
     fieldsets = (
         (
             "Rider and route",

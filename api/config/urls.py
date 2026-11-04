@@ -16,6 +16,8 @@ urlpatterns = [
     # the root stays free for something else later.
     path("", RedirectView.as_view(url="/admin/", permanent=False)),
     path("admin/", admin.site.urls),
+    # The driver app (ADR 0029): phone-sized, for drivers, not staff.
+    path("driver/", include("driver_app.urls")),
     path("healthz/", health_check, name="health-check"),
     path("api/v1/", include("transportation.urls")),
 ]

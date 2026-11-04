@@ -98,6 +98,7 @@ INSTALLED_APPS = [
     "notifications",
     "accounts.apps.AccountsConfig",
     "backups",
+    "driver_app",
 ]
 
 MIDDLEWARE = [
@@ -244,6 +245,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # falls back to Django's own default, /accounts/profile/, which this
 # project doesn't define -- a 404 immediately after a successful login.
 LOGIN_URL = "/admin/login/"
+
+# Staff sign in with a username (ModelBackend); drivers sign in to the
+# driver app with their email or phone (ADR 0029). The driver backend
+# only answers calls made with `identifier=`, never the admin login.
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "driver_app.auth.DriverLoginBackend",
+]
 LOGIN_REDIRECT_URL = "/admin/"
 
 

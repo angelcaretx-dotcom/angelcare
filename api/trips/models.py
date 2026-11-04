@@ -342,3 +342,65 @@ class TurnDown(models.Model):
     def __str__(self) -> str:
         ref = f" {self.broker_trip_number}" if self.broker_trip_number else ""
         return f"{self.get_source_display()}{ref}: {self.get_reason_display()}"
+
+
+class TripEventType(models.TextChoices):
+    EN_ROUTE = "en_route", "En route to pickup"
+    ARRIVED_PICKUP = "arrived_pickup", "Arrived at pickup"
+    PICKED_UP = "picked_up", "Rider picked up"
+    DROPPED_OFF = "dropped_off", "Rider dropped off"
+    NO_SHOW = "no_show", "No-show"
+    CANCELLED_AT_DOOR = "cancelled_at_door", "Cancelled at the door"
+
+
+class TripEventReason(models.TextChoices):
+    """Why a trip ended without a ride (no-show / cancelled at the door)."""
+
+    NOT_PRESENT = "not_present", "Rider not at pickup"
+    REFUSED = "refused", "Rider refused the ride"
+    RIDER_CANCELLED = "rider_cancelled", "Rider cancelled at the door"
+    UNSAFE = "unsafe", "Unsafe / unable to transport"
+    ADDRESS_PROBLEM = "address_problem", "Wrong or unreachable address"
+    OTHER = "other", "Other (see note)"
+
+
+class TripEvent(models.Model):
+    """
+    One step in a trip's timeline (ADR 0029), recorded by the driver app
+    with the server's clock and the phone's GPS position. Append-only:
+    this is the proof of service a broker, HHSC or the VA audits, so a
+    mistaken tap is corrected by staff with a note, never by editing or
+    deleting the event.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    trip = models.ForeignKey(Trip, on_delete=models.PROTECT, related_name="events")
+    event_type = models.CharField(max_length=20, choices=TripEventType.choices)
+    occurred_at = models.DateTimeField(
+        default=timezone.now, help_text="Server time when the driver tapped."
+    )
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    accuracy_m = models.FloatField(
+        null=True, blank=True, help_text="GPS accuracy reported by the phone, in meters."
+    )
+    reason = models.CharField(max_length=20, choices=TripEventReason.choices, blank=True)
+    note = models.TextField(blank=True)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    source = models.CharField(max_length=20, default="driver_app")
+
+    class Meta:
+        ordering = ["occurred_at"]
+
+    def __str__(self) -> str:
+        return f"{self.get_event_type_display()} at {self.occurred_at:%Y-%m-%d %H:%M}"
+
+    @property
+    def has_location(self) -> bool:
+        return self.latitude is not None and self.longitude is not None

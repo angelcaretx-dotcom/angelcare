@@ -28,6 +28,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0026](decisions/0026-scheduled-encrypted-backups.md),
 [ADR 0027](decisions/0027-hipaa-hardening.md),
 [ADR 0028](decisions/0028-dispatch-foundations.md),
+[ADR 0029](decisions/0029-driver-app.md),
 [hipaa.md](hipaa.md),
 [roadmap.md](roadmap.md),
 [business-decisions-log.md](business-decisions-log.md),
@@ -120,6 +121,10 @@ monolithic app. Currently:
   (Phase 20) "Add a staff member" with a printable handover sheet and
   a first-login gate (`accounts/onboarding.py`,
   `accounts/middleware.py`) — see ADR 0025.
+- `driver_app/` — (Phase 24) the drivers' phone web app at `/driver/`:
+  sign-in with email or phone, today's manifest, directions, and
+  timestamped + located trip steps (`trips.TripEvent`, append-only,
+  rules in `trips/events.py`) -- see ADR 0029.
 - `backups/` — (Phase 16) no models. `export_backup` /
   `verify_backup` / `restore_backup` commands: one provider-independent
   zip with every row plus every uploaded file, checksummed, and a

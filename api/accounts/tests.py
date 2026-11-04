@@ -37,6 +37,7 @@ class RoleSeedingTests(TestCase):
                 "view_turndown",
                 "change_turndown",
                 "add_turndown",
+                "view_tripevent",
             },
         )
 
@@ -70,6 +71,7 @@ class RoleSeedingTests(TestCase):
                 "change_turndown",
                 "add_turndown",
                 "delete_turndown",
+                "view_tripevent",
                 "view_document",
                 "change_document",
                 "add_document",

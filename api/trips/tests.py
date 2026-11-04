@@ -170,6 +170,9 @@ class TripAdminIntegrationTests(TestCase):
                 "source": "website",
                 "leg": "one_way",
                 "notes": "",
+                # The read-only timeline inline still posts a management form.
+                "events-TOTAL_FORMS": "0",
+                "events-INITIAL_FORMS": "0",
             },
         )
         self.assertEqual(response.status_code, 302)
@@ -201,6 +204,9 @@ class TripAdminIntegrationTests(TestCase):
                 "source": "website",
                 "leg": "one_way",
                 "notes": "",
+                # The read-only timeline inline still posts a management form.
+                "events-TOTAL_FORMS": "0",
+                "events-INITIAL_FORMS": "0",
             },
         )
         # Re-renders the form with an error, not a redirect -- and no
@@ -228,6 +234,9 @@ class TripAdminIntegrationTests(TestCase):
                 "source": "website",
                 "leg": "one_way",
                 "notes": "",
+                # The read-only timeline inline still posts a management form.
+                "events-TOTAL_FORMS": "0",
+                "events-INITIAL_FORMS": "0",
             },
         )
         self.assertEqual(response.status_code, 302)

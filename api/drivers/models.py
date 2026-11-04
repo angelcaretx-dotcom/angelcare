@@ -1,5 +1,6 @@
 import uuid
 
+from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 
@@ -60,6 +61,17 @@ class Driver(models.Model):
         max_length=20, choices=DriverStatus.choices, default=DriverStatus.ACTIVE
     )
     notes = models.TextField(blank=True)
+
+    # The driver app login (ADR 0029): a plain, non-staff account. Drivers
+    # sign in with this driver's email or phone, never a username.
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        editable=False,
+        related_name="driver_profile",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

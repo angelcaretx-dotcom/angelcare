@@ -1,0 +1,25 @@
+{% extends "driver_app/base.html" %}
+{% load tz %}
+{% block content %}
+{% timezone zone %}
+<h1>Today, {{ today|date:"l, M j" }}</h1>
+<p class="muted">Hi {{ driver.legal_name }} — {{ open_count }} trip{{ open_count|pluralize }} still to do.</p>
+{% for trip in trips %}
+<a class="card" href="{% url 'driver_app:trip' trip.pk %}" data-trip="{{ trip.pk }}">
+  <div class="row">
+    <span class="time">{{ trip.scheduled_pickup_datetime|time:"g:i A" }}</span>
+    {% if trip.status == "completed" %}<span class="pill ok">Done</span>
+    {% elif trip.status == "cancelled" or trip.status == "no_show" %}<span class="pill bad">{{ trip.get_status_display }}</span>
+    {% elif trip.last_event %}<span class="pill warn">{{ trip.last_event.get_event_type_display }}</span>
+    {% else %}<span class="pill">Scheduled</span>{% endif %}
+  </div>
+  <div><strong>{{ trip.passenger.preferred_name|default:trip.passenger.legal_name }}</strong> · {{ trip.get_service_type_display }}{% if trip.will_call %} · <span class="pill warn">will-call</span>{% endif %}</div>
+  <div class="small muted">{{ trip.pickup_address|truncatechars:60 }} → {{ trip.dropoff_address|truncatechars:60 }}</div>
+</a>
+{% empty %}
+<div class="card"><p class="muted" style="margin:0">No trips assigned to you today. Dispatch will add them here.</p></div>
+{% endfor %}
+<a class="btn btn-secondary" href="{% url 'driver_app:home' %}">Refresh</a>
+<p class="small muted" style="text-align:center"><a href="{% url 'driver_app:password' %}">Change password</a></p>
+{% endtimezone %}
+{% endblock %}

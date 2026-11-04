@@ -92,6 +92,7 @@ stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests ch
                         </td>
                         <td class="align-top border-b border-base-200 py-2 text-right whitespace-nowrap dark:border-base-800 {% if trip.status == 'cancelled' or trip.status == 'no_show' %}text-red-600{% elif trip.status == 'completed' %}text-green-700{% else %}text-subtle{% endif %}">
                             {{ trip.get_status_display }}
+                            {% if trip.last_event %}<div class="text-subtle text-xs">{{ trip.last_event.get_event_type_display }} {{ trip.last_event.occurred_at|time:"g:i A" }}</div>{% endif %}
                         </td>
                     </tr>
                 {% endfor %}
