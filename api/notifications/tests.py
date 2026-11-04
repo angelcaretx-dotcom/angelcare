@@ -85,15 +85,53 @@ class NotificationServiceTests(TestCase):
         self.assertTrue(all(log.status == NotificationStatus.FAILED for log in logs))
         self.assertTrue(all("simulated provider outage" in log.error_message for log in logs))
 
-    def test_staff_email_contains_trip_details(self):
+    def test_staff_email_links_to_the_request(self):
         provider = RecordingEmailProvider()
-        trip_request = make_trip_request(full_name="Jamie Chen")
+        trip_request = make_trip_request()
 
         NotificationService(email_provider=provider).notify_new_trip_request(trip_request)
 
         staff_email = next(m for m in provider.sent if m["to"] == "angelcaretransit@hotmail.com")
-        self.assertIn("Jamie Chen", staff_email["body_text"])
-        self.assertIn(str(trip_request.id), staff_email["body_text"])
+        reference = f"#{str(trip_request.id)[:8].upper()}"
+        self.assertIn(reference, staff_email["subject"])
+        self.assertIn(reference, staff_email["body_text"])
+        self.assertIn(
+            f"/admin/transportation/triprequest/{trip_request.id}/change/",
+            staff_email["body_text"],
+        )
+
+    def test_staff_email_carries_no_rider_details(self):
+        """ADR 0027: no PHI in the staff alert -- subject, text or HTML."""
+        provider = RecordingEmailProvider()
+        trip_request = make_trip_request(
+            full_name="Jamie Chen",
+            phone="817-555-0199",
+            email="jamie.chen@example.com",
+            pickup_address="77 Oak Lane, Arlington, TX",
+            dropoff_address="9 Dialysis Center Dr, Fort Worth, TX",
+            mobility_notes="Uses a power wheelchair",
+            additional_notes="Kidney dialysis three times a week",
+        )
+
+        NotificationService(email_provider=provider).notify_new_trip_request(trip_request)
+
+        staff_email = next(m for m in provider.sent if m["to"] == "angelcaretransit@hotmail.com")
+        for part in ("subject", "body_text", "body_html"):
+            for detail in (
+                "Jamie", "Chen", "555-0199", "jamie.chen@", "Oak Lane",
+                "Dialysis Center", "power wheelchair", "Kidney",
+                "Wheelchair",  # the service type hints at a health need
+            ):
+                self.assertNotIn(detail, staff_email[part], f"{detail!r} leaked into {part}")
+
+    def test_customer_confirmation_still_shows_their_own_request(self):
+        provider = RecordingEmailProvider()
+        trip_request = make_trip_request()
+
+        NotificationService(email_provider=provider).notify_new_trip_request(trip_request)
+
+        customer_email = next(m for m in provider.sent if m["to"] == "alex@example.com")
+        self.assertIn("1 Main St", customer_email["body_text"])
 
     def test_customer_email_contains_disclaimer(self):
         provider = RecordingEmailProvider()
@@ -125,14 +163,13 @@ class NotificationHtmlEmailTests(TestCase):
             # Shared branded header present in every email type.
             self.assertIn("AngelCare Transit", message["body_html"])
 
-    def test_staff_html_contains_trip_details_and_admin_link(self):
+    def test_staff_html_contains_admin_link(self):
         provider = RecordingEmailProvider()
-        trip_request = make_trip_request(full_name="Jamie Chen")
+        trip_request = make_trip_request()
 
         NotificationService(email_provider=provider).notify_new_trip_request(trip_request)
 
         staff_email = next(m for m in provider.sent if m["to"] == "angelcaretransit@hotmail.com")
-        self.assertIn("Jamie Chen", staff_email["body_html"])
         self.assertIn(
             f"/admin/transportation/triprequest/{trip_request.id}/change/",
             staff_email["body_html"],

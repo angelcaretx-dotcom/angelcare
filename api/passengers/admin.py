@@ -1,12 +1,13 @@
 from django.contrib import admin
 
+from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 
 from .models import Passenger
 
 
 @admin.register(Passenger)
-class PassengerAdmin(admin.ModelAdmin):
+class PassengerAdmin(AccessLoggedAdminMixin, admin.ModelAdmin):
     list_display = (
         "legal_name",
         "preferred_name",

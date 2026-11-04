@@ -1,12 +1,13 @@
 from django.contrib import admin
 
+from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 
 from .models import Claim
 
 
 @admin.register(Claim)
-class ClaimAdmin(admin.ModelAdmin):
+class ClaimAdmin(AccessLoggedAdminMixin, admin.ModelAdmin):
     list_display = (
         "id",
         "invoice",

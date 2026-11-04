@@ -16,7 +16,7 @@ before the push; vendors sit behind an interface.
 
 ## Stage A — Safe to carry real Medicaid data
 
-### Phase 22: HIPAA hardening
+### Phase 22: HIPAA hardening — ✅ done 2026-11-03 (ADR 0027)
 - Staff alert email carries no rider details: "New request — log in to view" (customer's own confirmation stays as is).
 - `docs/hipaa.md`: every service that touches PHI (Supabase, Vercel, Resend, GitHub backups, future maps vendor) with its BAA status, plan required, and who signed.
 - Log who **viewed** a passenger/trip record (today only changes are audited).

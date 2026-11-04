@@ -1,12 +1,13 @@
 from django.contrib import admin
 
+from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 
 from .models import TripRequest
 
 
 @admin.register(TripRequest)
-class TripRequestAdmin(admin.ModelAdmin):
+class TripRequestAdmin(AccessLoggedAdminMixin, admin.ModelAdmin):
     list_display = (
         "full_name",
         "phone",

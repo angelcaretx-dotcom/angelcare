@@ -323,4 +323,15 @@ def _expiring_credentials(user, today: date) -> Panel | None:
 def dashboard_callback(request, context):
     """Unfold DASHBOARD_CALLBACK: adds the dashboard to the index context."""
     context["dashboard"] = build_dashboard(request.user)
+    # The dashboard lists riders' names, so opening it is an access to
+    # PHI like any record page (ADR 0027).
+    from audit.services import record_change
+
+    record_change(
+        actor=request.user,
+        action="viewed",
+        resource_type="Dashboard",
+        resource_id="home",
+        source="admin",
+    )
     return context

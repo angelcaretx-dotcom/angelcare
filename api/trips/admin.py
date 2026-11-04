@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 from transportation.models import TripRequestStatus
 
@@ -7,7 +8,7 @@ from .models import Trip
 
 
 @admin.register(Trip)
-class TripAdmin(admin.ModelAdmin):
+class TripAdmin(AccessLoggedAdminMixin, admin.ModelAdmin):
     list_display = (
         "trip_request",
         "driver",

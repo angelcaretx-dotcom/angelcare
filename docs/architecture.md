@@ -26,6 +26,9 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0024](decisions/0024-mfa-recovery-and-self-service.md),
 [ADR 0025](decisions/0025-staff-onboarding.md),
 [ADR 0026](decisions/0026-scheduled-encrypted-backups.md),
+[ADR 0027](decisions/0027-hipaa-hardening.md),
+[hipaa.md](hipaa.md),
+[roadmap.md](roadmap.md),
 [business-decisions-log.md](business-decisions-log.md),
 [known-limitations.md](known-limitations.md).
 
@@ -97,6 +100,8 @@ monolithic app. Currently:
   ADR 0015.
 - `audit/` — (Phase 3) general-purpose `AuditLog` + `record_change()`,
   usable by any domain app, not tied to Django admin specifically.
+  Also (Phase 22) `AccessLoggedAdminMixin`: every admin holding PHI
+  logs who viewed which record or list -- see ADR 0027.
 - `accounts/` — (Phase 3) seeds staff roles as Django Groups
   (`Dispatcher`, `Administrator`) with explicit permissions — see
   ADR 0005. Also (Phase 9) enforces TOTP-based MFA for every staff

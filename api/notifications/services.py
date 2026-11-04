@@ -36,7 +36,10 @@ class NotificationService:
         self._send_to_customer(trip_request)
 
     def _send_to_staff(self, trip_request) -> None:
-        subject = f"New trip request: {trip_request.full_name} ({trip_request.get_service_type_display()})"
+        # No rider details in the staff alert (ADR 0027): the email
+        # passes through mail providers and inboxes we have no BAA
+        # with. Staff open the request in the admin, which logs the view.
+        subject = f"New trip request {self._reference(trip_request)} — log in to view"
         rows = self._staff_rows(trip_request)
         context = {
             "trip_request": trip_request,
@@ -71,21 +74,18 @@ class NotificationService:
         )
 
     @staticmethod
-    def _staff_rows(trip_request) -> list[tuple[str, str]]:
-        rows = [
-            ("Requester", trip_request.full_name),
-            ("Phone", trip_request.phone),
-            ("Email", trip_request.email),
-            ("Service type", trip_request.get_service_type_display()),
+    def _reference(trip_request) -> str:
+        return f"#{str(trip_request.id)[:8].upper()}"
+
+    @classmethod
+    def _staff_rows(cls, trip_request) -> list[tuple[str, str]]:
+        # Reference and timing only: enough to judge urgency, nothing
+        # that identifies the rider or their health needs.
+        return [
+            ("Reference", cls._reference(trip_request)),
             ("Requested pickup", trip_request.requested_datetime),
-            ("Pickup address", trip_request.pickup_address),
-            ("Drop-off address", trip_request.dropoff_address),
+            ("Submitted", trip_request.created_at),
         ]
-        if trip_request.mobility_notes:
-            rows.append(("Mobility notes", trip_request.mobility_notes))
-        if trip_request.additional_notes:
-            rows.append(("Additional notes", trip_request.additional_notes))
-        return rows
 
     @staticmethod
     def _customer_rows(trip_request) -> list[tuple[str, str]]:

@@ -130,7 +130,7 @@ class TripRequestStatusChangeAuditIntegrationTests(TestCase):
         response = self.client.post(change_url, post_data)
         self.assertEqual(response.status_code, 302)
 
-        logs = AuditLog.objects.filter(resource_id=str(self.trip_request.id))
+        logs = AuditLog.objects.filter(resource_id=str(self.trip_request.id)).exclude(action="viewed")
         self.assertEqual(logs.count(), 1)
         log = logs.first()
         self.assertEqual(log.actor, self.admin_user)
