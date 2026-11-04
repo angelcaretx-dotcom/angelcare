@@ -45,11 +45,14 @@ class CreateStaffMemberTests(TestCase):
         self.assertEqual((added.actor, added.after["role"]), (self.root, "Dispatcher"))
         self.assertNotIn(password, str(added.after))
 
-    def test_only_superusers_can_add_staff(self):
-        admin = staff("admin1", group="Administrator")
+    def test_dispatchers_cannot_add_staff_but_administrators_can(self):
+        """ADR 0030: administrators manage staff, not only owners."""
+        dispatcher = staff("disp1", group="Dispatcher")
         with self.assertRaises(onboarding.OnboardingError):
-            self.create(actor=admin)
+            self.create(actor=dispatcher)
         self.assertFalse(User.objects.filter(username="pat.lee@example.com").exists())
+        self.create(actor=staff("admin1", group="Administrator"))
+        self.assertTrue(User.objects.filter(username="pat.lee@example.com").exists())
 
     def test_refuses_duplicate_email_regardless_of_case(self):
         self.create()
@@ -67,9 +70,9 @@ class CreateStaffMemberTests(TestCase):
 
 
 class AddStaffPageTests(TestCase):
-    def test_only_superusers_reach_the_page(self):
-        staff("admin1", group="Administrator")
-        login_with_otp(self.client, username="admin1", password="testpass123")
+    def test_dispatchers_cannot_reach_the_page(self):
+        staff("disp1", group="Dispatcher")
+        login_with_otp(self.client, username="disp1", password="testpass123")
         self.assertEqual(self.client.get("/admin/security/staff/add/").status_code, 403)
 
     def test_duplicate_email_shows_an_error_not_a_sheet(self):

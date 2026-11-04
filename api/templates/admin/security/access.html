@@ -1,0 +1,43 @@
+{% extends 'admin/security/_layout.html' %}
+{% load unfold %}
+
+{% block page %}
+<form method="post" class="flex flex-col gap-6" data-security="access">
+    {% csrf_token %}
+    {% if form.non_field_errors %}<p class="text-red-600 text-sm">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <h2 class="font-semibold mb-2 text-important">Account</h2>
+        <p class="mb-4 text-sm text-subtle">{{ target.get_username }}</p>
+        {% include "unfold/helpers/field.html" with field=form.active %}
+        {% include "unfold/helpers/field.html" with field=form.role %}
+        <p class="mt-2 text-sm text-subtle">Dispatcher: trip requests, trips, passengers, day board. Administrator: everything except owner-only tasks, including billing, claims and staff access.</p>
+    </div>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <h2 class="font-semibold mb-2 text-important">Access by area</h2>
+        <p class="mb-4 text-sm text-subtle">The role already gives what's shown on the right. Choose a higher level to grant extra access to this person only. A lower level has no effect &mdash; change the role instead.</p>
+        <table class="text-sm w-full">
+            <tbody>
+            {% for field, from_role in form.area_rows %}
+                <tr>
+                    <td class="border-b border-base-200 py-2 dark:border-base-800"><label for="{{ field.id_for_label }}" class="font-medium">{{ field.label }}</label></td>
+                    <td class="border-b border-base-200 px-3 py-2 w-48 dark:border-base-800">{{ field }}</td>
+                    <td class="border-b border-base-200 py-2 text-right text-subtle text-xs dark:border-base-800">Role gives: {{ from_role }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <p class="mb-4 text-sm">Confirm with your own password. The change is recorded in the audit log.</p>
+        {% include "unfold/helpers/field.html" with field=form.password %}
+        <div class="flex gap-2 mt-6">
+            {% component "unfold/components/button.html" with submit=1 variant="primary" %}Save access{% endcomponent %}
+            {% url 'admin:security' as cancel_url %}
+            {% component "unfold/components/button.html" with href=cancel_url variant="default" %}Cancel{% endcomponent %}
+        </div>
+    </div>
+</form>
+{% endblock %}

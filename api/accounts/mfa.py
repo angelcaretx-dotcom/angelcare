@@ -49,17 +49,22 @@ def authenticators(user):
 
 
 @transaction.atomic
-def generate_backup_codes(user, *, actor) -> list[str]:
+def generate_backup_codes(user, *, actor, new_account=False) -> list[str]:
     """
     Replace `user`'s backup codes with BACKUP_CODE_COUNT fresh ones and
     return them -- the only time they're ever available in plain text.
-    `actor` is who asked: the user themselves, or a superuser issuing
-    recovery codes for them.
+    `actor` is who asked: the user themselves, a superuser issuing
+    recovery codes for them, or (new_account) the administrator who has
+    just created their account (ADR 0030).
     """
-    # Only superusers manage accounts (the Administrator role has no
-    # user permissions), so only they may issue codes for someone else.
+    # Resetting an existing colleague's second factor stays owner-only;
+    # administrators may only seed the first codes of an account they
+    # are creating in the same transaction.
     if actor.pk != user.pk and not actor.is_superuser:
-        raise MfaError("Only a superuser can issue recovery codes for someone else.")
+        from .access import can_manage_access
+
+        if not (new_account and can_manage_access(actor)):
+            raise MfaError("Only a superuser can issue recovery codes for someone else.")
 
     device, _ = StaticDevice.objects.get_or_create(
         user=user, name=BACKUP_DEVICE_NAME, defaults={"confirmed": True}

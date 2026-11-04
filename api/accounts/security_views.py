@@ -19,9 +19,9 @@ from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.utils.safestring import mark_safe
 from django.views.decorators.cache import never_cache
-from unfold.widgets import BASE_INPUT_CLASSES
+from unfold.widgets import BASE_INPUT_CLASSES, UnfoldBooleanSwitchWidget
 
-from . import mfa, onboarding
+from . import access, mfa, onboarding
 
 INPUT_CLASS = " ".join(BASE_INPUT_CLASSES)
 
@@ -70,8 +70,9 @@ class AddStaffForm(forms.Form):
     last_name = forms.CharField(max_length=150, widget=forms.TextInput(attrs={"class": INPUT_CLASS}))
     role = forms.ChoiceField(
         choices=[(r, r) for r in onboarding.ROLES],
-        help_text="Dispatcher: trip requests, trips, passengers. Administrator: "
-        "everything except managing staff accounts, including billing and claims.",
+        help_text="Dispatcher: trip requests, trips, passengers, day board. Administrator: "
+        "everything except owner-only tasks, including billing, claims and staff access. "
+        "Extra access can be granted per person afterwards.",
         widget=forms.Select(attrs={"class": INPUT_CLASS}),
     )
 
@@ -89,11 +90,15 @@ def _render(site, request, template, title, **context):
 def overview(site, request):
     user = request.user
     staff = []
-    if user.is_superuser:
-        for other in get_user_model().objects.filter(is_staff=True, is_active=True).exclude(pk=user.pk).order_by("username"):
+    can_manage = access.can_manage_access(user)
+    if can_manage:
+        # Switched-off accounts stay listed, so access can be restored.
+        others = get_user_model().objects.filter(is_staff=True).exclude(pk=user.pk)
+        for other in others.order_by("-is_active", "username"):
             staff.append(
                 {
                     "user": other,
+                    "role": "Owner" if other.is_superuser else (access.role_of(other) or "No role"),
                     "authenticators": mfa.authenticators(other).count(),
                     "backup_codes": mfa.backup_codes_remaining(other),
                 }
@@ -107,6 +112,7 @@ def overview(site, request):
         backup_codes=mfa.backup_codes_remaining(user),
         backup_code_count=mfa.BACKUP_CODE_COUNT,
         staff=staff,
+        can_manage=can_manage,
     )
 
 
@@ -215,8 +221,75 @@ def issue_recovery_codes(site, request, user_id):
     )
 
 
+class StaffAccessForm(PasswordConfirmForm):
+    """ADR 0030: role + per-area extras + on/off, confirmed with the admin's password."""
+
+    def __init__(self, actor, target, *args, **kwargs):
+        super().__init__(actor, *args, **kwargs)
+        current = access.describe(target)
+        self.fields["active"] = forms.BooleanField(
+            label="Can sign in",
+            required=False,
+            initial=current["active"],
+            help_text="Switch off to block this person immediately (e.g. they've left).",
+            widget=UnfoldBooleanSwitchWidget,
+        )
+        self.fields["role"] = forms.ChoiceField(
+            label="Role",
+            choices=[("", "No role (only the access below)")] + [(r, r) for r in onboarding.ROLES],
+            required=False,
+            initial=current["role"] or "",
+            widget=forms.Select(attrs={"class": INPUT_CLASS}),
+        )
+        self.area_rows = []
+        for area in access.AREAS:
+            name = f"area_{area.key}"
+            self.fields[name] = forms.TypedChoiceField(
+                label=area.label,
+                choices=[(v, l) for v, l in access.LEVELS if v <= area.max_level],
+                coerce=int,
+                initial=current["levels"][area.key],
+                widget=forms.Select(attrs={"class": INPUT_CLASS}),
+            )
+            self.area_rows.append((self[name], dict(access.LEVELS)[current["role_levels"][area.key]]))
+        # Password last, after the choices it confirms.
+        self.fields["password"] = self.fields.pop("password")
+
+    def access_kwargs(self):
+        data = self.cleaned_data
+        return {
+            "role": data["role"] or None,
+            "active": data["active"],
+            "levels": {a.key: data[f"area_{a.key}"] for a in access.AREAS},
+        }
+
+
+def staff_access(site, request, user_id):
+    target = get_object_or_404(get_user_model(), pk=user_id, is_staff=True)
+    try:
+        access.check_can_manage(request.user, target)
+    except access.AccessError as exc:
+        if not access.can_manage_access(request.user):
+            raise PermissionDenied from exc
+        messages.error(request, str(exc))
+        return redirect("admin:security")
+    form = StaffAccessForm(request.user, target, request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        access.set_access(target, actor=request.user, **form.access_kwargs())
+        messages.success(request, f"Access for {target.get_full_name() or target.get_username()} saved.")
+        return redirect("admin:security")
+    return _render(
+        site,
+        request,
+        "access.html",
+        f"Access for {target.get_full_name() or target.get_username()}",
+        form=form,
+        target=target,
+    )
+
+
 def add_staff_member(site, request):
-    if not request.user.is_superuser:
+    if not access.can_manage_access(request.user):
         raise PermissionDenied
     form = AddStaffForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -256,6 +329,7 @@ def urls(site):
             name="security_remove_authenticator",
         ),
         path("security/staff/add/", view(add_staff_member), name="security_add_staff"),
+        path("security/staff/<int:user_id>/access/", view(staff_access), name="security_staff_access"),
         path(
             "security/recovery/<int:user_id>/",
             view(issue_recovery_codes),

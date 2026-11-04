@@ -44,8 +44,10 @@ def generate_temporary_password() -> str:
 @transaction.atomic
 def create_staff_member(*, email, first_name, last_name, role, actor):
     """Returns (user, temporary_password, recovery_codes)."""
-    if not actor.is_superuser:
-        raise OnboardingError("Only a superuser can add staff members.")
+    from .access import can_manage_access  # access imports ROLES from here
+
+    if not can_manage_access(actor):
+        raise OnboardingError("Only an administrator can add staff members.")
     if role not in ROLES:
         raise OnboardingError(f"Unknown role {role!r}.")
     email = email.strip().lower()
@@ -77,7 +79,7 @@ def create_staff_member(*, email, first_name, last_name, role, actor):
         after={"username": email, "role": role},
         source="admin",
     )
-    codes = mfa.generate_backup_codes(user, actor=actor)
+    codes = mfa.generate_backup_codes(user, actor=actor, new_account=True)
     return user, password, codes
 
 

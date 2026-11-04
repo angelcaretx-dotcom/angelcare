@@ -170,7 +170,7 @@ class SecurityPageTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn("/admin/login/", response.headers["Location"])
 
-    def test_overview_shows_the_colleague_section_only_to_superusers(self):
+    def test_overview_shows_the_colleague_section_only_to_administrators(self):
         staff("sam")
         login_with_otp(self.client, username="sam", password="testpass123")
         html = self.client.get("/admin/security/").content.decode()

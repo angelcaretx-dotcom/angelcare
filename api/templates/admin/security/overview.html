@@ -40,27 +40,32 @@
     {% component "unfold/components/button.html" with href=backup_url variant="primary" %}{% if backup_codes %}Replace backup codes{% else %}Create backup codes{% endif %}{% endcomponent %}
 </div>
 
-{% if request.user.is_superuser %}
+{% if can_manage %}
 <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-security="staff">
-    <h2 class="font-semibold mb-2 text-important">Staff accounts (superusers only)</h2>
-    <p class="mb-4 text-sm text-subtle">Add a new staff member, or issue recovery codes for someone who has lost their authenticator and has no backup codes.</p>
+    <h2 class="font-semibold mb-2 text-important">Staff accounts (administrators)</h2>
+    <p class="mb-4 text-sm text-subtle">Add a staff member, change what someone can see and do, or switch their access off when they leave.{% if request.user.is_superuser %} Owners can also issue recovery codes for someone who has lost their authenticator.{% endif %}</p>
     {% if staff %}
     <table class="text-sm w-full">
         <thead>
             <tr>
                 <th class="border-b border-base-200 font-semibold py-2 text-left dark:border-base-800">Staff member</th>
+                <th class="border-b border-base-200 font-semibold py-2 text-left dark:border-base-800">Role</th>
                 <th class="border-b border-base-200 font-semibold py-2 text-left dark:border-base-800">Authenticators</th>
-                <th class="border-b border-base-200 font-semibold py-2 text-left dark:border-base-800">Backup codes</th>
                 <th class="border-b border-base-200 py-2 dark:border-base-800"></th>
             </tr>
         </thead>
         <tbody>
         {% for row in staff %}
-            <tr>
-                <td class="border-b border-base-200 py-2 dark:border-base-800">{{ row.user.get_username }}</td>
+            <tr data-staff="{{ row.user.pk }}">
+                <td class="border-b border-base-200 py-2 dark:border-base-800">{{ row.user.get_full_name|default:row.user.get_username }}{% if row.user.get_full_name %}<div class="text-subtle text-xs">{{ row.user.get_username }}</div>{% endif %}</td>
+                <td class="border-b border-base-200 py-2 dark:border-base-800">{% if not row.user.is_active %}<span class="font-semibold text-red-600">Access off</span>{% else %}{{ row.role }}{% endif %}</td>
                 <td class="border-b border-base-200 py-2 dark:border-base-800 {% if not row.authenticators %}text-red-600{% endif %}">{{ row.authenticators }}</td>
-                <td class="border-b border-base-200 py-2 dark:border-base-800">{{ row.backup_codes }}</td>
-                <td class="border-b border-base-200 py-2 text-right dark:border-base-800"><a href="{% url 'admin:security_issue_recovery_codes' row.user.pk %}" class="text-primary-600 underline">Issue recovery codes</a></td>
+                <td class="border-b border-base-200 py-2 text-right dark:border-base-800">
+                    <div class="flex flex-wrap gap-3 items-center">
+                    {% if not row.user.is_superuser %}<a href="{% url 'admin:security_staff_access' row.user.pk %}" class="text-primary-600 underline">Manage access</a>{% endif %}
+                    {% if request.user.is_superuser and row.user.is_active %}<a href="{% url 'admin:security_issue_recovery_codes' row.user.pk %}" class="text-primary-600 underline">Issue recovery codes</a>{% endif %}
+                    </div>
+                </td>
             </tr>
         {% endfor %}
         </tbody>
