@@ -61,7 +61,10 @@ monolithic app. Currently:
 - `trips/` — (Phase 6) `Trip`: links a reviewed `TripRequest` to an
   assigned `Driver`+`Vehicle` with a real (if intentionally coarse)
   status lifecycle, and enforces the credential-expiration blocking
-  ADR 0007 deferred. See ADR 0008.
+  ADR 0007 deferred. See ADR 0008. Since Phase 23 the Trip stands on
+  its own (passenger, route, source, payer, broker/prior-auth numbers,
+  legs; driver/vehicle optional until assigned), plus the day board
+  (`trips/board.py`) and the `TurnDown` log -- see ADR 0028.
 - `documents/` — (Phase 7) `Document`: generic file attachment (via
   Django's ContentType framework) to any model, with a verify/reject
   review workflow. Currently used by Driver/Vehicle to back up their

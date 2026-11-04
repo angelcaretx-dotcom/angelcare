@@ -24,7 +24,7 @@ before the push; vendors sit behind an interface.
 
 ## Stage B — Proof of service (the driver side)
 
-### Phase 23: Dispatch foundations
+### Phase 23: Dispatch foundations — ✅ built 2026-11-03 (ADR 0028)
 - `Trip.source` (website, phone, facility, MTM, SafeRide, HHSC, subcontract — AMTS / Gray Stone / American Medical Solutions, private pay) and `Trip.payer`.
 - Broker trip number and prior-authorization number on the trip.
 - Trip legs: appointment time vs. pickup time; will-call return trips.
