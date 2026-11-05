@@ -340,6 +340,11 @@ UNFOLD = {
                         "link": reverse_lazy("admin:trips_trip_changelist"),
                     },
                     {
+                        "title": "Standing orders",
+                        "icon": "event_repeat",
+                        "link": reverse_lazy("admin:trips_standingorder_changelist"),
+                    },
+                    {
                         "title": "Turn-downs",
                         "icon": "do_not_disturb_on",
                         "link": reverse_lazy("admin:trips_turndown_changelist"),
@@ -591,3 +596,7 @@ if not DEBUG:
 # Cloudflare Turnstile's secret key. Empty = the check is skipped (local
 # development, tests); the emailed code is still required either way.
 TURNSTILE_SECRET_KEY = os.environ.get("DJANGO_TURNSTILE_SECRET_KEY", "")
+
+# Vercel Cron sends "Authorization: Bearer $CRON_SECRET" (ADR 0035);
+# the daily job refuses to run without it.
+CRON_SECRET = os.environ.get("CRON_SECRET", "")

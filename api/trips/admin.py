@@ -1,22 +1,35 @@
 import base64
 
+from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
-from django.urls import path
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.formats import localize_input
-from django.utils.html import format_html
+from django.utils.html import format_html, format_html_join
 from django.views.decorators.cache import never_cache
 from unfold.admin import TabularInline
+from unfold.widgets import UnfoldAdminCheckboxSelectMultipleWidget
 
 from accounts.admin_base import AngelCareModelAdmin
 from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 from transportation.models import TripRequest, TripRequestStatus
 
-from .models import Trip, TripEvent, TripEventType, TripLeg, TurnDown
+from . import standing
+from .models import (
+    WEEKDAYS,
+    StandingOrder,
+    StandingOrderSkip,
+    Trip,
+    TripEvent,
+    TripEventType,
+    TripLeg,
+    TripStatus,
+    TurnDown,
+)
 from .proof import build_proof_pdf
 from .returns import create_return_leg, needs_return_leg
 
@@ -92,7 +105,7 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
         "driver__legal_name",
     )
     autocomplete_fields = ("trip_request", "passenger", "payer", "driver", "vehicle", "outbound_trip")
-    readonly_fields = ("id", "created_at", "updated_at")
+    readonly_fields = ("id", "standing_order_link", "created_at", "updated_at")
     ordering = ("-scheduled_pickup_datetime",)
     inlines = [TripEventInline]
     fieldsets = (
@@ -125,8 +138,18 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
             },
         ),
         ("Assignment", {"fields": ("driver", "vehicle", "status", "notes")}),
-        ("Record", {"fields": ("id", "created_at", "updated_at"), "classes": ("collapse",)}),
+        ("Record", {"fields": ("id", "standing_order_link", "created_at", "updated_at"), "classes": ("collapse",)}),
     )
+
+    @admin.display(description="Standing order")
+    def standing_order_link(self, trip):
+        if not trip.standing_order_id:
+            return "—"
+        return format_html(
+            '<a class="text-primary-600 underline" href="{}">{}</a>',
+            reverse("admin:trips_standingorder_change", args=[trip.standing_order_id]),
+            trip.standing_order.reference,
+        )
 
     def get_urls(self):
         from .board import board_urls
@@ -283,3 +306,160 @@ class TurnDownAdmin(AngelCareModelAdmin):
         if not change:
             obj.recorded_by = request.user
         super().save_model(request, obj, form, change)
+
+
+class StandingOrderForm(forms.ModelForm):
+    weekdays = forms.TypedMultipleChoiceField(
+        choices=WEEKDAYS,
+        coerce=int,
+        widget=UnfoldAdminCheckboxSelectMultipleWidget,
+        help_text="Days of the week the ride repeats on.",
+    )
+
+    class Meta:
+        model = StandingOrder
+        fields = "__all__"
+
+
+class StandingOrderSkipInline(TabularInline):
+    model = StandingOrderSkip
+    extra = 0
+    verbose_name = "skipped date"
+    verbose_name_plural = "Skipped dates (holiday, hospital stay…) — the series carries on"
+    fields = ("date", "reason")
+
+
+@admin.register(StandingOrder)
+class StandingOrderAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
+    """
+    Repeating rides (ADR 0035). Saving creates the next 14 days of trips
+    (and re-makes upcoming ones nobody has changed yet); a daily job
+    keeps them topped up.
+    """
+
+    form = StandingOrderForm
+    inlines = [StandingOrderSkipInline]
+    list_display = ("reference", "passenger", "days", "pickup_time", "return_ride", "authorization", "active")
+    list_filter = ("active", "source", "payer", "return_ride")
+    search_fields = ("passenger__legal_name", "passenger__phone", "prior_authorization_number")
+    autocomplete_fields = ("passenger", "payer", "driver", "vehicle")
+    readonly_fields = ("authorization", "upcoming_trips", "created_at", "updated_at")
+    actions = ["create_upcoming_trips"]
+    fieldsets = (
+        ("Rider and route", {"fields": ("passenger", "service_type", "pickup_address", "dropoff_address")}),
+        (
+            "When",
+            {
+                "fields": (
+                    "weekdays",
+                    "pickup_time",
+                    "appointment_time",
+                    "return_ride",
+                    "return_time",
+                    "start_date",
+                    "end_date",
+                    "active",
+                ),
+                "description": "Times are Texas (Central) time. Trips are created 14 days ahead.",
+            },
+        ),
+        (
+            "Source, payer and authorization",
+            {
+                "fields": (
+                    "source",
+                    "subcontract_partner",
+                    "payer",
+                    "prior_authorization_number",
+                    "prior_authorization_ends",
+                    "authorization",
+                )
+            },
+        ),
+        ("Regular driver and vehicle", {"fields": ("driver", "vehicle", "notes")}),
+        ("Trips", {"fields": ("upcoming_trips",)}),
+        ("Record", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+    @admin.display(description="Order")
+    def reference(self, order):
+        return order.reference
+
+    @admin.display(description="Days")
+    def days(self, order):
+        return order.days_display()
+
+    @admin.display(description="Authorization")
+    def authorization(self, order):
+        ends = order.prior_authorization_ends
+        if not ends:
+            return "—"
+        today = standing.texas_today()
+        if ends < today:
+            return format_html('<strong style="color:#b42318">Ended {} — no new trips</strong>', f"{ends:%b %d, %Y}")
+        if standing.auth_ending_soon(order, today):
+            return format_html('<strong style="color:#9a5b00">Ends {} — renew soon</strong>', f"{ends:%b %d, %Y}")
+        return f"Ends {ends:%b %d, %Y}"
+
+    @admin.display(description="Upcoming trips")
+    def upcoming_trips(self, order):
+        if not order.pk:
+            return "Created when you save."
+        trips = (
+            order.trips.filter(standing_date__gte=standing.texas_today())
+            .select_related("driver")
+            .order_by("scheduled_pickup_datetime")[:30]
+        )
+        if not trips:
+            return "None in the next 14 days."
+        rows = format_html_join(
+            "",
+            '<li><a class="text-primary-600 underline" href="{}">{}</a> — {}{}</li>',
+            (
+                (
+                    reverse("admin:trips_trip_change", args=[t.pk]),
+                    f"{timezone.localtime(t.scheduled_pickup_datetime):%a %b %d, %I:%M %p}".replace(" 0", " "),
+                    t.get_leg_display(),
+                    _upcoming_note(t),
+                )
+                for t in trips
+            ),
+        )
+        return format_html("<ul>{}</ul>", rows)
+
+    def save_related(self, request, form, formsets, change):
+        # After the skipped dates are saved, so they count.
+        super().save_related(request, form, formsets, change)
+        self._make_trips(request, form.instance)
+
+    def _make_trips(self, request, order):
+        try:
+            made, kept = standing.refresh(order, actor=request.user)
+        except ValidationError as exc:
+            self.message_user(
+                request,
+                "Saved, but trips couldn't be created: " + "; ".join(exc.messages),
+                level=messages.WARNING,
+            )
+            return
+        days = len({t.standing_date for t in made})
+        text = f"Trips created for {days} upcoming date{'s' if days != 1 else ''}." if days else "No new trips needed."
+        if kept:
+            text += f" {kept} upcoming trip{'s' if kept != 1 else ''} you had already changed {'were' if kept != 1 else 'was'} kept as is."
+        self.message_user(request, text, level=messages.INFO)
+
+    @admin.action(description="Create upcoming trips now")
+    def create_upcoming_trips(self, request, queryset):
+        total = 0
+        for order in queryset:
+            try:
+                total += len(standing.generate(order, actor=request.user))
+            except ValidationError as exc:
+                self.message_user(request, f"{order.reference}: " + "; ".join(exc.messages), level=messages.WARNING)
+        self.message_user(request, f"{total} trip{'s' if total != 1 else ''} created.", level=messages.INFO)
+
+
+def _upcoming_note(trip):
+    if trip.status != TripStatus.SCHEDULED:
+        return f" · {trip.get_status_display()}"
+    return f" · {trip.driver}" if trip.driver_id else " · unassigned"

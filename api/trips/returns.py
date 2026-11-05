@@ -40,10 +40,17 @@ def estimated_return_pickup(outbound: Trip):
 def build_return_leg(outbound: Trip) -> Trip:
     """The unsaved return leg for an outbound trip made from a round-trip request."""
     request = outbound.trip_request
-    choice = request.return_ride
+    return return_leg_for(outbound, request.return_ride, request.return_datetime)
+
+
+def return_leg_for(outbound: Trip, choice: str, return_at=None) -> Trip:
+    """
+    The unsaved return leg for any outbound trip: a website round trip,
+    or a standing order's ride back (ADR 0035).
+    """
     waits = choice == ReturnRide.WAIT
-    if choice == ReturnRide.SCHEDULED and request.return_datetime:
-        pickup_at = request.return_datetime
+    if choice == ReturnRide.SCHEDULED and return_at:
+        pickup_at = return_at
     else:
         pickup_at = estimated_return_pickup(outbound)
     return Trip(

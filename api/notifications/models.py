@@ -15,6 +15,7 @@ class NotificationType(models.TextChoices):
     VERIFICATION_CODE = "verification_code", "Website form: email code"
     CONTACT_MESSAGE_STAFF = "contact_message_staff", "Website message (staff)"
     VEHICLE_CHECK_FAILED_STAFF = "vehicle_check_failed_staff", "Vehicle failed its daily check (staff)"
+    PRIOR_AUTH_ENDING_STAFF = "prior_auth_ending_staff", "Standing order: prior authorization ending (staff)"
 
 
 class NotificationStatus(models.TextChoices):

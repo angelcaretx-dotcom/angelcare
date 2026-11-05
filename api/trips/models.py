@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
-from transportation.models import ServiceType
+from transportation.models import ReturnRide, ServiceType
 
 
 class TripStatus(models.TextChoices):
@@ -164,6 +164,12 @@ class Trip(models.Model):
         max_length=20, choices=TripStatus.choices, default=TripStatus.SCHEDULED
     )
     notes = models.TextField(blank=True)
+    # Made by a standing order (ADR 0035), for this Texas date.
+    standing_order = models.ForeignKey(
+        "trips.StandingOrder", on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="trips", editable=False,
+    )
+    standing_date = models.DateField(null=True, blank=True, editable=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -179,6 +185,13 @@ class Trip(models.Model):
                 name="unique_broker_trip_number_per_source",
                 violation_error_message="A trip with this broker trip number "
                 "already exists for this source.",
+            ),
+            # A standing order makes each leg once per date, however often
+            # the generator runs.
+            models.UniqueConstraint(
+                fields=["standing_order", "standing_date", "leg"],
+                condition=models.Q(standing_order__isnull=False),
+                name="one_trip_per_standing_order_date_leg",
             ),
         ]
         indexes = [models.Index(fields=["scheduled_pickup_datetime"])]
@@ -430,3 +443,113 @@ class TripEvent(models.Model):
     @property
     def has_location(self) -> bool:
         return self.latitude is not None and self.longitude is not None
+
+
+WEEKDAYS = [(0, "Mon"), (1, "Tue"), (2, "Wed"), (3, "Thu"), (4, "Fri"), (5, "Sat"), (6, "Sun")]
+
+
+class StandingOrder(models.Model):
+    """
+    A rider's repeating ride, e.g. dialysis Mon/Wed/Fri at 6:00 AM
+    (ADR 0035). Trips are created from it automatically, 14 days ahead;
+    each is an ordinary trip that dispatch can adjust. Times are Texas
+    time. No trips are created after the prior authorization's end date.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    passenger = models.ForeignKey("passengers.Passenger", on_delete=models.PROTECT, related_name="standing_orders")
+    source = models.CharField(max_length=20, choices=TripSource.choices, default=TripSource.PHONE)
+    subcontract_partner = models.CharField(max_length=200, blank=True)
+    payer = models.ForeignKey(
+        "payers.Payer", on_delete=models.PROTECT, related_name="standing_orders", null=True, blank=True,
+        help_text="Leave blank to use the passenger's payer.",
+    )
+    prior_authorization_number = models.CharField(max_length=50, blank=True)
+    prior_authorization_ends = models.DateField(
+        null=True, blank=True,
+        help_text="Last day the authorization covers. No trips are created after it; "
+        "staff are emailed 14 days before.",
+    )
+    auth_warning_sent_for = models.DateField(null=True, blank=True, editable=False)
+
+    service_type = models.CharField(max_length=20, choices=ServiceType.choices)
+    pickup_address = models.TextField()
+    dropoff_address = models.TextField()
+
+    weekdays = models.JSONField(default=list, help_text="Days of the week the ride repeats on.")
+    pickup_time = models.TimeField(help_text="Texas time.")
+    appointment_time = models.TimeField(null=True, blank=True, help_text="Texas time, if there's an appointment.")
+    return_ride = models.CharField(
+        "ride back", max_length=20, choices=ReturnRide.choices, default=ReturnRide.NONE
+    )
+    return_time = models.TimeField(
+        null=True, blank=True, help_text="Texas time; only for a ride back at a set time."
+    )
+
+    start_date = models.DateField(default=date.today)
+    end_date = models.DateField(null=True, blank=True, help_text="Leave blank to keep going.")
+    active = models.BooleanField(default=True, help_text="Untick to pause without deleting.")
+
+    driver = models.ForeignKey(
+        "drivers.Driver", on_delete=models.PROTECT, related_name="standing_orders", null=True, blank=True,
+        help_text="Regular driver: given each new trip when available.",
+    )
+    vehicle = models.ForeignKey(
+        "vehicles.Vehicle", on_delete=models.PROTECT, related_name="standing_orders", null=True, blank=True,
+        help_text="Regular vehicle: given each new trip when in service.",
+    )
+    notes = models.TextField(blank=True, help_text="Copied to each trip's dispatch notes.")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["passenger__legal_name", "pickup_time"]
+        verbose_name = "standing order"
+
+    def __str__(self) -> str:
+        return f"{self.passenger} — {self.days_display()} {self.pickup_time:%I:%M %p}".replace(" 0", " ")
+
+    def days_display(self) -> str:
+        return "/".join(label for value, label in WEEKDAYS if value in self.weekdays) or "no days"
+
+    @property
+    def reference(self) -> str:
+        return f"#{str(self.id)[:8].upper()}"
+
+    def clean(self):
+        errors = {}
+        if not self.weekdays:
+            errors["weekdays"] = "Choose at least one day."
+        if self.end_date and self.end_date < self.start_date:
+            errors["end_date"] = "The end date is before the start date."
+        if self.return_ride == ReturnRide.SCHEDULED:
+            if not self.return_time:
+                errors["return_time"] = "Set the time of the ride back."
+            elif self.return_time <= self.pickup_time:
+                errors["return_time"] = "The ride back must be after the pickup."
+        elif self.return_time:
+            errors["return_time"] = "Only a ride back at a set time has a time."
+        if self.service_type == ServiceType.EQUIPMENT_DELIVERY and self.return_ride != ReturnRide.NONE:
+            errors["return_ride"] = "Equipment delivery has no ride back."
+        if self.source == TripSource.SUBCONTRACT and not self.subcontract_partner:
+            errors["subcontract_partner"] = "Which partner is this subcontract work for?"
+        if errors:
+            raise ValidationError(errors)
+
+
+class StandingOrderSkip(models.Model):
+    """A date the ride doesn't happen (holiday, hospital stay); the series carries on."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    order = models.ForeignKey(StandingOrder, on_delete=models.CASCADE, related_name="skips")
+    date = models.DateField()
+    reason = models.CharField(max_length=200, blank=True, help_text="No health details, please.")
+
+    class Meta:
+        ordering = ["date"]
+        verbose_name = "skipped date"
+        constraints = [models.UniqueConstraint(fields=["order", "date"], name="one_skip_per_order_per_date")]
+
+    def __str__(self) -> str:
+        return f"{self.date:%b %d, %Y}"

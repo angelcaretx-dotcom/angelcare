@@ -1,0 +1,7 @@
+A standing order's prior authorization ends soon. No trips will be
+created after that date until it's renewed: enter the new number and
+end date on the order and save.
+
+{% for label, value in rows %}{{ label }}: {{ value }}
+{% endfor %}
+{{ admin_url|safe }}

@@ -39,6 +39,7 @@ is UNKNOWN and must not be assumed.
 | 2026-11-05 | Mileage | Odometer at the start and end of each vehicle's day only, not per trip (ADR 0034) | Owner, chat |
 | 2026-11-05 | Failed vehicle inspection | Vehicle blocked until an Administrator marks it fixed (ADR 0034) | Owner, chat |
 | 2026-11-05 | Trip proof sheet | PDF created on download, any time; never stored (ADR 0034) | Owner, chat |
+| 2026-11-05 | Standing orders | Trips created 14 days ahead; regular driver/vehicle assigned when available; ride back with the same options as booking; prior-auth warning 14 days before its end, no trips after it (ADR 0035) | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)
 

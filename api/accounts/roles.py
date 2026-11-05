@@ -69,6 +69,9 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("compliance", "compliancerecord", ["view"]))
         # Scheduling trips IS dispatch work -- full access here.
         + list(_permissions("trips", "trip", ["view", "change", "add"]))
+        # Repeating rides are scheduling too (ADR 0035).
+        + list(_permissions("trips", "standingorder", ["view", "change", "add"]))
+        + list(_permissions("trips", "standingorderskip", ["view", "change", "add", "delete"]))
         # Logging a declined broker offer is part of answering the offer.
         + list(_permissions("trips", "turndown", ["view", "change", "add"]))
         # The driver app's timeline: proof of service, so read-only for
@@ -88,6 +91,8 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("vehicles", "vehicle", ["view", "change", "add", "delete"]))
         + list(_permissions("vehicles", "vehiclecheck", ["view", "change"]))
         + list(_permissions("trips", "trip", ["view", "change", "add", "delete"]))
+        + list(_permissions("trips", "standingorder", ["view", "change", "add", "delete"]))
+        + list(_permissions("trips", "standingorderskip", ["view", "change", "add", "delete"]))
         + list(_permissions("trips", "turndown", ["view", "change", "add", "delete"]))
         + list(_permissions("trips", "tripevent", ["view"]))
         + list(_permissions("riders", "rideraccount", ["view", "change", "add", "delete"]))

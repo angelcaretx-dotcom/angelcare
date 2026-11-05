@@ -36,7 +36,11 @@ class Area:
 
 AREAS = [
     Area("trip_requests", "Trip requests (website)", (("transportation", "triprequest"),)),
-    Area("trips", "Trips & day board", (("trips", "trip"),)),
+    Area(
+        "trips",
+        "Trips, day board & standing orders",
+        (("trips", "trip"), ("trips", "standingorder"), ("trips", "standingorderskip")),
+    ),
     Area("turn_downs", "Turn-downs", (("trips", "turndown"),)),
     Area("passengers", "Passengers", (("passengers", "passenger"),)),
     Area("rider_accounts", "Rider website accounts", (("riders", "rideraccount"),)),

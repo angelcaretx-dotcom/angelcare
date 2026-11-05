@@ -175,6 +175,25 @@ class NotificationService:
             related=check,
         )
 
+    def notify_prior_auth_ending(self, order) -> None:
+        # Order number and dates only: the rider's name stays in the admin (ADR 0027).
+        context = {
+            "rows": [
+                ("Standing order", order.reference),
+                ("Authorization ends", order.prior_authorization_ends),
+            ],
+            "admin_url": f"{settings.SITE_URL}/admin/trips/standingorder/{order.id}/change/",
+            "website_url": settings.WEBSITE_URL,
+        }
+        self._send(
+            notification_type=NotificationType.PRIOR_AUTH_ENDING_STAFF,
+            to=settings.STAFF_NOTIFICATION_EMAIL,
+            subject=f"Prior authorization ending {order.prior_authorization_ends:%b %d} — standing order {order.reference}",
+            body_text=render_to_string("notifications/staff_prior_auth_ending.txt", context),
+            body_html=render_to_string("notifications/staff_prior_auth_ending.html", context),
+            related=order,
+        )
+
     @classmethod
     def _staff_rows(cls, trip_request) -> list[tuple[str, str]]:
         # Reference and timing only: enough to judge urgency, nothing

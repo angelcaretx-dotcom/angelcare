@@ -46,10 +46,10 @@ Owner decisions 2026-11-05:
 - Pre-trip vehicle inspection checklist, once per vehicle per day; a failed item blocks the vehicle **until an Administrator marks it fixed**.
 - Trip proof sheet as a **PDF built on download, never stored**: timestamps, GPS points, signature, vehicle check and miles.
 
-### Phase 26: Recurring trips
-- Standing orders: rider, days of week (e.g. dialysis Mon/Wed/Fri), times, start/end dates, payer, prior auth.
-- Trips generated automatically N days ahead; skip a date (holiday, hospital stay) without breaking the series.
-- Prior-auth expiry warning on the standing order.
+### Phase 26: Recurring trips — ✅ built 2026-11-05 (ADR 0035)
+- Standing orders: rider, days of week (e.g. dialysis Mon/Wed/Fri), times, start/end dates, payer, prior auth, ride back (same options as booking), regular driver/vehicle.
+- Trips generated automatically **14 days ahead** (on save and every morning); skip a date (holiday, hospital stay) without breaking the series.
+- Prior-auth expiry: warning and staff email **14 days before**; no trips after it ends.
 
 ### Phase 27: Credential vault + reminders
 - Driver credentials as a typed list: license, MVR, background check, drug screen, CPR/first aid, defensive driving, wheelchair securement, plus per-payer required sets (what SafeRide/MTM demand).
