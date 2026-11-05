@@ -1,0 +1,33 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Trip import upload (ADR 0038). Only CSS classes present in Unfold's precompiled
+stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <p class="text-sm text-subtle">
+        Upload the order file a broker, HHSC, a facility or a partner sent you, in their own layout. Nothing goes
+        on the schedule until you've checked it: clean rows are created in one click, anything doubtful waits for
+        review. All dates and times in the file are read as Texas (Central) time.
+    </p>
+    <form method="post" enctype="multipart/form-data" class="bg-white border border-base-200 flex flex-col gap-4 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="flex flex-col gap-2">
+            <label for="{{ field.id_for_label }}" class="font-semibold text-important">{{ field.label }}</label>
+            {% if field.name == "file" %}<input type="file" name="file" id="{{ field.id_for_label }}" required accept=".csv,.txt,.xlsx,.xlsm,.pdf" class="text-sm">
+            {% else %}<select name="{{ field.name }}" id="{{ field.id_for_label }}" class="{{ input_class }}">
+                {% for value, label in field.field.choices %}<option value="{{ value }}"{% if field.value|stringformat:"s" == value|stringformat:"s" %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>{% endif %}
+            <span class="text-subtle text-xs">{{ field.help_text }}</span>
+            {% for error in field.errors %}<span class="font-medium text-red-600">{{ error }}</span>{% endfor %}
+        </div>
+        {% endfor %}
+        <div><button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Read the file</button></div>
+    </form>
+</div>
+{% endblock %}

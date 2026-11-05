@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     "riders",
     "verification",
     "contact",
+    "intake",
 ]
 
 MIDDLEWARE = [
@@ -348,6 +349,11 @@ UNFOLD = {
                         "title": "Standing orders",
                         "icon": "event_repeat",
                         "link": reverse_lazy("admin:trips_standingorder_changelist"),
+                    },
+                    {
+                        "title": "Trip imports",
+                        "icon": "upload_file",
+                        "link": reverse_lazy("admin:intake_importbatch_changelist"),
                     },
                     {
                         "title": "Turn-downs",

@@ -48,6 +48,7 @@ def seed_roles(sender, **kwargs):
             "compliance",
             "riders",
             "contact",
+            "intake",
         ]
     )
 
@@ -73,6 +74,9 @@ def seed_roles(sender, **kwargs):
         # Repeating rides are scheduling too (ADR 0035).
         + list(_permissions("trips", "standingorder", ["view", "change", "add"]))
         + list(_permissions("trips", "standingorderskip", ["view", "change", "add", "delete"]))
+        # Importing order files is scheduling too (ADR 0038).
+        + list(_permissions("intake", "importbatch", ["view", "change", "add"]))
+        + list(_permissions("intake", "mappingtemplate", ["view", "change"]))
         # Logging a declined broker offer is part of answering the offer.
         + list(_permissions("trips", "turndown", ["view", "change", "add"]))
         # The driver app's timeline: proof of service, so read-only for
@@ -95,6 +99,8 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("trips", "trip", ["view", "change", "add", "delete"]))
         + list(_permissions("trips", "standingorder", ["view", "change", "add", "delete"]))
         + list(_permissions("trips", "standingorderskip", ["view", "change", "add", "delete"]))
+        + list(_permissions("intake", "importbatch", ["view", "change", "add"]))
+        + list(_permissions("intake", "mappingtemplate", ["view", "change", "delete"]))
         + list(_permissions("trips", "turndown", ["view", "change", "add", "delete"]))
         + list(_permissions("trips", "tripevent", ["view"]))
         + list(_permissions("riders", "rideraccount", ["view", "change", "add", "delete"]))

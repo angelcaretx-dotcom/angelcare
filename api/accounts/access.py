@@ -42,6 +42,7 @@ AREAS = [
         (("trips", "trip"), ("trips", "standingorder"), ("trips", "standingorderskip")),
     ),
     Area("turn_downs", "Turn-downs", (("trips", "turndown"),)),
+    Area("trip_imports", "Trip imports", (("intake", "importbatch"), ("intake", "mappingtemplate"))),
     Area("passengers", "Passengers", (("passengers", "passenger"),)),
     Area("rider_accounts", "Rider website accounts", (("riders", "rideraccount"),)),
     Area("contact_messages", "Website messages", (("contact", "contactmessage"),)),

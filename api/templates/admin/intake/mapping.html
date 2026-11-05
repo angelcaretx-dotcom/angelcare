@@ -1,0 +1,50 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Match a sender's columns to our fields (ADR 0038). Only CSS classes present in Unfold's
+precompiled stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <p class="text-sm text-subtle">
+        For each of our fields, pick the column in this file that holds it (we've guessed where we could).
+        Leave a field blank if the file doesn't have it. Use either the one-line address or its parts.
+        Save the mapping under a name and this sender's next file maps by itself.
+    </p>
+    <form method="post" class="bg-white border border-base-200 flex flex-col gap-4 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        {% csrf_token %}
+        <div class="overflow-x-auto">
+        <table class="text-sm w-full">
+            <thead><tr>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Our field</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Column in the file</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">First row says</th>
+            </tr></thead>
+            <tbody>
+            {% for field in fields %}
+            <tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ field.label }}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">
+                    <select name="{{ field.name }}" class="{{ input_class }}" data-field="{{ field.name }}">
+                        <option value="">— not in this file —</option>
+                        {% for header in batch.headers %}<option value="{{ header }}"{% if header == field.chosen %} selected{% endif %}>{{ header }}</option>{% endfor %}
+                    </select>
+                </td>
+                <td class="align-top border-b border-base-200 px-3 py-2 text-subtle dark:border-base-800">{{ field.example|truncatechars:60 }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        <div class="flex flex-col gap-2">
+            <label for="template_name" class="font-semibold text-important">Save this mapping as (optional)</label>
+            <input type="text" id="template_name" name="template_name" value="{{ template_name }}" placeholder="e.g. Baylor discharge manifest" class="{{ input_class }}">
+            <span class="text-subtle text-xs">Saved mappings are matched to later files from the same source by their column names.</span>
+        </div>
+        <div><button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Check the rows</button></div>
+    </form>
+</div>
+{% endblock %}

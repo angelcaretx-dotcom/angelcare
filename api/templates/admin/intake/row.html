@@ -1,0 +1,53 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Review one imported row (ADR 0038): the sender's text beside ours. Only CSS classes present in
+Unfold's precompiled stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6" data-import-row="{{ row.number }}">
+    <div class="flex flex-wrap gap-4 items-center justify-between">
+        <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+        <a href="{{ batch_url }}" class="text-primary-600 underline text-sm">&larr; Back to the import</a>
+    </div>
+    <p class="text-sm {% if row.status == 'review' or row.status == 'failed' %}font-medium text-red-600{% else %}text-subtle{% endif %}">
+        {{ row.get_status_display }}{% if row.trip %} — <a href="{% url 'admin:trips_trip_change' row.trip.pk %}" class="text-primary-600 underline">open the trip</a>{% endif %}
+    </p>
+    {% if row.problems %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <h2 class="font-semibold mb-2 text-important">Needs a person</h2>
+        {% for p in row.problems %}<p class="text-sm {% if p.hard %}font-medium text-red-600{% else %}text-subtle{% endif %}">{% if p.hard %}Fix: {% else %}Check: {% endif %}{{ p.message }}</p>{% endfor %}
+    </div>
+    {% endif %}
+    <div class="gap-6 grid lg:grid-cols-2">
+        <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+            <h2 class="font-semibold mb-2 text-important">In the file (line {{ row.number }})</h2>
+            <table class="text-sm w-full"><tbody>
+                {% for header, value in raw %}<tr>
+                    <td class="align-top border-b border-base-200 font-semibold py-2 whitespace-nowrap dark:border-base-800">{{ header }}</td>
+                    <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ value }}</td>
+                </tr>{% endfor %}
+            </tbody></table>
+        </div>
+        <form method="post" class="bg-white border border-base-200 flex flex-col gap-4 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+            {% csrf_token %}
+            <h2 class="font-semibold mb-2 text-important">What we read{% if can_change %} — correct it here{% endif %}</h2>
+            {% for field in fields %}
+            <div class="flex flex-col gap-2">
+                <label for="f-{{ field.name }}" class="font-medium text-sm text-subtle">{{ field.label }}</label>
+                <input type="text" id="f-{{ field.name }}" name="{{ field.name }}" value="{{ field.value }}" class="{{ input_class }}"{% if not can_change %} disabled{% endif %}>
+            </div>
+            {% endfor %}
+            {% if can_change %}
+            <div class="flex flex-wrap gap-3 items-center">
+                <button type="submit" name="action" value="approve" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Approve and create the trip</button>
+                <button type="submit" name="action" value="check" class="border border-base-200 cursor-pointer px-3 py-1 rounded-default text-sm dark:border-base-800">Save and re-check</button>
+                <button type="submit" name="action" value="reject" class="border border-base-200 cursor-pointer px-3 py-1 rounded-default text-sm dark:border-base-800">Reject this row</button>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endblock %}

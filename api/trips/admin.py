@@ -105,7 +105,7 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
         "driver__legal_name",
     )
     autocomplete_fields = ("trip_request", "passenger", "payer", "driver", "vehicle", "outbound_trip")
-    readonly_fields = ("id", "standing_order_link", "created_at", "updated_at")
+    readonly_fields = ("id", "standing_order_link", "import_link", "created_at", "updated_at")
     ordering = ("-scheduled_pickup_datetime",)
     inlines = [TripEventInline]
     fieldsets = (
@@ -138,8 +138,23 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
             },
         ),
         ("Assignment", {"fields": ("driver", "vehicle", "status", "notes")}),
-        ("Record", {"fields": ("id", "standing_order_link", "created_at", "updated_at"), "classes": ("collapse",)}),
+        (
+            "Record",
+            {"fields": ("id", "standing_order_link", "import_link", "created_at", "updated_at"), "classes": ("collapse",)},
+        ),
     )
+
+    @admin.display(description="Imported from")
+    def import_link(self, trip):
+        row = getattr(trip, "import_row", None) or getattr(trip, "import_return_row", None)
+        if row is None:
+            return "—"
+        return format_html(
+            '<a class="text-primary-600 underline" href="{}">{}, line {}</a>',
+            reverse("admin:intake_importrow_review", args=[row.pk]),
+            row.batch.original_name,
+            row.number,
+        )
 
     @admin.display(description="Standing order")
     def standing_order_link(self, trip):

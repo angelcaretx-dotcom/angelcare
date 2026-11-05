@@ -67,10 +67,10 @@ def _assign_regulars(trip: Trip, order: StandingOrder) -> None:
     """Give the trip the order's regular driver/vehicle, keeping only those that pass the usual checks."""
     trip.driver_id = order.driver_id
     trip.vehicle_id = order.vehicle_id
-    _keep_only_valid_assignment(trip)
+    keep_only_valid_assignment(trip)
 
 
-def _keep_only_valid_assignment(trip: Trip) -> None:
+def keep_only_valid_assignment(trip: Trip) -> None:
     """Drop a driver/vehicle that fails the checks (licence, credentials, insurance...): dispatch assigns instead."""
     try:
         trip.full_clean()
@@ -137,7 +137,7 @@ def generate(order: StandingOrder, *, actor=None, today=None) -> list[Trip]:
             if not back.driver_waits:
                 _assign_regulars(back, order)
             else:
-                _keep_only_valid_assignment(back)
+                keep_only_valid_assignment(back)
             back.save()
             _audit(back, order, actor)
             made.append(back)

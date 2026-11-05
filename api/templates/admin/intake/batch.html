@@ -1,0 +1,72 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+One trip import: its report and its rows (ADR 0038). Only CSS classes present in Unfold's
+precompiled stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6" data-import="{{ batch.pk }}">
+    <div class="flex flex-wrap gap-4 items-center justify-between">
+        <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+        <div class="flex flex-wrap gap-3 items-center text-sm">
+            <a href="{% url 'admin:intake_importbatch_file' batch.pk %}" class="text-primary-600 underline">Download the original</a>
+            {% if can_change %}<a href="{% url 'admin:intake_importbatch_mapping' batch.pk %}" class="text-primary-600 underline">Change the column mapping</a>{% endif %}
+            <a href="{% url 'admin:intake_importbatch_upload' %}" class="text-primary-600 underline">Import another file</a>
+        </div>
+    </div>
+    <p class="text-sm text-subtle">
+        {{ batch.get_source_display }}{% if batch.payer %} · paid by {{ batch.payer }}{% endif %} · uploaded {{ batch.created_at|date:"M j, Y g:i A" }}{% if batch.uploaded_by %} by {{ batch.uploaded_by }}{% endif %}{% if batch.template %} · mapping “{{ batch.template.name }}”{% endif %}.
+        Times are Texas (Central) time.
+    </p>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-import-report>
+        <h2 class="font-semibold mb-2 text-important">Report</h2>
+        <p class="text-sm" data-report-line>
+            {{ counts.total }} rows read · <strong>{{ counts.created }}</strong> trips created · {{ counts.ready }} ready ·
+            <span class="{% if counts.review %}font-medium text-red-600{% endif %}">{{ counts.review }} need review</span> ·
+            {{ counts.duplicate }} duplicates skipped · {{ counts.failed }} failed · {{ counts.rejected }} rejected
+        </p>
+        {% if not mapped %}<p class="font-medium text-red-600">Match the columns first: <a href="{% url 'admin:intake_importbatch_mapping' batch.pk %}" class="text-primary-600 underline">open the mapping</a>.</p>{% endif %}
+        {% if can_change and counts.ready %}
+        <form method="post" action="{% url 'admin:intake_importbatch_create_ready' batch.pk %}" class="flex gap-2 items-center">
+            {% csrf_token %}
+            <button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Create trips for the {{ counts.ready }} ready row{{ counts.ready|pluralize }}</button>
+        </form>
+        {% endif %}
+    </div>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <div class="flex flex-wrap gap-3 items-center text-sm">
+            <span class="font-semibold text-important">Rows:</span>
+            <a href="?" class="text-primary-600 underline">all</a>
+            {% for value, label in statuses %}<a href="?status={{ value }}" class="text-primary-600 underline">{{ label|lower }}</a>{% endfor %}
+        </div>
+        <div class="overflow-x-auto">
+        <table class="text-sm w-full">
+            <thead><tr>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Line</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Status</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Rider</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Pickup</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Why</th>
+            </tr></thead>
+            <tbody>
+            {% for row in rows %}
+            <tr data-row="{{ row.number }}" data-status="{{ row.status }}">
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800"><a href="{% url 'admin:intake_importrow_review' row.pk %}" class="font-medium text-primary-600 underline">{{ row.number }}</a></td>
+                <td class="align-top border-b border-base-200 px-3 py-2 whitespace-nowrap dark:border-base-800 {% if row.status == 'review' or row.status == 'failed' %}font-medium text-red-600{% elif row.status == 'created' %}text-green-700{% endif %}">{{ row.get_status_display }}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ row.data.rider_name|default:"—" }}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 whitespace-nowrap dark:border-base-800">{% if row.trip %}<a href="{% url 'admin:trips_trip_change' row.trip.pk %}" class="text-primary-600 underline">{{ row.trip.scheduled_pickup_datetime|date:"D M j, g:i A" }}</a>{% if row.return_trip %} + ride back{% endif %}{% else %}{{ row.data.pickup_at|slice:":16"|default:"—" }}{% endif %}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{% for p in row.problems %}<div class="{% if p.hard %}text-red-600{% else %}text-subtle{% endif %}">{{ p.message }}</div>{% endfor %}</td>
+            </tr>
+            {% empty %}
+            <tr><td class="px-3 py-2 text-subtle">No rows with that status.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
