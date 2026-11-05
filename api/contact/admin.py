@@ -1,3 +1,5 @@
+import re
+
 from django.contrib import admin
 from django.utils import timezone
 
@@ -6,6 +8,8 @@ from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 
 from .models import ContactMessage, MessageStatus
+
+REFERENCE_RE = re.compile(r"[0-9a-f]{8}")
 
 
 @admin.register(ContactMessage)
@@ -16,12 +20,25 @@ class ContactMessageAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
     wrote, so it's read-only.
     """
 
-    list_display = ("created_at", "name", "email", "phone", "status", "handled_by")
+    list_display = ("reference", "created_at", "name", "email", "phone", "status", "handled_by")
+    list_display_links = ("reference", "created_at")
     list_filter = ("status",)
     search_fields = ("name", "email", "phone")
-    fields = ("status", "name", "email", "phone", "message", "created_at", "handled_by", "handled_at")
-    readonly_fields = ("name", "email", "phone", "message", "created_at", "handled_by", "handled_at")
+    search_help_text = "Name, email, phone, or the message number from the alert email (e.g. #1A2B3C4D)."
+    fields = ("reference", "status", "name", "email", "phone", "message", "created_at", "handled_by", "handled_at")
+    readonly_fields = ("reference", "name", "email", "phone", "message", "created_at", "handled_by", "handled_at")
     ordering = ("-created_at",)
+
+    @admin.display(description="Message number")
+    def reference(self, obj):
+        return obj.reference
+
+    def get_search_results(self, request, queryset, search_term):
+        # The alert email names a message by "#" + the start of its id.
+        number = search_term.strip().lstrip("#").lower()
+        if REFERENCE_RE.fullmatch(number):
+            return queryset.filter(id__startswith=number), False
+        return super().get_search_results(request, queryset, search_term)
 
     def has_add_permission(self, request):
         return False

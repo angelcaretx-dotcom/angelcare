@@ -68,3 +68,17 @@ class ContactAdminTests(TestCase):
         saved.refresh_from_db()
         self.assertEqual((saved.status, saved.handled_by), (MessageStatus.HANDLED, user))
         self.assertEqual(self.client.get("/admin/contact/contactmessage/add/").status_code, 403)
+
+    def test_message_number_from_the_alert_is_shown_and_searchable(self):
+        user = User.objects.create_user(username="disp", password="testpass123", is_staff=True)
+        user.groups.add(Group.objects.get(name="Dispatcher"))
+        login_with_otp(self.client, username="disp", password="testpass123")
+        wanted = ContactMessage.objects.create(name="Pat", email="pat@example.com", message="Hello")
+        ContactMessage.objects.create(name="Lee", email="lee@example.com", message="Hi")
+        listing = self.client.get("/admin/contact/contactmessage/").content.decode()
+        self.assertIn(wanted.reference, listing)
+        self.assertIn(wanted.reference, self.client.get(f"/admin/contact/contactmessage/{wanted.id}/change/").content.decode())
+        for typed in (wanted.reference, wanted.reference.lstrip("#").lower()):
+            found = self.client.get("/admin/contact/contactmessage/", {"q": typed}).content.decode()
+            self.assertIn("pat@example.com", found)
+            self.assertNotIn("lee@example.com", found)
