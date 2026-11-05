@@ -35,6 +35,16 @@ Write-Host "  OK"
 # as a fatal error under "Stop" -- rely on exit codes from here on.
 $ErrorActionPreference = "Continue"
 
+function Save-Env($name, $value, $extra, $failure) {
+    # Show Vercel's own message if it refuses (never the value itself).
+    $out = vercel env add $name production --value $value --force --yes @extra 2>&1 |
+        ForEach-Object { "$_" } | Where-Object { $_ -notmatch [regex]::Escape($value) }
+    if ($LASTEXITCODE -ne 0) {
+        $out | Select-Object -Last 8 | ForEach-Object { Write-Host "  vercel: $_" -ForegroundColor Yellow }
+        throw $failure
+    }
+}
+
 function Redeploy($project) {
     $latest = vercel ls $project --environment production 2>$null | Select-Object -First 1
     if (-not $latest) { throw "Couldn't find $project's current deployment. The key IS saved; push any commit to redeploy." }
@@ -44,14 +54,12 @@ function Redeploy($project) {
 
 Write-Host "Step 2/3: website: saving the site key and redeploying (about a minute)..." -ForegroundColor Cyan
 Set-Location (Join-Path $root "web")
-vercel env add NEXT_PUBLIC_TURNSTILE_SITE_KEY production --value $siteKey --force --yes 2>$null | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Saving the site key failed. Run 'vercel login' if needed, then run this again." }
+Save-Env "NEXT_PUBLIC_TURNSTILE_SITE_KEY" $siteKey @("--no-sensitive") "Saving the site key failed (Vercel's message is above). Nothing else was changed."
 Redeploy "angelcare"
 
 Write-Host "Step 3/3: API: saving the secret key and redeploying..." -ForegroundColor Cyan
 Set-Location (Join-Path $root "api")
-vercel env add DJANGO_TURNSTILE_SECRET_KEY production --value $secret --force --sensitive --yes 2>$null | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Saving the secret key failed. The website already has its key; run this again." }
+Save-Env "DJANGO_TURNSTILE_SECRET_KEY" $secret @("--sensitive") "Saving the secret key failed (Vercel's message is above). The website already has its key; run this again."
 $secret = $null
 Redeploy "angelcare-api"
 
