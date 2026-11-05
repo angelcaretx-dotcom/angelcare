@@ -20,6 +20,9 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from audit.services import record_change
+from transportation.addresses import PARTS, AddressPartsSerializer
+from transportation.models import ReturnRide, TripRequestStatus
+from trips.models import TripStatus
 
 from . import services
 from .auth import is_locked_out, record_failure
@@ -83,7 +86,8 @@ def _account_payload(account: RiderAccount) -> dict:
         "phone": account.phone,
         "mobility_notes": account.mobility_notes,
         "addresses": [
-            {"id": str(a.id), "label": a.label, "address": a.address} for a in account.addresses.all()
+            {"id": str(a.id), "label": a.label, "address": a.address, **{p: getattr(a, p) for p in PARTS}}
+            for a in account.addresses.all()
         ],
         "idle_timeout_seconds": RIDER_IDLE_SECONDS,
     }
@@ -173,9 +177,12 @@ class MeView(RiderView):
         return Response(_account_payload(account))
 
 
-class AddressSerializer(serializers.Serializer):
+class AddressSerializer(AddressPartsSerializer):
     label = serializers.CharField(max_length=60, required=False, allow_blank=True)
-    address = serializers.CharField(max_length=500)
+
+    def validate(self, attrs):
+        label = attrs.pop("label", "").strip()
+        return {**super().validate(attrs), "label": label}
 
 
 class AddressesView(RiderView):
@@ -197,6 +204,32 @@ class AddressDetailView(RiderView):
         return Response(_account_payload(self.account))
 
 
+def _parts(trip_request, side: str) -> dict | None:
+    if not trip_request.has_address_parts(side):
+        return None
+    return {part: getattr(trip_request, f"{side}_{part}") for part in PARTS}
+
+
+def _return_payload(trip_request) -> dict | None:
+    """The ride home booked with this request (ADR 0032), as the rider should see it."""
+    if trip_request.return_ride == ReturnRide.NONE:
+        return None
+    back = services.return_trip_of(trip_request)
+    if back is None:
+        pickup = trip_request.return_datetime
+    elif back.status == TripStatus.CANCELLED and trip_request.status != TripRequestStatus.CANCELLED:
+        return None  # staff dropped the ride home: don't promise it
+    elif back.will_call or back.driver_waits:
+        pickup = None  # only an estimate on our side
+    else:
+        pickup = back.scheduled_pickup_datetime
+    return {
+        "kind": trip_request.return_ride,
+        "text": trip_request.get_return_ride_display(),
+        "pickup": pickup.isoformat() if pickup else None,
+    }
+
+
 def _trip_payload(trip_request) -> dict:
     key, wording = services.rider_status(trip_request)
     trip = services.trip_of(trip_request)
@@ -212,6 +245,10 @@ def _trip_payload(trip_request) -> dict:
         "confirmed_pickup": trip.scheduled_pickup_datetime.isoformat() if trip else None,
         "pickup_address": trip.pickup_address if trip else trip_request.pickup_address,
         "dropoff_address": trip.dropoff_address if trip else trip_request.dropoff_address,
+        # The parts as booked, for "Book again" (null for older requests).
+        "pickup": _parts(trip_request, "pickup"),
+        "dropoff": _parts(trip_request, "dropoff"),
+        "return_ride": _return_payload(trip_request),
         "mobility_notes": trip_request.mobility_notes,
         # First name only, plus the vehicle -- enough to recognise the ride.
         "driver_first_name": trip.driver.legal_name.split()[0] if assigned else None,

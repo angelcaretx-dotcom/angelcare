@@ -18,11 +18,44 @@ class TripRequestAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
         "passenger",
         "created_at",
     )
-    list_filter = ("status", "service_type", "booked_for")
+    list_filter = ("status", "service_type", "booked_for", "return_ride")
     search_fields = ("full_name", "phone", "email", "pickup_address", "dropoff_address")
     readonly_fields = ("id", "created_at", "updated_at", "source")
     autocomplete_fields = ("passenger",)
     ordering = ("-created_at",)
+    fieldsets = (
+        (None, {"fields": ("status", "passenger", "source")}),
+        ("Who", {"fields": ("full_name", "phone", "email", "booked_for")}),
+        (
+            "Pickup",
+            {"fields": ("pickup_address", "pickup_street", "pickup_unit", "pickup_city", "pickup_state", "pickup_zip")},
+        ),
+        (
+            "Drop-off",
+            {
+                "fields": (
+                    "dropoff_address",
+                    "dropoff_street",
+                    "dropoff_unit",
+                    "dropoff_city",
+                    "dropoff_state",
+                    "dropoff_zip",
+                )
+            },
+        ),
+        ("When", {"fields": ("requested_datetime", "return_ride", "return_datetime")}),
+        ("Service", {"fields": ("service_type", "mobility_notes", "additional_notes")}),
+        ("Record", {"fields": ("id", "created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = list(super().get_readonly_fields(request, obj))
+        # With the parts on file (ADR 0032), the one-line address is
+        # composed from them: edit the parts instead.
+        for side in ("pickup", "dropoff"):
+            if obj is not None and obj.has_address_parts(side):
+                fields.append(f"{side}_address")
+        return fields
 
     def save_model(self, request, obj, form, change):
         previous_status = form.initial.get("status") if change else None

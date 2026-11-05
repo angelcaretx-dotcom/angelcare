@@ -19,7 +19,7 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from audit.services import record_change
 from notifications.services import NotificationService
 from transportation.models import BookedFor, TripRequest, TripRequestStatus
-from trips.models import TripStatus
+from trips.models import Trip, TripStatus
 
 from .models import RiderAccount
 
@@ -147,6 +147,14 @@ def trip_of(trip_request):
         return None
 
 
+def return_trip_of(trip_request):
+    """The return leg made with the outbound trip (ADR 0032), if any."""
+    trip = trip_of(trip_request)
+    if trip is None:
+        return None
+    return Trip.objects.filter(outbound_trip=trip).first()
+
+
 OPEN_REQUEST_STATUSES = {
     TripRequestStatus.NEW,
     TripRequestStatus.REVIEWED,
@@ -204,8 +212,10 @@ def cancel_request(account: RiderAccount, trip_request: TripRequest) -> None:
         after={"status": TripRequestStatus.CANCELLED, "by": "rider"},
         source="rider_portal",
     )
-    trip = trip_of(trip_request)
-    if trip is not None:
+    # The outbound trip, and the ride home booked with it (ADR 0032).
+    for trip in (trip_of(trip_request), return_trip_of(trip_request)):
+        if trip is None or trip.status != TripStatus.SCHEDULED:
+            continue
         trip.status = TripStatus.CANCELLED
         trip.save(update_fields=["status", "updated_at"])
         record_change(

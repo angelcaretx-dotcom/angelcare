@@ -41,7 +41,7 @@ stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests ch
             {% for trip in unassigned %}
                 <tr data-trip="{{ trip.pk }}">
                     <td class="align-top border-b border-base-200 font-semibold py-2 whitespace-nowrap dark:border-base-800">
-                        {{ trip.scheduled_pickup_datetime|time:"g:i A" }}{% if trip.will_call %} <span class="font-medium text-red-600">will-call</span>{% endif %}
+                        {{ trip.scheduled_pickup_datetime|time:"g:i A" }}{% if trip.will_call %} <span class="font-medium text-red-600">will-call</span>{% endif %}{% if trip.driver_waits %} <span class="font-medium text-red-600">driver waits</span>{% endif %}
                     </td>
                     <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">
                         <a href="{% url 'admin:trips_trip_change' trip.pk %}" class="font-medium text-primary-600 underline">{{ trip.passenger.legal_name }}</a>
@@ -86,7 +86,7 @@ stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests ch
                             {{ trip.scheduled_pickup_datetime|time:"g:i A" }}
                         </td>
                         <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">
-                            <a href="{% url 'admin:trips_trip_change' trip.pk %}" class="font-medium text-primary-600 underline">{{ trip.passenger.legal_name }}</a>{% if trip.will_call %} <span class="font-medium text-red-600">will-call</span>{% endif %}
+                            <a href="{% url 'admin:trips_trip_change' trip.pk %}" class="font-medium text-primary-600 underline">{{ trip.passenger.legal_name }}</a>{% if trip.will_call %} <span class="font-medium text-red-600">will-call</span>{% endif %}{% if trip.driver_waits %} <span class="font-medium text-red-600">driver waits</span>{% endif %}
                             <div class="text-subtle text-xs">{{ trip.get_service_type_display }} · {{ trip.vehicle.make }} {{ trip.vehicle.model }} ({{ trip.vehicle.license_plate }})</div>
                             <div class="text-subtle text-xs">{{ trip.pickup_address|truncatechars:40 }} &rarr; {{ trip.dropoff_address|truncatechars:40 }}</div>
                         </td>

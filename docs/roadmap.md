@@ -66,6 +66,12 @@ Numbered 34 so existing phase references stay valid; scheduled second. Owner dec
 - Lives on **angelcaretransit.com** ("My trips"), same look as the booking form.
 - PHI on screen → strong passwords, lockout, **short idle timeout** (shared family tablets, facility workstations), access logging. Emails stay PHI-free (ADR 0027).
 
+### Booking form: round trips and address parts — ✅ built 2026-11-04 (ADR 0032)
+Owner review of the live form, 2026-11-04:
+- Pickup and drop-off as **street, apt/suite, city, state, ZIP** (claims and broker files need them separately).
+- **"Do you need a ride back?"** on the same booking: one way / at a set time / I'll call when ready (will-call) / the driver waits (wait-and-return). Scheduling the trip creates the return leg too.
+- Wait-time pricing: decide with Phase 29 rates.
+
 ## Stage C — Getting paid
 
 ### Phase 28: Broker trip import

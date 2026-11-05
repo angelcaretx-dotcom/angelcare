@@ -126,6 +126,11 @@ class Trip(models.Model):
         help_text="Return pickup time isn't fixed: the rider calls when ready. "
         "The pickup time is an estimate.",
     )
+    driver_waits = models.BooleanField(
+        default=False,
+        help_text="Wait-and-return: the outbound driver waits at the destination "
+        "and brings the rider back. The pickup time is an estimate.",
+    )
 
     service_type = models.CharField(max_length=20, choices=ServiceType.choices, blank=True)
     pickup_address = models.TextField(blank=True)
@@ -244,6 +249,10 @@ class Trip(models.Model):
                 )
         if self.will_call and self.leg != TripLeg.RETURN:
             errors["will_call"] = "Only a return leg can be will-call."
+        if self.driver_waits and self.leg != TripLeg.RETURN:
+            errors["driver_waits"] = "Only a return leg can be wait-and-return."
+        if self.driver_waits and self.will_call:
+            errors["driver_waits"] = "Choose either will-call or wait-and-return, not both."
 
         if self.status in (TripStatus.IN_PROGRESS, TripStatus.COMPLETED) and not self.is_assigned:
             errors["status"] = (

@@ -3,6 +3,8 @@ import uuid
 from django.core.validators import RegexValidator
 from django.db import models
 
+from .addresses import compose
+
 phone_validator = RegexValidator(
     regex=r"^[0-9()+\-.\s]{7,20}$",
     message="Enter a valid phone number.",
@@ -52,6 +54,19 @@ class BookedFor(models.TextChoices):
     FACILITY = "facility", "A patient or resident (I work at a facility)"
 
 
+class ReturnRide(models.TextChoices):
+    """
+    Whether the rider needs bringing back (ADR 0032). Asked on the same
+    booking so a round trip isn't two separate requests; staff get the
+    return leg created when they schedule the outbound trip.
+    """
+
+    NONE = "none", "No, one way"
+    SCHEDULED = "scheduled", "Yes, at a set time"
+    WILL_CALL = "will_call", "Yes, I'll call when I'm ready"
+    WAIT = "wait", "Yes, the driver waits for me"
+
+
 class TripRequest(models.Model):
     """
     A transportation request submitted through the public website. This is
@@ -78,8 +93,21 @@ class TripRequest(models.Model):
     phone = models.CharField(max_length=20, validators=[phone_validator])
     email = models.EmailField()
 
+    # One composed line each, used by dispatch, the driver app and maps.
+    # Website bookings since ADR 0032 also keep the parts (below); older
+    # requests only have this line.
     pickup_address = models.TextField()
     dropoff_address = models.TextField()
+    pickup_street = models.CharField(max_length=200, blank=True)
+    pickup_unit = models.CharField("pickup apt / suite", max_length=50, blank=True)
+    pickup_city = models.CharField(max_length=100, blank=True)
+    pickup_state = models.CharField(max_length=2, blank=True)
+    pickup_zip = models.CharField("pickup ZIP", max_length=10, blank=True)
+    dropoff_street = models.CharField(max_length=200, blank=True)
+    dropoff_unit = models.CharField("drop-off apt / suite", max_length=50, blank=True)
+    dropoff_city = models.CharField(max_length=100, blank=True)
+    dropoff_state = models.CharField(max_length=2, blank=True)
+    dropoff_zip = models.CharField("drop-off ZIP", max_length=10, blank=True)
     requested_datetime = models.DateTimeField(
         help_text="Requested pickup date/time, stored in UTC."
     )
@@ -89,6 +117,14 @@ class TripRequest(models.Model):
     additional_notes = models.TextField(blank=True)
     booked_for = models.CharField(
         max_length=20, choices=BookedFor.choices, default=BookedFor.SELF
+    )
+    return_ride = models.CharField(
+        max_length=20, choices=ReturnRide.choices, default=ReturnRide.NONE
+    )
+    return_datetime = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Requested return pickup, for 'at a set time' only. Stored in UTC.",
     )
 
     status = models.CharField(
@@ -110,3 +146,23 @@ class TripRequest(models.Model):
 
     def __str__(self) -> str:
         return f"{self.full_name} — {self.get_service_type_display()} ({self.status})"
+
+    def has_address_parts(self, side: str) -> bool:
+        return bool(getattr(self, f"{side}_street"))
+
+    def compose_addresses(self) -> None:
+        """Keep the one-line addresses in step with the parts, when there are parts."""
+        for side in ("pickup", "dropoff"):
+            if self.has_address_parts(side):
+                setattr(
+                    self,
+                    f"{side}_address",
+                    compose(*(getattr(self, f"{side}_{part}") for part in ("street", "unit", "city", "state", "zip"))),
+                )
+
+    def save(self, *args, **kwargs):
+        self.compose_addresses()
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and any(f.startswith(("pickup_", "dropoff_")) for f in update_fields):
+            kwargs["update_fields"] = set(update_fields) | {"pickup_address", "dropoff_address"}
+        super().save(*args, **kwargs)

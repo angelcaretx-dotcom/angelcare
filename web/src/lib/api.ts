@@ -17,13 +17,20 @@ export type ServiceType =
 /** Who made the booking (ADR 0031); facility bookings get no rider account. */
 export type BookedFor = "self" | "caregiver" | "facility";
 
-export interface TripRequestInput {
+export type ReturnRide = "none" | "scheduled" | "will_call" | "wait";
+
+/** Addresses go as parts (ADR 0032): pickup_street, pickup_unit, ... dropoff_zip. */
+type AddressPartsInput<Side extends string> = {
+  [Part in "street" | "unit" | "city" | "state" | "zip" as `${Side}_${Part}`]: string;
+};
+
+export interface TripRequestInput extends AddressPartsInput<"pickup">, AddressPartsInput<"dropoff"> {
   full_name: string;
   phone: string;
   email: string;
-  pickup_address: string;
-  dropoff_address: string;
   requested_datetime: string; // ISO 8601
+  return_ride?: ReturnRide;
+  return_datetime?: string | null; // ISO 8601, "at a set time" only
   service_type: ServiceType;
   mobility_notes?: string;
   additional_notes?: string;

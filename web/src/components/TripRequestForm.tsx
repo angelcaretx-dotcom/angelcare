@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
-import { ApiError, submitTripRequest, type BookedFor, type ServiceType } from "@/lib/api";
+import { readParts, type AddressParts } from "@/lib/addresses";
+import { ApiError, submitTripRequest, type BookedFor, type ReturnRide, type ServiceType } from "@/lib/api";
 import { maybeSignedIn, riderApi, type SavedAddress } from "@/lib/rider";
+import { AddressFields } from "./AddressFields";
 
 interface FieldErrors {
   [key: string]: string[];
@@ -22,13 +24,43 @@ const bookedForOptions: { value: BookedFor; label: string }[] = [
   { value: "facility", label: "A patient or resident (I work at a care facility)" },
 ];
 
+const returnRideOptions: { value: ReturnRide; label: string; hint?: string }[] = [
+  { value: "none", label: "No, one way" },
+  { value: "scheduled", label: "Yes, at a set time" },
+  {
+    value: "will_call",
+    label: "Yes, I'll call when I'm ready",
+    hint: "Good when you don't know how long the appointment will take.",
+  },
+  {
+    value: "wait",
+    label: "Yes, the driver waits for me",
+    hint: "The driver stays nearby during the appointment and brings you back.",
+  },
+];
+
 function fill(form: HTMLFormElement, values: Record<string, string>) {
   for (const [name, value] of Object.entries(values)) {
     const field = form.elements.namedItem(name);
-    if (value && (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement || field instanceof HTMLSelectElement) && !field.value) {
+    if (!value) continue;
+    // Selects always have a value (state defaults to Texas), so they're overwritten.
+    if (
+      field instanceof HTMLSelectElement ||
+      ((field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) && !field.value)
+    ) {
       field.value = value;
     }
   }
+}
+
+/** `{pickup_street: ..., pickup_city: ...}` from a booked address (or an older one-line one). */
+function partsFor(prefix: string, parts: AddressParts | null | undefined, line?: string): Record<string, string> {
+  const source: Partial<AddressParts> = parts ?? (line ? { street: line } : {});
+  return Object.fromEntries(Object.entries(source).map(([part, value]) => [`${prefix}${part}`, value ?? ""]));
+}
+
+function isoAt(date: string, time: string): string {
+  return date && time ? new Date(`${date}T${time}`).toISOString() : "";
 }
 
 export function TripRequestForm() {
@@ -37,6 +69,9 @@ export function TripRequestForm() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [signedIn, setSignedIn] = useState(false);
   const [bookedFor, setBookedFor] = useState<BookedFor>("self");
+  const [serviceType, setServiceType] = useState<string>("");
+  const [returnRide, setReturnRide] = useState<ReturnRide>("none");
+  const offersReturn = serviceType !== "equipment_delivery";
 
   // Signed-in riders (ADR 0031): fill in what we already know, and with
   // ?again=<request id>, the route and service of that earlier ride.
@@ -57,10 +92,16 @@ export function TripRequestForm() {
           phone: me.phone,
           email: me.email,
           mobility_notes: previous?.mobility_notes || me.mobility_notes,
-          pickup_address: previous?.pickup_address ?? "",
-          dropoff_address: previous?.dropoff_address ?? "",
+          ...partsFor("pickup_", previous?.pickup, previous?.pickup_address),
+          ...partsFor("dropoff_", previous?.dropoff, previous?.dropoff_address),
           service_type: previous?.service_type ?? "",
         });
+        if (previous) {
+          setServiceType(previous.service_type);
+          // A set return time belonged to that day; ask again rather than guess.
+          const kind = previous.return_ride?.kind;
+          if (kind && kind !== "scheduled") setReturnRide(kind);
+        }
       } catch {
         // Not signed in after all (or signed out): an ordinary blank form.
       }
@@ -85,20 +126,31 @@ export function TripRequestForm() {
     const data = new FormData(form);
 
     const pickupDate = String(data.get("pickup_date") ?? "");
-    const pickupTime = String(data.get("pickup_time") ?? "");
-    const requestedDatetime =
-      pickupDate && pickupTime
-        ? new Date(`${pickupDate}T${pickupTime}`).toISOString()
-        : "";
+    const requestedDatetime = isoAt(pickupDate, String(data.get("pickup_time") ?? ""));
+    const ride: ReturnRide = offersReturn ? returnRide : "none";
+    const returnDatetime =
+      ride === "scheduled" ? isoAt(pickupDate, String(data.get("return_time") ?? "")) || null : null;
+    const pickup = readParts(data, "pickup_");
+    const dropoff = readParts(data, "dropoff_");
 
     try {
       await submitTripRequest({
         full_name: String(data.get("full_name") ?? ""),
         phone: String(data.get("phone") ?? ""),
         email: String(data.get("email") ?? ""),
-        pickup_address: String(data.get("pickup_address") ?? ""),
-        dropoff_address: String(data.get("dropoff_address") ?? ""),
+        pickup_street: pickup.street,
+        pickup_unit: pickup.unit,
+        pickup_city: pickup.city,
+        pickup_state: pickup.state,
+        pickup_zip: pickup.zip,
+        dropoff_street: dropoff.street,
+        dropoff_unit: dropoff.unit,
+        dropoff_city: dropoff.city,
+        dropoff_state: dropoff.state,
+        dropoff_zip: dropoff.zip,
         requested_datetime: requestedDatetime,
+        return_ride: ride,
+        return_datetime: returnDatetime,
         service_type: String(data.get("service_type") ?? "") as ServiceType,
         mobility_notes: String(data.get("mobility_notes") ?? ""),
         additional_notes: String(data.get("additional_notes") ?? ""),
@@ -218,33 +270,25 @@ export function TripRequestForm() {
         errors={fieldErrors.email}
       />
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <Field
-          id={`${formId}-pickup_address`}
-          name="pickup_address"
-          label="Pickup address"
-          list={savedAddresses.length ? `${formId}-saved` : undefined}
-          required
-          errors={fieldErrors.pickup_address}
-        />
-        <Field
-          id={`${formId}-dropoff_address`}
-          name="dropoff_address"
-          label="Drop-off address"
-          list={savedAddresses.length ? `${formId}-saved` : undefined}
-          required
-          errors={fieldErrors.dropoff_address}
-        />
-        {savedAddresses.length > 0 && (
-          <datalist id={`${formId}-saved`}>
-            {savedAddresses.map((a) => (
-              <option key={a.id} value={a.address}>
-                {a.label}
-              </option>
-            ))}
-          </datalist>
-        )}
-      </div>
+      <AddressFields
+        id={`${formId}-pickup`}
+        legend="Pickup address"
+        prefix="pickup_"
+        section="pickup"
+        required
+        errors={fieldErrors}
+        saved={savedAddresses}
+      />
+
+      <AddressFields
+        id={`${formId}-dropoff`}
+        legend="Drop-off address"
+        prefix="dropoff_"
+        section="dropoff"
+        required
+        errors={fieldErrors}
+        saved={savedAddresses}
+      />
 
       <div className="grid gap-6 sm:grid-cols-2">
         <Field
@@ -273,6 +317,7 @@ export function TripRequestForm() {
           name="service_type"
           required
           defaultValue=""
+          onChange={(event) => setServiceType(event.target.value)}
           className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-brand-teal-dark focus:outline-none"
         >
           <option value="" disabled>
@@ -288,6 +333,48 @@ export function TripRequestForm() {
           <ErrorText messages={fieldErrors.service_type} />
         )}
       </div>
+
+      {offersReturn && (
+        <fieldset>
+          <legend className="block text-sm font-medium">
+            Do you need a ride back? <span aria-hidden="true">*</span>
+          </legend>
+          <div className="mt-2 space-y-2">
+            {returnRideOptions.map((option) => (
+              <label key={option.value} className="flex items-start gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="return_ride"
+                  value={option.value}
+                  checked={returnRide === option.value}
+                  onChange={() => setReturnRide(option.value)}
+                  className="mt-0.5"
+                />
+                <span>
+                  {option.label}
+                  {option.hint && <span className="block text-xs text-foreground/60">{option.hint}</span>}
+                </span>
+              </label>
+            ))}
+          </div>
+          {returnRide === "scheduled" && (
+            <div className="mt-4 sm:w-1/2">
+              <Field
+                id={`${formId}-return_time`}
+                name="return_time"
+                type="time"
+                label="Return pickup time (same day)"
+                required
+                errors={fieldErrors.return_datetime}
+              />
+            </div>
+          )}
+          {returnRide !== "scheduled" && fieldErrors.return_datetime && (
+            <ErrorText messages={fieldErrors.return_datetime} />
+          )}
+          {fieldErrors.return_ride && <ErrorText messages={fieldErrors.return_ride} />}
+        </fieldset>
+      )}
 
       <TextAreaField
         id={`${formId}-mobility_notes`}
@@ -333,7 +420,6 @@ function Field({
   autoComplete,
   required,
   errors,
-  list,
 }: {
   id: string;
   name: string;
@@ -342,7 +428,6 @@ function Field({
   autoComplete?: string;
   required?: boolean;
   errors?: string[];
-  list?: string;
 }) {
   return (
     <div>
@@ -354,7 +439,6 @@ function Field({
         name={name}
         type={type}
         autoComplete={autoComplete}
-        list={list}
         required={required}
         aria-invalid={errors && errors.length > 0 ? true : undefined}
         className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-brand-teal-dark focus:outline-none"

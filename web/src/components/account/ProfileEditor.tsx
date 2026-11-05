@@ -1,7 +1,9 @@
 "use client";
 
 import { useId, useState, type FormEvent } from "react";
+import { readParts } from "@/lib/addresses";
 import { riderApi, RiderApiError } from "@/lib/rider";
+import { AddressFields } from "../AddressFields";
 import { AccountNav, Alert, inputClass, Loading, primaryButtonClass, secondaryButtonClass } from "./ui";
 import { useRiderSession } from "./useRiderSession";
 
@@ -10,15 +12,18 @@ export function ProfileEditor() {
   const { profile, setProfile, handleError, signOut } = useRiderSession();
   const [message, setMessage] = useState<{ kind: "error" | "success"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [addressErrors, setAddressErrors] = useState<Record<string, string[]>>({});
 
   async function run(action: () => Promise<Parameters<typeof setProfile>[0]>, success: string) {
     setBusy(true);
     setMessage(null);
+    setAddressErrors({});
     try {
       setProfile(await action());
       setMessage({ kind: "success", text: success });
       return true;
     } catch (err) {
+      if (err instanceof RiderApiError) setAddressErrors(err.fieldErrors);
       const fields = err instanceof RiderApiError ? Object.values(err.fieldErrors).flat().join(" ") : "";
       const text = fields || handleError(err);
       if (text) setMessage({ kind: "error", text });
@@ -47,7 +52,7 @@ export function ProfileEditor() {
     const form = event.currentTarget;
     const data = new FormData(form);
     const ok = await run(
-      () => riderApi.addAddress(String(data.get("label") ?? ""), String(data.get("address") ?? "")),
+      () => riderApi.addAddress(String(data.get("label") ?? ""), readParts(data)),
       "Address saved.",
     );
     if (ok) form.reset();
@@ -127,19 +132,14 @@ export function ProfileEditor() {
             ))}
           </ul>
         )}
-        <form onSubmit={addAddress} className="grid gap-4 sm:grid-cols-[1fr_2fr_auto] sm:items-end">
-          <div>
+        <form onSubmit={addAddress} className="space-y-4">
+          <div className="sm:w-1/2">
             <label htmlFor={`${id}-label`} className="block text-sm font-medium">
               Name (optional)
             </label>
             <input id={`${id}-label`} name="label" maxLength={60} placeholder="Home" className={inputClass} />
           </div>
-          <div>
-            <label htmlFor={`${id}-address`} className="block text-sm font-medium">
-              Address
-            </label>
-            <input id={`${id}-address`} name="address" required className={inputClass} />
-          </div>
+          <AddressFields id={`${id}-new`} legend="New address" required errors={addressErrors} />
           <button type="submit" disabled={busy} className={secondaryButtonClass}>
             Save address
           </button>

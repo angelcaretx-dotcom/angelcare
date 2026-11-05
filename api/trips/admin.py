@@ -1,4 +1,5 @@
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.core.exceptions import ValidationError
 from django.utils.html import format_html
 from unfold.admin import TabularInline
 
@@ -7,7 +8,8 @@ from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 from transportation.models import TripRequestStatus
 
-from .models import Trip, TripEvent, TurnDown
+from .models import Trip, TripEvent, TripLeg, TurnDown
+from .returns import create_return_leg, needs_return_leg
 
 
 class TripEventInline(TabularInline):
@@ -87,7 +89,7 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
                 "the passenger, service type and addresses are filled in for you.",
             },
         ),
-        ("When", {"fields": ("scheduled_pickup_datetime", "appointment_datetime", "leg", "outbound_trip", "will_call")}),
+        ("When", {"fields": ("scheduled_pickup_datetime", "appointment_datetime", "leg", "outbound_trip", "will_call", "driver_waits")}),
         (
             "Source and payer",
             {
@@ -111,6 +113,8 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
 
     def save_model(self, request, obj, form, change):
         previous_status = form.initial.get("status") if change else None
+        if not change and needs_return_leg(obj) and obj.leg == TripLeg.ONE_WAY:
+            obj.leg = TripLeg.OUTBOUND
         # Model.clean() (credential/status checks -- see trips/models.py)
         # runs automatically as part of the admin's ModelForm validation
         # before save_model is ever called, so obj is already valid here.
@@ -158,6 +162,26 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
                     before={"status": previous_request_status},
                     after={"status": TripRequestStatus.SCHEDULED},
                     source="admin",
+                )
+
+        if not change and needs_return_leg(obj):
+            # Round trip booked on the website (ADR 0032): create the ride home too.
+            try:
+                back = create_return_leg(obj, actor=request.user)
+            except ValidationError as exc:
+                self.message_user(
+                    request,
+                    "The return leg couldn't be created automatically ("
+                    + "; ".join(exc.messages)
+                    + "). Add it by hand as a Return trip linked to this one.",
+                    level=messages.WARNING,
+                )
+            else:
+                self.message_user(
+                    request,
+                    f"Return leg created for {back.scheduled_pickup_datetime:%b %d}"
+                    + (" (estimated time -- adjust when the rider is ready)." if back.will_call or back.driver_waits else "."),
+                    level=messages.INFO,
                 )
 
 

@@ -5,7 +5,10 @@
  * as X-CSRFToken.
  */
 
-export interface SavedAddress {
+import type { AddressParts } from "./addresses";
+
+/** `address` is the one-line form; the parts are blank for addresses saved before ADR 0032. */
+export interface SavedAddress extends AddressParts {
   id: string;
   label: string;
   address: string;
@@ -31,11 +34,17 @@ export interface RiderTrip {
   confirmed_pickup: string | null;
   pickup_address: string;
   dropoff_address: string;
+  /** The parts as booked, for "Book again"; null for requests made before ADR 0032. */
+  pickup: AddressParts | null;
+  dropoff: AddressParts | null;
+  return_ride: { kind: ReturnRide; text: string; pickup: string | null } | null;
   mobility_notes: string;
   driver_first_name: string | null;
   vehicle: string | null;
   can_cancel: boolean;
 }
+
+export type ReturnRide = "none" | "scheduled" | "will_call" | "wait";
 
 export class RiderApiError extends Error {
   status: number;
@@ -139,7 +148,7 @@ export const riderApi = {
   me: () => call<RiderProfile>("GET", "/me"),
   updateMe: (changes: Partial<Pick<RiderProfile, "full_name" | "phone" | "mobility_notes">>) =>
     call<RiderProfile>("PATCH", "/me", changes),
-  addAddress: (label: string, address: string) => call<RiderProfile>("POST", "/addresses", { label, address }),
+  addAddress: (label: string, parts: AddressParts) => call<RiderProfile>("POST", "/addresses", { label, ...parts }),
   removeAddress: (id: string) => call<RiderProfile>("DELETE", `/addresses/${id}`),
   trips: () => call<{ trips: RiderTrip[] }>("GET", "/trips").then((r) => r.trips),
   cancelTrip: (id: string) => call<RiderTrip>("POST", `/trips/${id}/cancel`),

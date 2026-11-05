@@ -112,6 +112,15 @@ export function MyTrips() {
                       <dt className="text-foreground/60">To</dt>
                       <dd>{trip.dropoff_address}</dd>
                     </div>
+                    {trip.return_ride && (
+                      <div>
+                        <dt className="text-foreground/60">Ride back</dt>
+                        <dd>
+                          {trip.return_ride.text}
+                          {trip.return_ride.pickup ? ` · ${when(trip.return_ride.pickup)}` : ""}
+                        </dd>
+                      </div>
+                    )}
                     {trip.driver_first_name && (
                       <div>
                         <dt className="text-foreground/60">Your driver</dt>

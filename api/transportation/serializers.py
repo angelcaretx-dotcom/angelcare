@@ -1,7 +1,11 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import TripRequest
+from .addresses import PARTS, validate_parts
+from .models import ReturnRide, ServiceType, TripRequest
+
+SIDES = ("pickup", "dropoff")
+ADDRESS_PART_FIELDS = [f"{side}_{part}" for side in SIDES for part in PARTS]
 
 
 class TripRequestCreateSerializer(serializers.ModelSerializer):
@@ -12,32 +16,29 @@ class TripRequestCreateSerializer(serializers.ModelSerializer):
             "full_name",
             "phone",
             "email",
+            *ADDRESS_PART_FIELDS,
             "pickup_address",
             "dropoff_address",
             "requested_datetime",
+            "return_ride",
+            "return_datetime",
             "service_type",
             "mobility_notes",
             "additional_notes",
             "booked_for",
         ]
         read_only_fields = ["id"]
+        # The one-line addresses are composed from the parts (ADR 0032);
+        # they're still accepted on their own from older clients.
+        extra_kwargs = {
+            "pickup_address": {"required": False, "allow_blank": True},
+            "dropoff_address": {"required": False, "allow_blank": True},
+        }
 
     def validate_full_name(self, value: str) -> str:
         value = value.strip()
         if not value:
             raise serializers.ValidationError("Full name is required.")
-        return value
-
-    def validate_pickup_address(self, value: str) -> str:
-        value = value.strip()
-        if not value:
-            raise serializers.ValidationError("Pickup address is required.")
-        return value
-
-    def validate_dropoff_address(self, value: str) -> str:
-        value = value.strip()
-        if not value:
-            raise serializers.ValidationError("Drop-off address is required.")
         return value
 
     def validate_requested_datetime(self, value):
@@ -46,3 +47,37 @@ class TripRequestCreateSerializer(serializers.ModelSerializer):
                 "Requested pickup time must be in the future."
             )
         return value
+
+    def validate(self, attrs):
+        errors = {}
+
+        for side, label in (("pickup", "Pickup"), ("dropoff", "Drop-off")):
+            parts = {part: attrs.get(f"{side}_{part}", "") for part in PARTS}
+            line = attrs.get(f"{side}_address", "").strip()
+            if any(parts.values()) or not line:
+                cleaned, part_errors = validate_parts(parts, prefix=f"{side}_")
+                errors.update(part_errors)
+                attrs.update({f"{side}_{part}": value for part, value in cleaned.items()})
+                # The model composes the one-line address from the parts.
+                attrs[f"{side}_address"] = ""
+            else:
+                attrs[f"{side}_address"] = line
+            if not line and errors.get(f"{side}_street"):
+                errors[f"{side}_street"] = [f"{label} street address is required."]
+
+        return_ride = attrs.get("return_ride", ReturnRide.NONE)
+        if return_ride != ReturnRide.NONE and attrs.get("service_type") == ServiceType.EQUIPMENT_DELIVERY:
+            errors["return_ride"] = ["Equipment deliveries don't need a return ride."]
+        if return_ride == ReturnRide.SCHEDULED:
+            back = attrs.get("return_datetime")
+            pickup = attrs.get("requested_datetime")
+            if back is None:
+                errors["return_datetime"] = ["Choose a time for the return pickup."]
+            elif pickup is not None and back <= pickup:
+                errors["return_datetime"] = ["The return pickup must be after the first pickup."]
+        else:
+            attrs["return_datetime"] = None
+
+        if errors:
+            raise serializers.ValidationError(errors)
+        return attrs

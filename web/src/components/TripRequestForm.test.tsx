@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TripRequestForm } from "./TripRequestForm";
@@ -22,8 +22,15 @@ async function fillForm() {
   await user.type(screen.getByLabelText(/Full name/), "Jane Doe");
   await user.type(screen.getByLabelText(/Phone number/), "817-555-0100");
   await user.type(screen.getByLabelText(/Email address/), "jane@example.com");
-  await user.type(screen.getByLabelText(/Pickup address/), "1 Main St");
-  await user.type(screen.getByLabelText(/Drop-off address/), "2 Clinic Rd");
+  const pickup = within(screen.getByRole("group", { name: /Pickup address/ }));
+  await user.type(pickup.getByLabelText(/Street address/), "1 Main St");
+  await user.type(pickup.getByLabelText(/Apt/), "Apt 4");
+  await user.type(pickup.getByLabelText(/City/), "Fort Worth");
+  await user.type(pickup.getByLabelText(/ZIP/), "76104");
+  const dropoff = within(screen.getByRole("group", { name: /Drop-off address/ }));
+  await user.type(dropoff.getByLabelText(/Street address/), "2 Clinic Rd");
+  await user.type(dropoff.getByLabelText(/City/), "Arlington");
+  await user.type(dropoff.getByLabelText(/ZIP/), "76010");
   // user-event can't type into date/time inputs in jsdom; set them directly.
   fireEvent.change(screen.getByLabelText(/Pickup date/), { target: { value: "2026-11-02" } });
   fireEvent.change(screen.getByLabelText(/Pickup time/), { target: { value: "09:30" } });
@@ -50,9 +57,19 @@ describe("TripRequestForm", () => {
       full_name: "Jane Doe",
       phone: "817-555-0100",
       email: "jane@example.com",
-      pickup_address: "1 Main St",
-      dropoff_address: "2 Clinic Rd",
+      pickup_street: "1 Main St",
+      pickup_unit: "Apt 4",
+      pickup_city: "Fort Worth",
+      pickup_state: "TX",
+      pickup_zip: "76104",
+      dropoff_street: "2 Clinic Rd",
+      dropoff_unit: "",
+      dropoff_city: "Arlington",
+      dropoff_state: "TX",
+      dropoff_zip: "76010",
       requested_datetime: EXPECTED_UTC,
+      return_ride: "none",
+      return_datetime: null,
       service_type: "wheelchair",
       mobility_notes: "Manual wheelchair",
       additional_notes: "",
@@ -134,6 +151,43 @@ describe("TripRequestForm", () => {
     render(<TripRequestForm />);
     await Promise.resolve();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("shows address errors on the matching part", async () => {
+    mockFetch({ ok: false, status: 400, json: async () => ({ dropoff_zip: ["Enter a 5-digit ZIP code."] }) });
+    const user = await fillForm();
+    await user.click(submitButton());
+    await screen.findByRole("alert");
+    const zip = within(screen.getByRole("group", { name: /Drop-off address/ })).getByLabelText(/ZIP/);
+    expect(zip.getAttribute("aria-invalid")).toBe("true");
+    expect(zip.parentElement?.textContent).toContain("Enter a 5-digit ZIP code.");
+  });
+
+  it("books the ride back at a set time on the same day", async () => {
+    const fetchMock = mockFetch({ ok: true, json: async () => ({ id: "abc" }) });
+    const user = await fillForm();
+    await user.click(screen.getByLabelText(/Yes, at a set time/));
+    fireEvent.change(screen.getByLabelText(/Return pickup time/), { target: { value: "13:00" } });
+    await user.click(submitButton());
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.return_ride).toBe("scheduled");
+    expect(body.return_datetime).toBe("2026-11-02T19:00:00.000Z");
+  });
+
+  it("can ask the driver to wait", async () => {
+    const fetchMock = mockFetch({ ok: true, json: async () => ({ id: "abc" }) });
+    const user = await fillForm();
+    await user.click(screen.getByLabelText(/the driver waits for me/));
+    await user.click(submitButton());
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect([body.return_ride, body.return_datetime]).toEqual(["wait", null]);
+  });
+
+  it("doesn't ask about a ride back for equipment deliveries", async () => {
+    const user = await fillForm();
+    expect(screen.getByRole("group", { name: /ride back/ })).toBeTruthy();
+    await user.selectOptions(screen.getByLabelText(/Service type/), "equipment_delivery");
+    expect(screen.queryByRole("group", { name: /ride back/ })).toBeNull();
   });
 
   it("offers exactly the four confirmed services", () => {

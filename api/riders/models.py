@@ -3,6 +3,8 @@ import uuid
 from django.conf import settings
 from django.db import models
 
+from transportation.addresses import compose
+
 
 class RiderAccount(models.Model):
     """
@@ -47,7 +49,14 @@ class SavedAddress(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     account = models.ForeignKey(RiderAccount, on_delete=models.CASCADE, related_name="addresses")
     label = models.CharField(max_length=60, blank=True, help_text="e.g. Home, Dialysis center")
+    # One composed line; saved since ADR 0032 with its parts too, so the
+    # booking form can fill street, city, state and ZIP separately.
     address = models.TextField()
+    street = models.CharField(max_length=200, blank=True)
+    unit = models.CharField("apt / suite", max_length=50, blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    state = models.CharField(max_length=2, blank=True)
+    zip = models.CharField("ZIP", max_length=10, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -56,3 +65,8 @@ class SavedAddress(models.Model):
 
     def __str__(self) -> str:
         return self.label or self.address[:40]
+
+    def save(self, *args, **kwargs):
+        if self.street:
+            self.address = compose(self.street, self.unit, self.city, self.state, self.zip)
+        super().save(*args, **kwargs)

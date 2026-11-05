@@ -2,6 +2,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.core import mail
+from django.core.cache import cache
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -100,7 +101,7 @@ class TripRequestCreateTests(APITestCase):
             self.url, valid_payload(pickup_address="   "), format="json"
         )
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("pickup_address", response.data)
+        self.assertIn("pickup_street", response.data)
 
     def test_response_does_not_leak_internal_fields(self):
         response = self.client.post(self.url, valid_payload(), format="json")
@@ -177,3 +178,99 @@ class TripRequestModelTests(APITestCase):
             "requested_datetime": timezone.now() + timedelta(days=1),
         })
         self.assertIn(trip_request.full_name, str(trip_request))
+
+
+def parts_payload(**overrides):
+    """A booking as the website sends it since ADR 0032: address parts, no one-line address."""
+    payload = valid_payload(**overrides)
+    for side in ("pickup", "dropoff"):
+        if f"{side}_street" not in overrides:
+            payload.pop(f"{side}_address", None)
+    defaults = {
+        "pickup_street": "123 Main St",
+        "pickup_unit": "Apt 4",
+        "pickup_city": "Fort Worth",
+        "pickup_state": "tx",
+        "pickup_zip": "76104",
+        "dropoff_street": "456 Clinic Rd",
+        "dropoff_city": "Arlington",
+        "dropoff_state": "TX",
+        "dropoff_zip": "76010-1234",
+    }
+    return {**defaults, **payload}
+
+
+class AddressPartsTests(APITestCase):
+    def setUp(self):
+        # Many bookings from one test client: keep the anonymous rate limit out of it.
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.url = reverse("transportation:trip-request-create")
+
+    def test_parts_are_kept_and_composed_into_one_line(self):
+        response = self.client.post(self.url, parts_payload(), format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        request = TripRequest.objects.get()
+        self.assertEqual(request.pickup_address, "123 Main St, Apt 4, Fort Worth, TX 76104")
+        self.assertEqual(request.dropoff_address, "456 Clinic Rd, Arlington, TX 76010-1234")
+        self.assertEqual((request.pickup_city, request.pickup_state, request.pickup_zip), ("Fort Worth", "TX", "76104"))
+
+    def test_each_missing_or_bad_part_is_reported_on_its_field(self):
+        response = self.client.post(
+            self.url, parts_payload(pickup_city=" ", pickup_zip="7610", dropoff_state="ZZ"), format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(set(response.data), {"pickup_city", "pickup_zip", "dropoff_state"})
+
+    def test_one_line_address_still_accepted_from_older_clients(self):
+        response = self.client.post(self.url, valid_payload(), format="json")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        request = TripRequest.objects.get()
+        self.assertEqual(request.pickup_address, "123 Main St, Fort Worth, TX")
+        self.assertEqual(request.pickup_street, "")
+
+    def test_editing_parts_recomposes_the_line(self):
+        self.client.post(self.url, parts_payload(), format="json")
+        request = TripRequest.objects.get()
+        request.pickup_unit = ""
+        request.save(update_fields=["pickup_unit"])
+        request.refresh_from_db()
+        self.assertEqual(request.pickup_address, "123 Main St, Fort Worth, TX 76104")
+
+
+class ReturnRideTests(APITestCase):
+    def setUp(self):
+        # Many bookings from one test client: keep the anonymous rate limit out of it.
+        cache.clear()
+        self.addCleanup(cache.clear)
+        self.url = reverse("transportation:trip-request-create")
+        self.pickup = timezone.now() + timedelta(days=1)
+
+    def post(self, **overrides):
+        return self.client.post(
+            self.url, parts_payload(requested_datetime=self.pickup.isoformat(), **overrides), format="json"
+        )
+
+    def test_one_way_by_default(self):
+        self.assertEqual(self.post().status_code, status.HTTP_201_CREATED)
+        self.assertEqual(TripRequest.objects.get().return_ride, "none")
+
+    def test_set_time_return_needs_a_time_after_the_pickup(self):
+        response = self.post(return_ride="scheduled")
+        self.assertIn("return_datetime", response.data)
+        response = self.post(return_ride="scheduled", return_datetime=(self.pickup - timedelta(hours=1)).isoformat())
+        self.assertIn("return_datetime", response.data)
+        back = self.pickup + timedelta(hours=3)
+        response = self.post(return_ride="scheduled", return_datetime=back.isoformat())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
+        self.assertEqual(TripRequest.objects.get().return_datetime, back)
+
+    def test_will_call_and_wait_keep_no_time(self):
+        for choice in ("will_call", "wait"):
+            response = self.post(return_ride=choice, return_datetime=(self.pickup + timedelta(hours=2)).isoformat())
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+            self.assertIsNone(TripRequest.objects.get(pk=response.data["id"]).return_datetime)
+
+    def test_equipment_delivery_has_no_return_ride(self):
+        response = self.post(service_type="equipment_delivery", return_ride="wait")
+        self.assertIn("return_ride", response.data)

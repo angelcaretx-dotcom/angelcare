@@ -237,16 +237,42 @@ class MyTripsTests(TestCase):
         theirs = book(RiderClient(), email="someone@example.com")
         self.assertEqual(self.client.write("post", f"/api/v1/rider/trips/{theirs.pk}/cancel/").status_code, 404)
 
+    def test_round_trip_shows_the_ride_home_and_cancels_both_legs(self):
+        from trips.models import TripLeg
+        from trips.returns import create_return_leg
+
+        TripRequest.objects.filter(pk=self.request.pk).update(return_ride="will_call")
+        outbound = Trip.objects.create(
+            trip_request=TripRequest.objects.get(pk=self.request.pk),
+            passenger=make_passenger(),
+            leg=TripLeg.OUTBOUND,
+            scheduled_pickup_datetime=timezone.now() + timedelta(days=2),
+        )
+        back = create_return_leg(outbound, actor=self.account.user)
+        TripRequest.objects.filter(pk=self.request.pk).update(status=TripRequestStatus.SCHEDULED)
+        self.assertEqual(
+            self.trips()[0]["return_ride"],
+            {"kind": "will_call", "text": "Yes, I'll call when I'm ready", "pickup": None},
+        )
+        self.assertEqual(self.client.write("post", f"/api/v1/rider/trips/{self.request.pk}/cancel/").status_code, 200)
+        outbound.refresh_from_db()
+        back.refresh_from_db()
+        self.assertEqual((outbound.status, back.status), (TripStatus.CANCELLED, TripStatus.CANCELLED))
+
     def test_profile_and_saved_addresses(self):
         me = self.client.write("patch", "/api/v1/rider/me/", {"phone": "817-555-0100", "mobility_notes": "Walker"}).json()
         self.assertEqual((me["phone"], me["mobility_notes"]), ("817-555-0100", "Walker"))
-        me = self.client.write("post", "/api/v1/rider/addresses/", {"label": "Home", "address": "77 Oak Lane"}).json()
-        self.assertEqual(me["addresses"][0]["label"], "Home")
-        me = self.client.write("delete", f"/api/v1/rider/addresses/{me['addresses'][0]['id']}/").json()
+        home = {"street": "77 Oak Lane", "city": "Arlington", "state": "TX", "zip": "76010"}
+        me = self.client.write("post", "/api/v1/rider/addresses/", {"label": "Home", **home}).json()
+        saved = me["addresses"][0]
+        self.assertEqual((saved["label"], saved["address"], saved["zip"]), ("Home", "77 Oak Lane, Arlington, TX 76010", "76010"))
+        bad = self.client.write("post", "/api/v1/rider/addresses/", {**home, "zip": "7"})
+        self.assertEqual((bad.status_code, list(bad.json())), (400, ["zip"]))
+        me = self.client.write("delete", f"/api/v1/rider/addresses/{saved['id']}/").json()
         self.assertEqual(me["addresses"], [])
         for i in range(10):
-            self.client.write("post", "/api/v1/rider/addresses/", {"address": f"{i} Main St"})
-        self.assertEqual(self.client.write("post", "/api/v1/rider/addresses/", {"address": "x"}).status_code, 400)
+            self.client.write("post", "/api/v1/rider/addresses/", {**home, "street": f"{i} Main St"})
+        self.assertEqual(self.client.write("post", "/api/v1/rider/addresses/", home).status_code, 400)
 
     def test_writes_need_the_csrf_token(self):
         response = self.client.patch("/api/v1/rider/me/", {"phone": "1"}, format="json")
