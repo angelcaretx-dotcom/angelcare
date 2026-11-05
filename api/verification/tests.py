@@ -117,9 +117,20 @@ class TurnstileTests(TestCase):
         self.assertEqual(self.start("good").status_code, 200)
         self.assertEqual(post.call_args.kwargs["data"]["secret"], "test-secret")
 
-    def test_missing_token_is_refused(self):
+    def test_without_turnstile_only_a_few_codes_an_hour(self):
+        # The widget couldn't load (ad-blocker, work network): still let a
+        # person through, but cap it per visitor.
+        from .bots import NO_TURNSTILE_PER_HOUR
+
+        for n in range(NO_TURNSTILE_PER_HOUR):
+            response = APIClient().post(
+                START,
+                {"email": f"p{n}@example.com", "purpose": "contact", "elapsed_ms": 9000},
+                format="json",
+            )
+            self.assertEqual(response.status_code, 200, response.content)
         self.assertEqual(self.start("").status_code, 400)
-        self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(len(mail.outbox), NO_TURNSTILE_PER_HOUR)
 
     @patch("verification.bots.requests.post", side_effect=__import__("requests").ConnectionError)
     def test_cloudflare_outage_falls_back_to_the_email_code(self, post):

@@ -15,11 +15,13 @@ import logging
 
 import requests
 from django.conf import settings
+from django.core.cache import cache
 
 logger = logging.getLogger(__name__)
 
 TRAP_FIELD = "company_website"
 MIN_FORM_SECONDS = 3
+NO_TURNSTILE_PER_HOUR = 5
 TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
 
 
@@ -40,19 +42,39 @@ def client_ip(request) -> str:
     return forwarded.split(",")[0].strip() if forwarded else request.META.get("REMOTE_ADDR", "")
 
 
+def within_no_turnstile_limit(ip: str) -> bool:
+    """
+    A visitor whose browser couldn't load Turnstile at all (blocked by an
+    ad-blocker, a work network, an old browser) still gets a few codes an
+    hour, instead of being turned away from booking. Bots that skip
+    Turnstile get no more than that, and still can't read the code.
+    """
+    key = f"verify-no-turnstile:{ip}"
+    cache.add(key, 0, timeout=60 * 60)
+    try:
+        count = cache.incr(key)
+    except ValueError:  # expired between add and incr
+        cache.set(key, 1, timeout=60 * 60)
+        count = 1
+    if count > NO_TURNSTILE_PER_HOUR:
+        return False
+    logger.warning("Code requested without Turnstile (%s of %s this hour).", count, NO_TURNSTILE_PER_HOUR)
+    return True
+
+
 def passes_turnstile(token: str, ip: str) -> bool:
     """
     True when Cloudflare says the visitor is a person. Without a secret
     key configured (local development, tests) the check is skipped. If
     Cloudflare can't be reached, the visitor is let through, because the
     emailed code still has to be entered: an outage there mustn't stop
-    people booking rides.
+    people booking rides. No token at all: see within_no_turnstile_limit.
     """
     secret = settings.TURNSTILE_SECRET_KEY
     if not secret:
         return True
     if not token:
-        return False
+        return within_no_turnstile_limit(ip)
     try:
         response = requests.post(
             TURNSTILE_VERIFY_URL,

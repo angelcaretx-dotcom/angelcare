@@ -63,7 +63,7 @@ export function useEmailVerification(purpose: VerifyPurpose) {
         email,
         purpose,
         elapsedMs: Date.now() - openedAt.current,
-        turnstileToken: turnstile.current?.token() ?? "",
+        turnstileToken: (await turnstile.current?.token()) ?? "",
         trap,
       });
       return verification_id;

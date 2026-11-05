@@ -42,9 +42,16 @@ function loadScript(): Promise<void> {
   return scriptPromise;
 }
 
+/** How long Send waits for the usually-invisible check to finish. */
+const WAIT_MS = 6000;
+
 export interface TurnstileHandle {
-  /** The current token ("" when Turnstile is off or hasn't finished). */
-  token(): string;
+  /**
+   * The token, waiting a moment if the check is still running. "" when
+   * Turnstile is off or couldn't load in this browser: the API then
+   * allows a few codes an hour without it, so people aren't turned away.
+   */
+  token(): Promise<string>;
   /** Tokens are single-use: get a fresh one after each code request. */
   reset(): void;
 }
@@ -53,9 +60,20 @@ export const Turnstile = forwardRef<TurnstileHandle>(function Turnstile(_props, 
   const container = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
   const token = useRef("");
+  // Loading, or showing a challenge the person is working on.
+  const state = useRef<"loading" | "interactive" | "failed">("loading");
 
   useImperativeHandle(ref, () => ({
-    token: () => token.current,
+    token: async () => {
+      if (!SITE_KEY) return "";
+      const started = Date.now();
+      while (!token.current && state.current !== "failed") {
+        const waited = Date.now() - started;
+        if (waited > (state.current === "interactive" ? 20 * WAIT_MS : WAIT_MS)) break;
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+      return token.current;
+    },
     reset: () => {
       token.current = "";
       if (widgetId.current && window.turnstile) window.turnstile.reset(widgetId.current);
@@ -72,6 +90,16 @@ export const Turnstile = forwardRef<TurnstileHandle>(function Turnstile(_props, 
           sitekey: SITE_KEY,
           callback: (value: string) => {
             token.current = value;
+            state.current = "loading";
+          },
+          "before-interactive-callback": () => {
+            state.current = "interactive";
+          },
+          "error-callback": () => {
+            state.current = "failed";
+          },
+          "unsupported-callback": () => {
+            state.current = "failed";
           },
           "expired-callback": () => {
             token.current = "";
@@ -82,6 +110,7 @@ export const Turnstile = forwardRef<TurnstileHandle>(function Turnstile(_props, 
       })
       .catch(() => {
         // Blocked or offline: the API decides; the emailed code still applies.
+        state.current = "failed";
       });
     return () => {
       cancelled = true;

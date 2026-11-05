@@ -64,6 +64,20 @@ writing health details to it.
 
   If Cloudflare can't be reached, the visitor is let through, because
   the code is still required and an outage mustn't stop bookings.
+
+  Addendum (2026-11-05, owner's test): the widget can fail to load in
+  some browsers ("Unable to connect", e.g. ad-blockers, locked-down
+  networks), and a missing token was refused, turning real people away.
+  Now:
+  - Send waits up to 6 seconds for the invisible check (longer while a
+    challenge is on screen).
+  - A request with **no** token is allowed **5 times an hour per
+    visitor IP** and logged.
+  - A token Cloudflare rejects is still refused.
+
+  Bots that skip Turnstile get at most that, and still need the code
+  from the inbox. The counter lives in the API's cache, so on Vercel
+  it is per server instance: a soft limit on top of the per-email caps.
 - **Per-IP limit**: 30 code requests or checks an hour (`verify`
   throttle). The forms call the API directly, not through the
   website's proxy, so the limit sees the visitor's own address.
