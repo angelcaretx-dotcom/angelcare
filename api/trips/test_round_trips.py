@@ -128,3 +128,56 @@ class TexasTimeInTheAdminTests(TestCase):
         board = self.client.get("/admin/trips/trip/board/?date=2027-01-15").content.decode()
         self.assertIn("10:00 AM", board)
         self.assertNotIn("4:00 PM", board)
+
+
+class AddTripFillsInFromTheRequestTests(TestCase):
+    """Add Trip fills in a picked request's details before saving (owner's test report, 2026-11-05)."""
+
+    def setUp(self):
+        from datetime import datetime, timezone as dt_timezone
+
+        user = User.objects.create_user(username="disp", password="testpass123", is_staff=True)
+        user.groups.add(Group.objects.get(name="Dispatcher"))
+        login_with_otp(self.client, username="disp", password="testpass123")
+        self.passenger = make_passenger()
+        # 16:30 UTC in January is 10:30 AM Central.
+        self.request = make_trip_request(
+            passenger=self.passenger,
+            requested_datetime=datetime(2027, 1, 15, 16, 30, tzinfo=dt_timezone.utc),
+            service_type="wheelchair",
+        )
+
+    def test_details_come_back_in_texas_time(self):
+        response = self.client.get(f"/admin/trips/trip/request-details/{self.request.id}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "passenger": {"id": str(self.passenger.pk), "text": str(self.passenger)},
+                "service_type": "wheelchair",
+                "pickup_address": "1 Main St",
+                "dropoff_address": "2 Clinic Rd",
+                "pickup_date": "2027-01-15",
+                "pickup_time": "10:30:00",
+            },
+        )
+        self.assertTrue(
+            AuditLog.objects.filter(action="viewed", resource_type="TripRequest", resource_id=str(self.request.id)).exists()
+        )
+
+    def test_unlinked_request_has_no_passenger(self):
+        unlinked = make_trip_request()
+        response = self.client.get(f"/admin/trips/trip/request-details/{unlinked.id}/")
+        self.assertIsNone(response.json()["passenger"])
+
+    def test_add_page_has_the_fill_in_script(self):
+        page = self.client.get("/admin/trips/trip/add/").content.decode()
+        self.assertIn("/admin/trips/trip/request-details/", page)
+        self.assertIn('id="id_scheduled_pickup_datetime_0"', page)
+
+    def test_needs_permission_to_add_trips(self):
+        User.objects.create_user(username="nobody", password="testpass123", is_staff=True)
+        self.client.logout()
+        login_with_otp(self.client, username="nobody", password="testpass123")
+        response = self.client.get(f"/admin/trips/trip/request-details/{self.request.id}/")
+        self.assertEqual(response.status_code, 403)

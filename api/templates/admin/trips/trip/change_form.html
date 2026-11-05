@@ -1,0 +1,46 @@
+{% extends "admin/change_form.html" %}
+{% comment %}
+Add Trip: picking a website request fills in the fields still blank
+(passenger, service type, addresses, pickup time) right away, so staff
+see them before saving. The same fields are copied on save anyway
+(Trip.fill_from_request). Inline, so no static file is added.
+{% endcomment %}
+
+{% block form_after %}
+{{ block.super }}
+{% if add %}
+<script>
+(function () {
+  var $ = window.django && window.django.jQuery;
+  var picker = document.getElementById("id_trip_request");
+  if (!$ || !picker) return;
+  var base = "{% url 'admin:trips_trip_request_details' '00000000-0000-0000-0000-000000000000' %}";
+
+  function blank(el) { return el && !el.value; }
+  function fill(id, value) {
+    var el = document.getElementById(id);
+    if (blank(el) && value) { el.value = value; $(el).trigger("change"); }
+  }
+
+  $(picker).on("change", function () {
+    if (!picker.value) return;
+    fetch(base.replace("00000000-0000-0000-0000-000000000000", picker.value), { credentials: "same-origin" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data) return;
+        var passenger = document.getElementById("id_passenger");
+        if (data.passenger && blank(passenger)) {
+          passenger.appendChild(new Option(data.passenger.text, data.passenger.id, true, true));
+          $(passenger).trigger("change");
+        }
+        fill("id_service_type", data.service_type);
+        fill("id_pickup_address", data.pickup_address);
+        fill("id_dropoff_address", data.dropoff_address);
+        fill("id_scheduled_pickup_datetime_0", data.pickup_date);
+        fill("id_scheduled_pickup_datetime_1", data.pickup_time);
+      });
+  });
+})();
+</script>
+{% endif %}
+{% endblock %}

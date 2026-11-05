@@ -1,12 +1,17 @@
 from django.contrib import admin, messages
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+from django.urls import path
+from django.utils import timezone
+from django.utils.formats import localize_input
 from django.utils.html import format_html
 from unfold.admin import TabularInline
 
 from accounts.admin_base import AngelCareModelAdmin
 from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
-from transportation.models import TripRequestStatus
+from transportation.models import TripRequest, TripRequestStatus
 
 from .models import Trip, TripEvent, TripLeg, TurnDown
 from .returns import create_return_leg, needs_return_leg
@@ -85,9 +90,9 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
                     "pickup_address",
                     "dropoff_address",
                 ),
-                "description": "Creating this trip from a website request? Select it and leave "
-                "passenger, service type and addresses blank: they're copied from the "
-                "request when you save. All times are Texas (Central) time.",
+                "description": "Creating this trip from a website request? Select it and the "
+                "passenger, service type, addresses and pickup time fill in from the request "
+                "(only fields still blank). All times are Texas (Central) time.",
             },
         ),
         ("When", {"fields": ("scheduled_pickup_datetime", "appointment_datetime", "leg", "outbound_trip", "will_call", "driver_waits")}),
@@ -110,7 +115,40 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
     def get_urls(self):
         from .board import board_urls
 
-        return board_urls(self) + super().get_urls()
+        details = path(
+            "request-details/<uuid:pk>/",
+            self.admin_site.admin_view(self.request_details),
+            name="trips_trip_request_details",
+        )
+        return board_urls(self) + [details] + super().get_urls()
+
+    def request_details(self, request, pk):
+        """
+        What Add Trip fills in when a request is picked, before saving
+        (the same fields fill_from_request copies on save).
+        """
+        if not self.has_add_permission(request):
+            raise PermissionDenied
+        trip_request = get_object_or_404(TripRequest.objects.select_related("passenger"), pk=pk)
+        record_change(
+            actor=request.user,
+            action="viewed",
+            resource_type="TripRequest",
+            resource_id=trip_request.id,
+            source="admin",
+        )
+        pickup = timezone.localtime(trip_request.requested_datetime)
+        passenger = trip_request.passenger
+        return JsonResponse(
+            {
+                "passenger": {"id": str(passenger.pk), "text": str(passenger)} if passenger else None,
+                "service_type": trip_request.service_type,
+                "pickup_address": trip_request.pickup_address,
+                "dropoff_address": trip_request.dropoff_address,
+                "pickup_date": localize_input(pickup.date()),
+                "pickup_time": localize_input(pickup.time().replace(microsecond=0)),
+            }
+        )
 
     def save_model(self, request, obj, form, change):
         previous_status = form.initial.get("status") if change else None
