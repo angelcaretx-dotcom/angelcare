@@ -79,10 +79,11 @@ together with will-call.
 
 - One request can now mean two trips. Trips still link to a request one
   to one: the return leg reaches the request through its outbound trip.
-- Wait time is $1 per minute (owner, 2026-11-04,
-  business-decisions-log.md), stated on the form's "driver waits"
-  option. Phase 29 bills it from the driver app's timestamps: outbound
-  drop-off to return pick-up.
+- Wait time: the first 15 minutes free, then $1 per minute, for
+  private-pay and facility riders only (owner, 2026-11-04/05,
+  business-decisions-log.md). No prices appear on the website. Phase 29
+  bills it from the driver app's timestamps: outbound drop-off to
+  return pick-up.
 - Release: `transportation.0005`, `trips.0005` and `riders.0002` add
   columns only; run `ops/migrate-production.ps1` before pushing. Until
   both deployments finish, the new form can briefly meet the old API.

@@ -1,4 +1,5 @@
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
@@ -26,7 +27,8 @@ class ReturnLegFromAdminTests(TestCase):
         self.vehicle = make_vehicle()
 
     def schedule(self, trip_request, **extra):
-        local = timezone.localtime(PICKUP)
+        # The admin reads typed times as Texas time.
+        local = timezone.localtime(PICKUP, ZoneInfo("America/Chicago"))
         data = {
             "trip_request": str(trip_request.id),
             "driver": str(self.driver.id),
@@ -91,3 +93,38 @@ class DriverWaitsValidationTests(TestCase):
         with self.assertRaises(ValidationError) as caught:
             trip.full_clean()
         self.assertIn("driver_waits", caught.exception.message_dict)
+
+
+class TexasTimeInTheAdminTests(TestCase):
+    """The admin shows and reads Texas time; storage stays UTC (2026-11-05 day board bug)."""
+
+    def setUp(self):
+        user = User.objects.create_user(username="disp", password="testpass123", is_staff=True)
+        user.groups.add(Group.objects.get(name="Dispatcher"))
+        login_with_otp(self.client, username="disp", password="testpass123")
+
+    def test_ten_am_typed_is_ten_am_central_and_shows_as_ten_am_on_the_board(self):
+        from datetime import datetime, timezone as dt_timezone
+
+        request = make_trip_request(passenger=make_passenger())
+        response = self.client.post(
+            "/admin/trips/trip/add/",
+            {
+                "trip_request": str(request.id),
+                "scheduled_pickup_datetime_0": "2027-01-15",
+                "scheduled_pickup_datetime_1": "10:00:00",
+                "status": "scheduled",
+                "source": "website",
+                "leg": "one_way",
+                "notes": "",
+                "events-TOTAL_FORMS": "0",
+                "events-INITIAL_FORMS": "0",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        trip = Trip.objects.get()
+        # January: Central is UTC-6.
+        self.assertEqual(trip.scheduled_pickup_datetime, datetime(2027, 1, 15, 16, 0, tzinfo=dt_timezone.utc))
+        board = self.client.get("/admin/trips/trip/board/?date=2027-01-15").content.decode()
+        self.assertIn("10:00 AM", board)
+        self.assertNotIn("4:00 PM", board)

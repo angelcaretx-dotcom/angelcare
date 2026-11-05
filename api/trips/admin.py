@@ -85,8 +85,9 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
                     "pickup_address",
                     "dropoff_address",
                 ),
-                "description": "Creating this trip from a website request? Select it and "
-                "the passenger, service type and addresses are filled in for you.",
+                "description": "Creating this trip from a website request? Select it and leave "
+                "passenger, service type and addresses blank: they're copied from the "
+                "request when you save. All times are Texas (Central) time.",
             },
         ),
         ("When", {"fields": ("scheduled_pickup_datetime", "appointment_datetime", "leg", "outbound_trip", "will_call", "driver_waits")}),

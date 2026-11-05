@@ -12,9 +12,13 @@ Must come after AuthenticationMiddleware, OTPMiddleware (is_verified)
 and MessageMiddleware.
 """
 
+from zoneinfo import ZoneInfo
+
+from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.utils import timezone
 
 from .mfa import authenticators
 from .onboarding import must_change_password
@@ -64,3 +68,24 @@ class StaffSetupMiddleware:
                 )
             return step
         return None
+
+
+class OperationsTimezoneMiddleware:
+    """
+    Staff screens show and accept Texas time (OPERATIONS_TIME_ZONE).
+
+    Storage stays UTC (TIME_ZONE). Without this, the admin displayed and
+    read every date and time as UTC -- six hours off in winter -- while
+    the day board said "Texas (Central) time". The JSON API is left in
+    UTC: it sends explicit offsets and the website converts.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.zone = ZoneInfo(settings.OPERATIONS_TIME_ZONE)
+
+    def __call__(self, request):
+        if request.path.startswith("/api/"):
+            return self.get_response(request)
+        with timezone.override(self.zone):
+            return self.get_response(request)

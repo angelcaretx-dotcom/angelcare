@@ -31,7 +31,8 @@ is UNKNOWN and must not be assumed.
 | 2026-08-26 | Production email provider | Resend, SMTP relay, sending from `notifications@angelcaretransit.com` (domain verification with Resend in progress as of this date — real sends will start working automatically once it completes, no config change needed) | Owner, chat |
 | 2026-08-26 | Production file storage | Supabase Storage (bucket `Documents`, private), accessed via Supabase's own Storage REST API — verified working end to end for real (upload/download/sign/delete). See ADR 0012 | Owner, chat |
 | 2026-08-31 | EIN | 93-312-2590 | Owner, chat |
-| 2026-11-04 | Wait time (wait-and-return) | $1 per minute while the driver waits; shown on the booking form's "driver waits" option. Billing from Phase 29 rates | Owner, chat |
+| 2026-11-04 | Wait time (wait-and-return) | $1 per minute while the driver waits, after the first 15 minutes free (confirmed 2026-11-05). Private-pay and facility riders only; Medicaid broker (MTM, SafeRide) and HHSC trips are paid at the payer's own rates. Billing from Phase 29 rates | Owner, chat |
+| 2026-11-05 | Prices on the website | None: no rates (wait time included) are published on the website | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)
 
