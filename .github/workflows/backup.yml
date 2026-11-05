@@ -86,8 +86,15 @@ jobs:
 
       - name: Store in private Supabase bucket (keeps 30 days)
         run: |
-          python manage.py store_backup "$RUNNER_TEMP"/out/angelcare-backup-*.zip.enc --keep-days 30 >/dev/null 2>&1 \
-            || { echo "Upload failed (run store_backup locally for details)."; exit 1; }
+          echo "Archive size: $(du -m "$RUNNER_TEMP"/out/angelcare-backup-*.zip.enc | cut -f1) MB"
+          # The logs are public: on failure print only our own one-line
+          # reason (e.g. "Upload failed: HTTP 413"), never a traceback.
+          if ! output=$(python manage.py store_backup "$RUNNER_TEMP"/out/angelcare-backup-*.zip.enc --keep-days 30 2>&1); then
+            # CommandError lines come only from backups/offsite.py's fixed messages.
+            reason=$(printf '%s\n' "$output" | grep -E "^CommandError: " | head -1 | cut -c1-120)
+            echo "Upload failed. ${reason:-No reason given (run store_backup locally for details).}"
+            exit 1
+          fi
           echo "Stored."
 
       - name: Clean up
