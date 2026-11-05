@@ -1,11 +1,11 @@
-# Roadmap: from records to operations (Phases 22â€“33)
+# Roadmap: from records to operations (Phases 22–33)
 
 Written 2026-11-03. Goal: be ready for HHSC and broker (MTM, SafeRide)
-trips. Every payer audits the same chain -- **trip booked â†’ assigned â†’
-proven â†’ billed** -- so every phase hangs off the existing `Trip`
+trips. Every payer audits the same chain -- **trip booked → assigned →
+proven → billed** -- so every phase hangs off the existing `Trip`
 record rather than adding a separate tool.
 
-What exists today (Phases 0â€“21): website booking, trip requests, trips
+What exists today (Phases 0–21): website booking, trip requests, trips
 with driver + vehicle, payers, invoices, claims, company compliance
 records, document uploads, staff roles + MFA, audit log, dashboard,
 email alerts, nightly encrypted backups. See [architecture.md](architecture.md).
@@ -14,76 +14,76 @@ Same rules as every phase so far: one phase = one ADR + tests + docs;
 a schema change is migrated in production (`ops/migrate-production.ps1`)
 before the push; vendors sit behind an interface.
 
-## Stage A â€” Safe to carry real Medicaid data
+## Stage A — Safe to carry real Medicaid data
 
-### Phase 22: HIPAA hardening â€” âœ… done 2026-11-03 (ADR 0027)
-- Staff alert email carries no rider details: "New request â€” log in to view" (customer's own confirmation stays as is).
+### Phase 22: HIPAA hardening — ✅ done 2026-11-03 (ADR 0027)
+- Staff alert email carries no rider details: "New request — log in to view" (customer's own confirmation stays as is).
 - `docs/hipaa.md`: every service that touches PHI (Supabase, Vercel, Resend, GitHub backups, future maps vendor) with its BAA status, plan required, and who signed.
 - Log who **viewed** a passenger/trip record (today only changes are audited).
 - **Exit:** every PHI-holding vendor has a signed BAA or holds no PHI.
 
-## Stage B â€” Proof of service (the driver side)
+## Stage B — Proof of service (the driver side)
 
-### Phase 23: Dispatch foundations â€” âœ… built 2026-11-03 (ADR 0028)
-- `Trip.source` (website, phone, facility, MTM, SafeRide, HHSC, subcontract â€” AMTS / Gray Stone / American Medical Solutions, private pay) and `Trip.payer`.
+### Phase 23: Dispatch foundations — ✅ built 2026-11-03 (ADR 0028)
+- `Trip.source` (website, phone, facility, MTM, SafeRide, HHSC, subcontract — AMTS / Gray Stone / American Medical Solutions, private pay) and `Trip.payer`.
 - Broker trip number and prior-authorization number on the trip.
 - Trip legs: appointment time vs. pickup time; will-call return trips.
 - **Day board**: one page per day, trips grouped by driver, unassigned trips on top, quick assign.
 - Turn-down log: a trip offered by a broker and declined, with a reason (feeds the SLA numbers in Phase 31).
 
-### Phase 24: Driver app â€” the day â€” âœ… built 2026-11-03 (ADR 0029)
+### Phase 24: Driver app — the day — ✅ built 2026-11-03 (ADR 0029)
 - **Login with email or phone number** + password (owner decision 2026-11-03). No authenticator app for drivers; instead lockout after repeated failures, idle timeout, and drivers only ever see their own trips.
 - Driver logins (a Driver linked to a user account; phone-friendly sign-in).
-- Mobile web app at `admin.angelcaretransit.com/driver/` â€” no app store, works on any smartphone, can be added to the home screen.
+- Mobile web app at `admin.angelcaretransit.com/driver/` — no app store, works on any smartphone, can be added to the home screen.
 - Today's manifest in order; tap an address to open the phone's own maps app for directions.
-- Status buttons, each stamped with server time + phone GPS: **En route â†’ Arrived â†’ Picked up â†’ Dropped off**, or **No-show / Cancelled at door** with a reason code.
+- Status buttons, each stamped with server time + phone GPS: **En route → Arrived → Picked up → Dropped off**, or **No-show / Cancelled at door** with a reason code.
 - New `TripEvent` record: the append-only timeline of a trip (who, what, when, where). Dispatcher sees it live on the day board.
 
-### Phase 25: Driver app â€” the proof â€” âœ… built 2026-11-05 (ADR 0034)
+### Phase 25: Driver app — the proof — ✅ built 2026-11-05 (ADR 0034)
 Owner decisions 2026-11-05:
 - Rider signature (or "unable to sign" with reason) **at pickup**.
 - Odometer at the **start and end of each vehicle's day** (day miles); no per-trip loaded/deadhead miles.
 - Pre-trip vehicle inspection checklist, once per vehicle per day; a failed item blocks the vehicle **until an Administrator marks it fixed**.
 - Trip proof sheet as a **PDF built on download, never stored**: timestamps, GPS points, signature, vehicle check and miles.
 
-### Phase 26: Recurring trips â€” âœ… built 2026-11-05 (ADR 0035)
+### Phase 26: Recurring trips — ✅ built 2026-11-05 (ADR 0035)
 - Standing orders: rider, days of week (e.g. dialysis Mon/Wed/Fri), times, start/end dates, payer, prior auth, ride back (same options as booking), regular driver/vehicle.
 - Trips generated automatically **14 days ahead** (on save and every morning); skip a date (holiday, hospital stay) without breaking the series.
 - Prior-auth expiry: warning and staff email **14 days before**; no trips after it ends.
 
-### Phase 27: Credential vault + reminders â€” âœ… built 2026-11-05 (ADR 0036)
+### Phase 27: Credential vault + reminders — ✅ built 2026-11-05 (ADR 0036)
 - Driver credentials as a typed list: license, MVR, background check, drug screen, CPR/first aid, defensive driving, wheelchair securement, plus per-payer required sets (what SafeRide/MTM demand).
 - Vehicle insurance added to registration/inspection.
 - Company dates entered (verified 2026-11-05): SAM (Nov 3, 2027), PEMS revalidation (Dec 3, 2028), commercial auto insurance WCAN261110 (Oct 13, 2027); no Fort Worth VFH license yet.
 - **Email reminders at 90 / 60 / 30 / 7 days** and on expiry, via a scheduled job (same mechanism as backups). Expired = can't be assigned (already enforced for license/registration/inspection; extended to all required items).
 
-### Phase 34: Rider accounts + "My trips" â€” âœ… built 2026-11-04 (ADR 0031)
+### Phase 34: Rider accounts + "My trips" — ✅ built 2026-11-04 (ADR 0031)
 Numbered 34 so existing phase references stay valid; scheduled second. Owner decisions 2026-11-03:
 - **Booking stays account-free.** The account is an optional layer on top of a completed booking, never a gate in front of it.
-- A rider's **first booking from a new email** creates an account and emails a **set-password link** (valid 3 days; it doubles as email verification â€” the account is unusable until the inbox owner clicks it). Later bookings from that email attach to it; no new invite.
+- A rider's **first booking from a new email** creates an account and emails a **set-password link** (valid 3 days; it doubles as email verification — the account is unusable until the inbox owner clicks it). Later bookings from that email attach to it; no new invite.
 - The account sees **only requests made with that email**; never auto-linked to a passenger record (ADR 0006).
-- **Facility bookers get no rider account** â€” a discharge planner's email would bundle many patients' PHI. Facilities get their own account type in Phase 33.
+- **Facility bookers get no rider account** — a discharge planner's email would bundle many patients' PHI. Facilities get their own account type in Phase 33.
 - Riders can: see request/trip status (confirmed pickup time, driver once assigned), book again prefilled, cancel (staff alerted), edit profile (phone, saved addresses, mobility needs).
 - Lives on **angelcaretransit.com** ("My trips"), same look as the booking form.
-- PHI on screen â†’ strong passwords, lockout, **short idle timeout** (shared family tablets, facility workstations), access logging. Emails stay PHI-free (ADR 0027).
+- PHI on screen → strong passwords, lockout, **short idle timeout** (shared family tablets, facility workstations), access logging. Emails stay PHI-free (ADR 0027).
 
-### Booking form: round trips and address parts â€” âœ… built 2026-11-04 (ADR 0032)
+### Booking form: round trips and address parts — ✅ built 2026-11-04 (ADR 0032)
 Owner review of the live form, 2026-11-04:
 - Pickup and drop-off as **street, apt/suite, city, state, ZIP** (claims and broker files need them separately).
 - **"Do you need a ride back?"** on the same booking: one way / at a set time / I'll call when ready (will-call) / the driver waits (wait-and-return). Scheduling the trip creates the return leg too.
-- Wait time: **first 15 minutes free, then $1 per minute**, private-pay and facility riders only (owner, 2026-11-04/05). **Not shown on the website** (no prices published). Phase 29 bills it from the driver app timestamps (outbound drop-off â†’ return pick-up).
+- Wait time: **first 15 minutes free, then $1 per minute**, private-pay and facility riders only (owner, 2026-11-04/05). **Not shown on the website** (no prices published). Phase 29 bills it from the driver app timestamps (outbound drop-off → return pick-up).
 
-### Website: contact form, email codes, bot protection â€” âœ… built 2026-11-05 (ADR 0033)
+### Website: contact form, email codes, bot protection — ✅ built 2026-11-05 (ADR 0033)
 - No email address anywhere on the website; a **contact form** instead (messages read in the admin, staff alert carries no message text).
 - **One-time email code** before the booking and contact forms send (signed-in riders skip it for their own email).
 - **Bot control**: hidden trap field, minimum fill time, per-IP and per-email limits, **Cloudflare Turnstile** (needs the owner's two keys).
 
-## Stage C â€” Getting paid
+## Stage C — Getting paid
 
 ### Phase 28: Universal trip intake — ✅ v1 built 2026-11-05 (ADR 0038)
 - Owner, 2026-11-05: format-agnostic, not an MTM importer and a SafeRide importer. Any sender's CSV, Excel or text PDF → saved column mapping per sender → review queue → trips (with linked return legs). Re-importing never duplicates (sender's trip ID, then rider + time). v2: OCR for scanned PDFs (BAA'd or on-server only). v3: the real MTM/SafeRide templates at onboarding.
 - Original plan:
-- Upload the CSV/Excel exported from the MTM or SafeRide portal â†’ preview â†’ create trips. Re-importing the same file updates, never duplicates (keyed on broker trip number).
+- Upload the CSV/Excel exported from the MTM or SafeRide portal → preview → create trips. Re-importing the same file updates, never duplicates (keyed on broker trip number).
 - Reconcile report: trips the broker says we did vs. trips we have proof for.
 - We work above the broker portals, not instead of them.
 
@@ -95,10 +95,10 @@ Owner review of the live form, 2026-11-04:
 
 ### Phase 30: Claims output + denials
 - Claim lines with HCPCS codes (T2003 and modifiers) per trip.
-- Export for TMHP / TexMedConnect (format depends on the submission route â€” see decisions).
+- Export for TMHP / TexMedConnect (format depends on the submission route — see decisions).
 - Denial / appeal queue: denied claims with reason, due date, resubmission history (the claim history model already supports this).
 
-## Stage D â€” Running the business
+## Stage D — Running the business
 
 ### Phase 31: SLA dashboard — ✅ built 2026-11-05 (ADR 0037)
 - Per payer, per week: acceptance rate, on-time pickup % (from Phase 24 timestamps), no-shows, turn-downs by reason. Red when under target (e.g. 95%).
@@ -106,7 +106,7 @@ Owner review of the live form, 2026-11-04:
 ### Phase 32: Driver pay + trip profit
 - Driver pay rule per driver (per trip / per mile / hourly).
 - Pay statement per driver per period; 1099 year-end totals for contractors.
-- Profit per trip and per payer: revenue âˆ’ driver pay âˆ’ mileage cost; loaded vs. deadhead miles (odometer is per vehicle-day only, ADR 0034, so per-trip miles come from map estimates).
+- Profit per trip and per payer: revenue − driver pay − mileage cost; loaded vs. deadhead miles (odometer is per vehicle-day only, ADR 0034, so per-trip miles come from map estimates).
 
 ### Phase 33: Facility CRM + booking portal
 - Facilities as accounts: contacts, notes, follow-up reminders, trip history (the 22-facility lead list imported).
@@ -118,15 +118,15 @@ Owner review of the live form, 2026-11-04:
 |---|---|---|
 | 1 | 22 HIPAA | any real Medicaid trip |
 | 2 | 23 Dispatch foundations | everything below needs source/payer/auth on the trip |
-| 3 | 24 Driver app â€” day | proof, SLA, mileage billing |
+| 3 | 24 Driver app — day | proof, SLA, mileage billing |
 | 3b | 34 Rider accounts | rider self-service |
-| 4 | 25 Driver app â€” proof | audits, mileage-based invoices |
+| 4 | 25 Driver app — proof | audits, mileage-based invoices |
 | 5 | 26 Recurring | dialysis volume |
 | 6 | 27 Credentials + reminders | contract suspension risk |
 | 7 | 28 Broker import | stop retyping broker trips |
-| 8 | 29 Rates + invoices | â€” |
+| 8 | 29 Rates + invoices | — |
 | 9 | 30 Claims output | HHSC billing |
-| 10 | 31 SLA Â· 32 Pay/profit Â· 33 Facilities | â€” |
+| 10 | 31 SLA · 32 Pay/profit · 33 Facilities | — |
 
 Phases 27 and 28 can move earlier if a contract starts sooner than the driver app is ready.
 
@@ -134,9 +134,9 @@ Phases 27 and 28 can move earlier if a contract starts sooner than the driver ap
 
 | # | Decision | Needed by |
 |---|---|---|
-| 1 | Hosting plans that include a BAA (Supabase, Vercel, Resend) â€” budget. **Decided 2026-11-03:** strip PHI from staff emails now; owner checks BAA plans/costs before the first Medicaid trip | Phase 22 |
-| 2 | Do drivers use their own smartphones? Android, iPhone, or both? **Decided 2026-11-03:** drivers' own phones, mixed Android + iPhone â†’ mobile web app | Phase 24 |
-| 3 | Which payer goes live first? **Decided 2026-11-03:** all four at once â€” MTM, SafeRide, HHSC direct, private/facility. Still needed: a sample trip export file from the MTM and SafeRide portals | Phase 28 |
+| 1 | Hosting plans that include a BAA (Supabase, Vercel, Resend) — budget. **Decided 2026-11-03:** strip PHI from staff emails now; owner checks BAA plans/costs before the first Medicaid trip | Phase 22 |
+| 2 | Do drivers use their own smartphones? Android, iPhone, or both? **Decided 2026-11-03:** drivers' own phones, mixed Android + iPhone → mobile web app | Phase 24 |
+| 3 | Which payer goes live first? **Decided 2026-11-03:** all four at once — MTM, SafeRide, HHSC direct, private/facility. Still needed: a sample trip export file from the MTM and SafeRide portals | Phase 28 |
 | 4 | Each payer's rates (from the contracts) | Phase 29 |
 | 5 | HHSC claim route: TexMedConnect web entry, or a clearinghouse (837P file)? | Phase 30 |
 | 6 | Driver pay model (per trip / per mile / hourly) | Phase 32 |
