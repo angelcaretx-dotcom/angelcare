@@ -40,6 +40,7 @@ AREAS = [
     Area("turn_downs", "Turn-downs", (("trips", "turndown"),)),
     Area("passengers", "Passengers", (("passengers", "passenger"),)),
     Area("rider_accounts", "Rider website accounts", (("riders", "rideraccount"),)),
+    Area("contact_messages", "Website messages", (("contact", "contactmessage"),)),
     Area("drivers_vehicles", "Drivers & vehicles", (("drivers", "driver"), ("vehicles", "vehicle"))),
     Area("payers", "Payers", (("payers", "payer"),)),
     Area("billing", "Billing (invoices)", (("billing", "invoice"),)),

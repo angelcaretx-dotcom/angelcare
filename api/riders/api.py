@@ -20,6 +20,7 @@ from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from audit.services import record_change
+from verification.services import issue_token
 from transportation.addresses import PARTS, AddressPartsSerializer
 from transportation.models import ReturnRide, TripRequestStatus
 from trips.models import TripStatus
@@ -255,6 +256,17 @@ def _trip_payload(trip_request) -> dict:
         "vehicle": f"{trip.vehicle.make} {trip.vehicle.model}" if assigned else None,
         "can_cancel": services.can_cancel(trip_request),
     }
+
+
+class BookingTokenView(RiderView):
+    """
+    Signed-in riders proved their email when they set a password, so the
+    booking form gets its email token from here instead of a code
+    (ADR 0033). Only ever for the account's own email.
+    """
+
+    def post(self, request):
+        return Response({"email": self.account.email, "token": issue_token(self.account.email)})
 
 
 class TripsView(RiderView):

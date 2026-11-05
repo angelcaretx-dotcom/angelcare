@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Container } from "@/components/Container";
 import { siteConfig } from "@/lib/site-config";
@@ -48,11 +49,11 @@ export default function PrivacyPage() {
             Contact
           </h2>
           <p className="mt-2">
-            Questions about this policy or your information can be sent to{" "}
-            <a href={siteConfig.emailHref} className="text-brand-teal-dark hover:underline">
-              {siteConfig.email}
-            </a>
-            .
+            Questions about this policy or your information can be sent through our{" "}
+            <Link href="/contact" className="text-brand-teal-dark hover:underline">
+              contact form
+            </Link>{" "}
+            or by phone at {siteConfig.phone}.
           </p>
         </section>
       </div>

@@ -72,6 +72,11 @@ Owner review of the live form, 2026-11-04:
 - **"Do you need a ride back?"** on the same booking: one way / at a set time / I'll call when ready (will-call) / the driver waits (wait-and-return). Scheduling the trip creates the return leg too.
 - Wait time: **first 15 minutes free, then $1 per minute**, private-pay and facility riders only (owner, 2026-11-04/05). **Not shown on the website** (no prices published). Phase 29 bills it from the driver app timestamps (outbound drop-off → return pick-up).
 
+### Website: contact form, email codes, bot protection — ✅ built 2026-11-05 (ADR 0033)
+- No email address anywhere on the website; a **contact form** instead (messages read in the admin, staff alert carries no message text).
+- **One-time email code** before the booking and contact forms send (signed-in riders skip it for their own email).
+- **Bot control**: hidden trap field, minimum fill time, per-IP and per-email limits, **Cloudflare Turnstile** (needs the owner's two keys).
+
 ## Stage C — Getting paid
 
 ### Phase 28: Broker trip import

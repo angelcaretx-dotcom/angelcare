@@ -13,6 +13,8 @@ from transportation.models import TripRequest, TripRequestStatus
 from trips.models import Trip, TripStatus
 from trips.tests import make_driver, make_passenger, make_vehicle
 
+from verification.services import issue_token
+
 from . import services
 from .models import RiderAccount
 
@@ -30,6 +32,7 @@ BOOKING = {
 
 def book(client, **overrides):
     data = {**BOOKING, "requested_datetime": (timezone.now() + timedelta(days=2)).isoformat(), **overrides}
+    data.setdefault("verification_token", issue_token(data["email"]))
     response = client.post("/api/v1/trip-requests/", data, format="json")
     assert response.status_code == 201, response.content
     return TripRequest.objects.get(pk=response.json()["id"])
@@ -273,6 +276,15 @@ class MyTripsTests(TestCase):
         for i in range(10):
             self.client.write("post", "/api/v1/rider/addresses/", {**home, "street": f"{i} Main St"})
         self.assertEqual(self.client.write("post", "/api/v1/rider/addresses/", home).status_code, 400)
+
+    def test_booking_token_is_for_the_account_email_only(self):
+        from verification.services import token_is_valid
+
+        data = self.client.write("post", "/api/v1/rider/booking-token/").json()
+        self.assertEqual(data["email"], self.account.email)
+        self.assertTrue(token_is_valid(data["token"], self.account.email))
+        self.assertFalse(token_is_valid(data["token"], "someone@example.com"))
+        self.assertEqual(RiderClient().write("post", "/api/v1/rider/booking-token/").status_code, 403)
 
     def test_writes_need_the_csrf_token(self):
         response = self.client.patch("/api/v1/rider/me/", {"phone": "1"}, format="json")

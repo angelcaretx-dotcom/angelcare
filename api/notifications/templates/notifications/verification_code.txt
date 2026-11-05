@@ -1,0 +1,9 @@
+Your AngelCare Transit code is:
+
+{{ code }}
+
+Enter it on our website to continue. It works for {{ minutes }} minutes.
+
+If you didn't ask for this code, you can ignore this email.
+
+Questions? Call 817-766-9228.

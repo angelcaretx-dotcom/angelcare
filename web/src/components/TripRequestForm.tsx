@@ -5,7 +5,9 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { readParts, type AddressParts } from "@/lib/addresses";
 import { ApiError, submitTripRequest, type BookedFor, type ReturnRide, type ServiceType } from "@/lib/api";
 import { maybeSignedIn, riderApi, type SavedAddress } from "@/lib/rider";
+import { forgetToken, TRAP_FIELD, VerifyError } from "@/lib/verify";
 import { AddressFields } from "./AddressFields";
+import { TrapField, useEmailVerification } from "./EmailVerification";
 
 interface FieldErrors {
   [key: string]: string[];
@@ -68,6 +70,8 @@ export function TripRequestForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [signedIn, setSignedIn] = useState(false);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
+  const verifier = useEmailVerification("booking");
   const [bookedFor, setBookedFor] = useState<BookedFor>("self");
   const [serviceType, setServiceType] = useState<string>("");
   const [returnRide, setReturnRide] = useState<ReturnRide>("none");
@@ -86,6 +90,7 @@ export function TripRequestForm() {
         const form = formRef.current;
         if (cancelled || !form) return;
         setSignedIn(true);
+        setAccountEmail(me.email);
         setSavedAddresses(me.addresses);
         fill(form, {
           full_name: me.full_name,
@@ -132,12 +137,23 @@ export function TripRequestForm() {
       ride === "scheduled" ? isoAt(pickupDate, String(data.get("return_time") ?? "")) || null : null;
     const pickup = readParts(data, "pickup_");
     const dropoff = readParts(data, "dropoff_");
+    const email = String(data.get("email") ?? "").trim();
 
     try {
+      // Confirm the email first (ADR 0033): signed-in riders already
+      // have, for their own address; everyone else gets a code.
+      const ownEmail = accountEmail !== null && email.toLowerCase() === accountEmail.toLowerCase();
+      const token = ownEmail
+        ? (await riderApi.bookingToken()).token
+        : await verifier.verify(email, String(data.get(TRAP_FIELD) ?? ""));
+      if (!token) {
+        setStatus("idle");
+        return;
+      }
       await submitTripRequest({
         full_name: String(data.get("full_name") ?? ""),
         phone: String(data.get("phone") ?? ""),
-        email: String(data.get("email") ?? ""),
+        email,
         pickup_street: pickup.street,
         pickup_unit: pickup.unit,
         pickup_city: pickup.city,
@@ -155,6 +171,7 @@ export function TripRequestForm() {
         mobility_notes: String(data.get("mobility_notes") ?? ""),
         additional_notes: String(data.get("additional_notes") ?? ""),
         booked_for: (String(data.get("booked_for") ?? "") || "self") as BookedFor,
+        verification_token: token,
       });
       setStatus("success");
       form.reset();
@@ -163,6 +180,13 @@ export function TripRequestForm() {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);
         if (err.fieldErrors) setFieldErrors(err.fieldErrors);
+        if (err.fieldErrors?.verification_token) {
+          forgetToken(email);
+          setErrorMessage("Please submit again; we'll email you a new code to confirm your address.");
+        }
+      } else if (err instanceof VerifyError) {
+        setErrorMessage(err.message);
+        setFieldErrors(err.fieldErrors);
       } else {
         setErrorMessage(
           "Something went wrong submitting your request. Please try again or call us.",
@@ -204,205 +228,212 @@ export function TripRequestForm() {
   }
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} noValidate className="space-y-6">
-      {status === "error" && errorMessage && (
-        <div
-          role="alert"
-          className="rounded-lg border border-red-600/30 bg-red-50 p-4 text-sm text-red-900"
-        >
-          {errorMessage}
-        </div>
-      )}
-
-      <fieldset>
-        <legend className="block text-sm font-medium">
-          Who is this ride for? <span aria-hidden="true">*</span>
-        </legend>
-        <div className="mt-2 space-y-2">
-          {bookedForOptions.map((option) => (
-            <label key={option.value} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="booked_for"
-                value={option.value}
-                checked={bookedFor === option.value}
-                onChange={() => setBookedFor(option.value)}
-              />
-              {option.label}
-            </label>
-          ))}
-        </div>
-        {bookedFor === "caregiver" && (
-          <p className="mt-2 text-xs text-foreground/60">
-            Enter the rider&apos;s name below, and your own phone and email so we can reach you.
-          </p>
+    <>
+      <form ref={formRef} onSubmit={handleSubmit} noValidate className="relative space-y-6">
+        {status === "error" && errorMessage && (
+          <div
+            role="alert"
+            className="rounded-lg border border-red-600/30 bg-red-50 p-4 text-sm text-red-900"
+          >
+            {errorMessage}
+          </div>
         )}
-        {fieldErrors.booked_for && <ErrorText messages={fieldErrors.booked_for} />}
-      </fieldset>
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <Field
-          id={`${formId}-full_name`}
-          name="full_name"
-          label="Full name"
-          autoComplete="name"
-          required
-          errors={fieldErrors.full_name}
-        />
-        <Field
-          id={`${formId}-phone`}
-          name="phone"
-          type="tel"
-          label="Phone number"
-          autoComplete="tel"
-          required
-          errors={fieldErrors.phone}
-        />
-      </div>
-
-      <Field
-        id={`${formId}-email`}
-        name="email"
-        type="email"
-        label="Email address"
-        autoComplete="email"
-        required
-        errors={fieldErrors.email}
-      />
-
-      <AddressFields
-        id={`${formId}-pickup`}
-        legend="Pickup address"
-        prefix="pickup_"
-        section="pickup"
-        required
-        errors={fieldErrors}
-        saved={savedAddresses}
-      />
-
-      <AddressFields
-        id={`${formId}-dropoff`}
-        legend="Drop-off address"
-        prefix="dropoff_"
-        section="dropoff"
-        required
-        errors={fieldErrors}
-        saved={savedAddresses}
-      />
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        <Field
-          id={`${formId}-pickup_date`}
-          name="pickup_date"
-          type="date"
-          label="Pickup date"
-          required
-          errors={fieldErrors.requested_datetime}
-        />
-        <Field
-          id={`${formId}-pickup_time`}
-          name="pickup_time"
-          type="time"
-          label="Pickup time"
-          required
-        />
-      </div>
-
-      <div>
-        <label htmlFor={`${formId}-service_type`} className="block text-sm font-medium">
-          Service type <span aria-hidden="true">*</span>
-        </label>
-        <select
-          id={`${formId}-service_type`}
-          name="service_type"
-          required
-          defaultValue=""
-          onChange={(event) => setServiceType(event.target.value)}
-          className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-brand-teal-dark focus:outline-none"
-        >
-          <option value="" disabled>
-            Select a service&hellip;
-          </option>
-          {serviceTypeOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        {fieldErrors.service_type && (
-          <ErrorText messages={fieldErrors.service_type} />
-        )}
-      </div>
-
-      {offersReturn && (
         <fieldset>
           <legend className="block text-sm font-medium">
-            Do you need a ride back? <span aria-hidden="true">*</span>
+            Who is this ride for? <span aria-hidden="true">*</span>
           </legend>
           <div className="mt-2 space-y-2">
-            {returnRideOptions.map((option) => (
-              <label key={option.value} className="flex items-start gap-2 text-sm">
+            {bookedForOptions.map((option) => (
+              <label key={option.value} className="flex items-center gap-2 text-sm">
                 <input
                   type="radio"
-                  name="return_ride"
+                  name="booked_for"
                   value={option.value}
-                  checked={returnRide === option.value}
-                  onChange={() => setReturnRide(option.value)}
-                  className="mt-0.5"
+                  checked={bookedFor === option.value}
+                  onChange={() => setBookedFor(option.value)}
                 />
-                <span>
-                  {option.label}
-                  {option.hint && <span className="block text-xs text-foreground/60">{option.hint}</span>}
-                </span>
+                {option.label}
               </label>
             ))}
           </div>
-          {returnRide === "scheduled" && (
-            <div className="mt-4 sm:w-1/2">
-              <Field
-                id={`${formId}-return_time`}
-                name="return_time"
-                type="time"
-                label="Return pickup time (same day)"
-                required
-                errors={fieldErrors.return_datetime}
-              />
-            </div>
+          {bookedFor === "caregiver" && (
+            <p className="mt-2 text-xs text-foreground/60">
+              Enter the rider&apos;s name below, and your own phone and email so we can reach you.
+            </p>
           )}
-          {returnRide !== "scheduled" && fieldErrors.return_datetime && (
-            <ErrorText messages={fieldErrors.return_datetime} />
-          )}
-          {fieldErrors.return_ride && <ErrorText messages={fieldErrors.return_ride} />}
+          {fieldErrors.booked_for && <ErrorText messages={fieldErrors.booked_for} />}
         </fieldset>
-      )}
 
-      <TextAreaField
-        id={`${formId}-mobility_notes`}
-        name="mobility_notes"
-        label="Mobility requirements (optional)"
-        placeholder="e.g. uses a manual wheelchair, needs assistance transferring"
-      />
+        <div className="grid gap-6 sm:grid-cols-2">
+          <Field
+            id={`${formId}-full_name`}
+            name="full_name"
+            label="Full name"
+            autoComplete="name"
+            required
+            errors={fieldErrors.full_name}
+          />
+          <Field
+            id={`${formId}-phone`}
+            name="phone"
+            type="tel"
+            label="Phone number"
+            autoComplete="tel"
+            required
+            errors={fieldErrors.phone}
+          />
+        </div>
 
-      <TextAreaField
-        id={`${formId}-additional_notes`}
-        name="additional_notes"
-        label="Additional notes (optional)"
-      />
+        <Field
+          id={`${formId}-email`}
+          name="email"
+          type="email"
+          label="Email address"
+          autoComplete="email"
+          required
+          hint={accountEmail ? undefined : "We'll email you a code to confirm it's yours."}
+          errors={fieldErrors.email}
+        />
 
-      <p className="text-xs text-foreground/60">
-        Submitting this form sends a transportation request only — it is not
-        a confirmed booking. Our team will follow up by phone or email. Do
-        not use this form for medical emergencies; call 911 instead.
-      </p>
+        <AddressFields
+          id={`${formId}-pickup`}
+          legend="Pickup address"
+          prefix="pickup_"
+          section="pickup"
+          required
+          errors={fieldErrors}
+          saved={savedAddresses}
+        />
 
-      <button
-        type="submit"
-        disabled={status === "submitting"}
-        className="rounded-full bg-brand-blue-dark px-6 py-3 text-sm font-semibold text-white transition-colors hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {status === "submitting" ? "Submitting…" : "Submit Request"}
-      </button>
-    </form>
+        <AddressFields
+          id={`${formId}-dropoff`}
+          legend="Drop-off address"
+          prefix="dropoff_"
+          section="dropoff"
+          required
+          errors={fieldErrors}
+          saved={savedAddresses}
+        />
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          <Field
+            id={`${formId}-pickup_date`}
+            name="pickup_date"
+            type="date"
+            label="Pickup date"
+            required
+            errors={fieldErrors.requested_datetime}
+          />
+          <Field
+            id={`${formId}-pickup_time`}
+            name="pickup_time"
+            type="time"
+            label="Pickup time"
+            required
+          />
+        </div>
+
+        <div>
+          <label htmlFor={`${formId}-service_type`} className="block text-sm font-medium">
+            Service type <span aria-hidden="true">*</span>
+          </label>
+          <select
+            id={`${formId}-service_type`}
+            name="service_type"
+            required
+            defaultValue=""
+            onChange={(event) => setServiceType(event.target.value)}
+            className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-brand-teal-dark focus:outline-none"
+          >
+            <option value="" disabled>
+              Select a service&hellip;
+            </option>
+            {serviceTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {fieldErrors.service_type && (
+            <ErrorText messages={fieldErrors.service_type} />
+          )}
+        </div>
+
+        {offersReturn && (
+          <fieldset>
+            <legend className="block text-sm font-medium">
+              Do you need a ride back? <span aria-hidden="true">*</span>
+            </legend>
+            <div className="mt-2 space-y-2">
+              {returnRideOptions.map((option) => (
+                <label key={option.value} className="flex items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="return_ride"
+                    value={option.value}
+                    checked={returnRide === option.value}
+                    onChange={() => setReturnRide(option.value)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    {option.label}
+                    {option.hint && <span className="block text-xs text-foreground/60">{option.hint}</span>}
+                  </span>
+                </label>
+              ))}
+            </div>
+            {returnRide === "scheduled" && (
+              <div className="mt-4 sm:w-1/2">
+                <Field
+                  id={`${formId}-return_time`}
+                  name="return_time"
+                  type="time"
+                  label="Return pickup time (same day)"
+                  required
+                  errors={fieldErrors.return_datetime}
+                />
+              </div>
+            )}
+            {returnRide !== "scheduled" && fieldErrors.return_datetime && (
+              <ErrorText messages={fieldErrors.return_datetime} />
+            )}
+            {fieldErrors.return_ride && <ErrorText messages={fieldErrors.return_ride} />}
+          </fieldset>
+        )}
+
+        <TextAreaField
+          id={`${formId}-mobility_notes`}
+          name="mobility_notes"
+          label="Mobility requirements (optional)"
+          placeholder="e.g. uses a manual wheelchair, needs assistance transferring"
+        />
+
+        <TextAreaField
+          id={`${formId}-additional_notes`}
+          name="additional_notes"
+          label="Additional notes (optional)"
+        />
+
+        <p className="text-xs text-foreground/60">
+          Submitting this form sends a transportation request only — it is not
+          a confirmed booking. Our team will follow up by phone or email. Do
+          not use this form for medical emergencies; call 911 instead.
+        </p>
+
+        <TrapField />
+        {verifier.widget}
+
+        <button
+          type="submit"
+          disabled={status === "submitting" || verifier.waiting}
+          className="rounded-full bg-brand-blue-dark px-6 py-3 text-sm font-semibold text-white transition-colors hover:brightness-90 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {status === "submitting" && !verifier.waiting ? "Submitting…" : "Submit Request"}
+        </button>
+      </form>
+      {verifier.panel}
+    </>
   );
 }
 
@@ -420,6 +451,7 @@ function Field({
   autoComplete,
   required,
   errors,
+  hint,
 }: {
   id: string;
   name: string;
@@ -428,6 +460,7 @@ function Field({
   autoComplete?: string;
   required?: boolean;
   errors?: string[];
+  hint?: string;
 }) {
   return (
     <div>
@@ -443,6 +476,7 @@ function Field({
         aria-invalid={errors && errors.length > 0 ? true : undefined}
         className="mt-1 w-full rounded-lg border border-black/15 px-3 py-2 text-sm focus:border-brand-teal-dark focus:outline-none"
       />
+      {hint && <p className="mt-1 text-xs text-foreground/60">{hint}</p>}
       {errors && errors.length > 0 && <ErrorText messages={errors} />}
     </div>
   );

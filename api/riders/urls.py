@@ -13,6 +13,7 @@ urlpatterns = [
     path("me/", api.MeView.as_view(), name="me"),
     path("addresses/", api.AddressesView.as_view(), name="addresses"),
     path("addresses/<uuid:address_id>/", api.AddressDetailView.as_view(), name="address"),
+    path("booking-token/", api.BookingTokenView.as_view(), name="booking-token"),
     path("trips/", api.TripsView.as_view(), name="trips"),
     path("trips/<uuid:request_id>/cancel/", api.CancelTripView.as_view(), name="cancel"),
 ]

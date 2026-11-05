@@ -47,6 +47,7 @@ def seed_roles(sender, **kwargs):
             "claims",
             "compliance",
             "riders",
+            "contact",
         ]
     )
 
@@ -72,6 +73,8 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("trips", "tripevent", ["view"]))
         # Dispatchers answer riders' calls about their online accounts.
         + list(_permissions("riders", "rideraccount", ["view"]))
+        # Answering the website's messages is front-desk work.
+        + list(_permissions("contact", "contactmessage", ["view", "change"]))
     )
 
     administrator, _ = Group.objects.get_or_create(name="Administrator")
@@ -84,6 +87,7 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("trips", "turndown", ["view", "change", "add", "delete"]))
         + list(_permissions("trips", "tripevent", ["view"]))
         + list(_permissions("riders", "rideraccount", ["view", "change", "add", "delete"]))
+        + list(_permissions("contact", "contactmessage", ["view", "change", "delete"]))
         + list(_permissions("documents", "document", ["view", "change", "add", "delete"]))
         + list(_permissions("payers", "payer", ["view", "change", "add", "delete"]))
         # Billing is administrative/financial -- Administrator only, no

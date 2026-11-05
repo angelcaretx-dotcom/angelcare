@@ -54,9 +54,9 @@ export function Footer() {
               </a>
             </li>
             <li>
-              <a href={siteConfig.emailHref} className="hover:text-brand-blue-dark">
-                {siteConfig.email}
-              </a>
+              <Link href="/contact" className="hover:text-brand-blue-dark">
+                Send us a message
+              </Link>
             </li>
           </ul>
         </div>

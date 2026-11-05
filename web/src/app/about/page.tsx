@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { Container } from "@/components/Container";
 import { siteConfig } from "@/lib/site-config";
@@ -23,9 +24,9 @@ export default function AboutPage() {
         <p>
           For questions about our company, service history, or credentials,
           please{" "}
-          <a href={siteConfig.emailHref} className="text-brand-teal-dark hover:underline">
+          <Link href="/contact" className="text-brand-teal-dark hover:underline">
             contact us
-          </a>{" "}
+          </Link>{" "}
           directly.
         </p>
       </div>

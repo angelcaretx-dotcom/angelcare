@@ -150,6 +150,8 @@ export const riderApi = {
     call<RiderProfile>("PATCH", "/me", changes),
   addAddress: (label: string, parts: AddressParts) => call<RiderProfile>("POST", "/addresses", { label, ...parts }),
   removeAddress: (id: string) => call<RiderProfile>("DELETE", `/addresses/${id}`),
+  /** A booking token for the account's own email: signed-in riders skip the code (ADR 0033). */
+  bookingToken: () => call<{ email: string; token: string }>("POST", "/booking-token"),
   trips: () => call<{ trips: RiderTrip[] }>("GET", "/trips").then((r) => r.trips),
   cancelTrip: (id: string) => call<RiderTrip>("POST", `/trips/${id}/cancel`),
 };

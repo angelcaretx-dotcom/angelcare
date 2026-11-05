@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TripRequestForm } from "./TripRequestForm";
 
 // TZ is pinned to America/Chicago in vitest.config.mts, so a 9:30 AM
@@ -41,9 +41,21 @@ async function fillForm() {
 
 const submitButton = () => screen.getByRole("button", { name: /Submit/ });
 
+/** This tab already confirmed jane@example.com with a code (ADR 0033). */
+function rememberConfirmedEmail() {
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  sessionStorage.setItem(
+    "angelcare-email-tokens",
+    JSON.stringify({ "jane@example.com": { token: "test-token", expiresAt } }),
+  );
+}
+
+beforeEach(rememberConfirmedEmail);
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  sessionStorage.clear();
 });
 
 describe("TripRequestForm", () => {
@@ -74,6 +86,7 @@ describe("TripRequestForm", () => {
       mobility_notes: "Manual wheelchair",
       additional_notes: "",
       booked_for: "self",
+      verification_token: "test-token",
     });
     const status = await screen.findByRole("status");
     expect(status.textContent).toContain("Request received.");
@@ -190,6 +203,47 @@ describe("TripRequestForm", () => {
     expect(screen.getByRole("group", { name: /ride back/ })).toBeTruthy();
     await user.selectOptions(screen.getByLabelText(/Service type/), "equipment_delivery");
     expect(screen.queryByRole("group", { name: /ride back/ })).toBeNull();
+  });
+
+  it("emails a code first when this email isn't confirmed yet, then books", async () => {
+    sessionStorage.clear();
+    const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      if (url.endsWith("/verify/start/")) {
+        expect(body).toMatchObject({ email: "jane@example.com", purpose: "booking", company_website: "" });
+        return { ok: true, json: async () => ({ verification_id: "v1" }) };
+      }
+      if (url.endsWith("/verify/check/")) {
+        expect(body).toEqual({ verification_id: "v1", code: "123456" });
+        return { ok: true, json: async () => ({ token: "fresh-token", expires_at: "2099-01-01T00:00:00Z" }) };
+      }
+      return { ok: true, json: async () => ({ id: "abc" }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const user = await fillForm();
+
+    await user.click(submitButton());
+    const panel = await screen.findByRole("region", { name: /Check your email/ });
+    expect(panel.textContent).toContain("jane@example.com");
+    expect((submitButton() as HTMLButtonElement).disabled).toBe(true);
+    await user.type(screen.getByLabelText(/Code from the email/), "123456");
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await screen.findByRole("status");
+    const booking = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/trip-requests/"))!;
+    expect(JSON.parse(String(booking[1].body)).verification_token).toBe("fresh-token");
+  });
+
+  it("shows why a code couldn't be sent", async () => {
+    sessionStorage.clear();
+    mockFetch({
+      ok: false,
+      status: 429,
+      json: async () => ({ detail: "Too many codes for this address today. Please call us instead." }),
+    });
+    const user = await fillForm();
+    await user.click(submitButton());
+    expect((await screen.findByRole("alert")).textContent).toContain("Too many codes");
   });
 
   it("offers exactly the four confirmed services", () => {

@@ -17,6 +17,7 @@ const input: TripRequestInput = {
   dropoff_zip: "76104",
   requested_datetime: "2026-11-02T15:30:00.000Z",
   service_type: "wheelchair",
+  verification_token: "token",
 };
 
 function mockFetch(response: Partial<Response>) {

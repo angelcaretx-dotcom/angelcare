@@ -1,6 +1,8 @@
 from django.utils import timezone
 from rest_framework import serializers
 
+from verification.services import token_is_valid
+
 from .addresses import PARTS, validate_parts
 from .models import ReturnRide, ServiceType, TripRequest
 
@@ -9,6 +11,10 @@ ADDRESS_PART_FIELDS = [f"{side}_{part}" for side in SIDES for part in PARTS]
 
 
 class TripRequestCreateSerializer(serializers.ModelSerializer):
+    # Proof the booker can read this email (ADR 0033): from an emailed
+    # code, or from being signed in to their rider account.
+    verification_token = serializers.CharField(write_only=True)
+
     class Meta:
         model = TripRequest
         fields = [
@@ -26,6 +32,7 @@ class TripRequestCreateSerializer(serializers.ModelSerializer):
             "mobility_notes",
             "additional_notes",
             "booked_for",
+            "verification_token",
         ]
         read_only_fields = ["id"]
         # The one-line addresses are composed from the parts (ADR 0032);
@@ -50,6 +57,8 @@ class TripRequestCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         errors = {}
+        if not token_is_valid(attrs.pop("verification_token", ""), attrs.get("email", "")):
+            errors["verification_token"] = ["Please confirm your email address again."]
 
         for side, label in (("pickup", "Pickup"), ("dropoff", "Drop-off")):
             parts = {part: attrs.get(f"{side}_{part}", "") for part in PARTS}

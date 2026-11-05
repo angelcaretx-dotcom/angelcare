@@ -35,6 +35,8 @@ export interface TripRequestInput extends AddressPartsInput<"pickup">, AddressPa
   mobility_notes?: string;
   additional_notes?: string;
   booked_for?: BookedFor;
+  /** From the emailed code or a signed-in rider account (ADR 0033). */
+  verification_token: string;
 }
 
 export class ApiError extends Error {
@@ -76,5 +78,37 @@ export async function submitTripRequest(
     );
   }
 
+  return response.json();
+}
+
+export interface ContactMessageInput {
+  name: string;
+  email: string;
+  phone: string;
+  message: string;
+  verification_token: string;
+  company_website: string;
+}
+
+/** The contact form (ADR 0033); replaces the published email address. */
+export async function submitContactMessage(input: ContactMessageInput): Promise<{ id: string }> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/contact/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    let fieldErrors: Record<string, string[]> | undefined;
+    try {
+      fieldErrors = await response.json();
+    } catch {
+      // no JSON body
+    }
+    throw new ApiError(
+      "We couldn't send your message. Please check the form and try again.",
+      response.status,
+      fieldErrors,
+    );
+  }
   return response.json();
 }

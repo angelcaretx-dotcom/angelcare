@@ -32,6 +32,7 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0030](decisions/0030-staff-access-management.md),
 [ADR 0031](decisions/0031-rider-accounts.md),
 [ADR 0032](decisions/0032-round-trips-and-address-parts.md),
+[ADR 0033](decisions/0033-contact-form-email-codes-bot-protection.md),
 [hipaa.md](hipaa.md),
 [roadmap.md](roadmap.md),
 [business-decisions-log.md](business-decisions-log.md),
@@ -132,6 +133,12 @@ monolithic app. Currently:
   offered after a first booking (never facility bookings), set up by
   emailed link, "My trips" API under `/api/v1/rider/` used by the
   website's `/account` pages through its `/api` proxy -- see ADR 0031.
+- `verification/` — emailed 6-digit codes and bot checks (trap field,
+  timing, Cloudflare Turnstile) in front of the website forms; a code
+  earns a short-lived token the booking and contact APIs require -- see
+  ADR 0033.
+- `contact/` — the website contact form's messages (no email address
+  is published), read and marked handled in the admin -- see ADR 0033.
 - `backups/` — (Phase 16) no models. `export_backup` /
   `verify_backup` / `restore_backup` commands: one provider-independent
   zip with every row plus every uploaded file, checksummed, and a

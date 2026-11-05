@@ -101,22 +101,21 @@ describe.each(pages)("$route", ({ file }) => {
     expect(broken).toEqual([]);
   });
 
-  it("only uses the real AngelCare phone number and email", () => {
+  it("only uses the real AngelCare phone number, and shows no email address", () => {
     // Never-invent-facts guard: every contact detail must come from
     // site-config.ts (sourced from docs/business-decisions-log.md).
     const hrefs = [...doc.querySelectorAll("a[href]")].map((a) => a.getAttribute("href")!);
     for (const tel of hrefs.filter((h) => h.startsWith("tel:"))) {
       expect(tel).toBe(siteConfig.phoneHref);
     }
-    for (const mail of hrefs.filter((h) => h.startsWith("mailto:"))) {
-      expect(mail).toBe(siteConfig.emailHref);
-    }
+    // No email address is published (owner, 2026-11-05; ADR 0033).
+    expect(hrefs.filter((h) => h.startsWith("mailto:"))).toEqual([]);
     const text = visibleText(doc);
     const phones = text.match(/\(?\b\d{3}\)?[-.\s]\d{3}[-.\s]\d{4}\b/g) ?? [];
     // 911 is mentioned (emergency disclaimer) but never in this format.
     expect([...new Set(phones)].filter((p) => p !== siteConfig.phone)).toEqual([]);
     const emails = text.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g) ?? [];
-    expect([...new Set(emails)].filter((e) => e !== siteConfig.email)).toEqual([]);
+    expect(emails).toEqual([]);
   });
 });
 

@@ -100,6 +100,8 @@ INSTALLED_APPS = [
     "backups",
     "driver_app",
     "riders",
+    "verification",
+    "contact",
 ]
 
 MIDDLEWARE = [
@@ -342,6 +344,11 @@ UNFOLD = {
                         "icon": "do_not_disturb_on",
                         "link": reverse_lazy("admin:trips_turndown_changelist"),
                     },
+                    {
+                        "title": "Website messages",
+                        "icon": "mail",
+                        "link": reverse_lazy("admin:contact_contactmessage_changelist"),
+                    },
                 ],
             },
             {
@@ -484,6 +491,8 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "20/hour",
         "rider_auth": "300/hour",
+        # Website email codes, per visitor IP (ADR 0033).
+        "verify": "30/hour",
         "user": "1000/hour",
     },
 }
@@ -571,3 +580,9 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 60 * 60 * 24 * 30
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     X_FRAME_OPTIONS = "DENY"
+
+
+# --- Website bot protection (ADR 0033) ---
+# Cloudflare Turnstile's secret key. Empty = the check is skipped (local
+# development, tests); the emailed code is still required either way.
+TURNSTILE_SECRET_KEY = os.environ.get("DJANGO_TURNSTILE_SECRET_KEY", "")

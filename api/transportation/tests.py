@@ -11,6 +11,8 @@ from rest_framework.test import APITestCase
 from notifications.models import NotificationLog
 from passengers.models import Passenger
 
+from verification.services import issue_token
+
 from .models import TripRequest, TripRequestStatus
 
 
@@ -27,6 +29,8 @@ def valid_payload(**overrides):
         "additional_notes": "",
     }
     payload.update(overrides)
+    # The website confirms the email first (ADR 0033).
+    payload.setdefault("verification_token", issue_token(payload["email"]))
     return payload
 
 
@@ -164,19 +168,20 @@ class TripRequestNotificationIntegrationTests(APITestCase):
         self.assertEqual(TripRequest.objects.count(), 1)
 
 
+def model_fields(**overrides):
+    """valid_payload as model fields: the API-only token dropped."""
+    payload = valid_payload(**overrides)
+    payload.pop("verification_token")
+    return {**payload, "requested_datetime": timezone.now() + timedelta(days=1)}
+
+
 class TripRequestModelTests(APITestCase):
     def test_default_status_is_new(self):
-        trip_request = TripRequest.objects.create(**{
-            **valid_payload(),
-            "requested_datetime": timezone.now() + timedelta(days=1),
-        })
+        trip_request = TripRequest.objects.create(**model_fields())
         self.assertEqual(trip_request.status, TripRequestStatus.NEW)
 
     def test_str_representation(self):
-        trip_request = TripRequest.objects.create(**{
-            **valid_payload(),
-            "requested_datetime": timezone.now() + timedelta(days=1),
-        })
+        trip_request = TripRequest.objects.create(**model_fields())
         self.assertIn(trip_request.full_name, str(trip_request))
 
 

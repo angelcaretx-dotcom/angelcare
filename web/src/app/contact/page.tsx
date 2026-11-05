@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
+import { ContactForm } from "@/components/ContactForm";
 import { Container } from "@/components/Container";
 import { siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
   title: "Contact Us",
-  description: `Contact ${siteConfig.name} by phone or email.`,
+  description: `Contact ${siteConfig.name} by phone or send us a message.`,
 };
 
 export default function ContactPage() {
@@ -28,18 +29,19 @@ export default function ContactPage() {
           </dd>
         </div>
         <div>
-          <dt className="text-sm font-semibold text-foreground/60">Email</dt>
-          <dd className="mt-1 text-lg">
-            <a href={siteConfig.emailHref} className="text-brand-blue-dark font-semibold hover:underline">
-              {siteConfig.email}
-            </a>
-          </dd>
-        </div>
-        <div>
           <dt className="text-sm font-semibold text-foreground/60">Service Area</dt>
           <dd className="mt-1 text-lg">{siteConfig.serviceArea}</dd>
         </div>
       </dl>
+
+      <section aria-labelledby="message-heading" className="mt-12 max-w-2xl">
+        <h2 id="message-heading" className="text-xl font-semibold">
+          Send us a message
+        </h2>
+        <div className="mt-6">
+          <ContactForm />
+        </div>
+      </section>
 
       <p className="mt-10 max-w-xl text-sm text-foreground/60">
         If you are experiencing a medical emergency, call 911 immediately.

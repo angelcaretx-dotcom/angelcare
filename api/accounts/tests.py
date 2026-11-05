@@ -39,6 +39,8 @@ class RoleSeedingTests(TestCase):
                 "add_turndown",
                 "view_tripevent",
                 "view_rideraccount",
+                "view_contactmessage",
+                "change_contactmessage",
             },
         )
 
@@ -77,6 +79,9 @@ class RoleSeedingTests(TestCase):
                 "change_rideraccount",
                 "add_rideraccount",
                 "delete_rideraccount",
+                "view_contactmessage",
+                "change_contactmessage",
+                "delete_contactmessage",
                 "view_document",
                 "change_document",
                 "add_document",

@@ -13,8 +13,8 @@ export const siteConfig = {
     "Non-emergency medical transportation serving the state of Texas. Ambulatory, wheelchair, and stretcher transport, plus medical equipment delivery.",
   phone: "817-766-9228",
   phoneHref: "tel:+18177669228",
-  email: "angelcaretx@gmail.com",
-  emailHref: "mailto:angelcaretx@gmail.com",
+  // No email address is published (owner, 2026-11-05): people write
+  // through the contact form, which confirms their own email (ADR 0033).
   serviceArea: "State of Texas",
   /** Lowercase, mid-sentence form, e.g. "...transportation across {serviceAreaLower}." */
   serviceAreaLower: "the state of Texas",

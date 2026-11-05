@@ -1,0 +1,7 @@
+Someone sent a message through the website's contact form. They
+confirmed their email address with a code.
+
+{% for label, value in rows %}{{ label }}: {{ value }}
+{% endfor %}
+The message is only shown in the admin, not in email:
+{{ admin_url|safe }}

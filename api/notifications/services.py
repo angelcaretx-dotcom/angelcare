@@ -124,6 +124,36 @@ class NotificationService:
             related=trip_request,
         )
 
+    # --- Website forms (ADR 0033). Still no PHI: a code, or a reference. ---
+
+    def send_verification_code(self, verification, code: str) -> None:
+        context = {"code": code, "minutes": 10, "website_url": settings.WEBSITE_URL}
+        self._send(
+            notification_type=NotificationType.VERIFICATION_CODE,
+            to=verification.email,
+            subject=f"{code} is your AngelCare Transit code",
+            body_text=render_to_string("notifications/verification_code.txt", context),
+            body_html=render_to_string("notifications/verification_code.html", context),
+            related=verification,
+        )
+
+    def notify_contact_message(self, message) -> None:
+        # The sender's words can hold health details: they stay in the
+        # admin, which logs who reads them (ADR 0027).
+        context = {
+            "rows": [("Reference", message.reference), ("Received", message.created_at)],
+            "admin_url": f"{settings.SITE_URL}/admin/contact/contactmessage/{message.id}/change/",
+            "website_url": settings.WEBSITE_URL,
+        }
+        self._send(
+            notification_type=NotificationType.CONTACT_MESSAGE_STAFF,
+            to=settings.STAFF_NOTIFICATION_EMAIL,
+            subject=f"New website message {message.reference} — log in to read",
+            body_text=render_to_string("notifications/staff_contact_message.txt", context),
+            body_html=render_to_string("notifications/staff_contact_message.html", context),
+            related=message,
+        )
+
     @classmethod
     def _staff_rows(cls, trip_request) -> list[tuple[str, str]]:
         # Reference and timing only: enough to judge urgency, nothing
