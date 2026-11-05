@@ -35,10 +35,23 @@ Write-Host "`nStep 2/4: checking the database password..." -ForegroundColor Cyan
 if ($LASTEXITCODE -ne 0) { throw "That database password didn't work. Nothing was saved." }
 
 Write-Host "Step 3/4: checking the storage key..." -ForegroundColor Cyan
+$wrongKey = "That's the public (anon / publishable) key. Use the SECRET key: Supabase > Settings > API Keys > 'secret' (sb_secret_...) or the legacy 'service_role' key. Nothing was saved."
+# The public key can list buckets too (it just sees none), so look at
+# the key itself, then make sure it can see the Documents bucket.
+if ($storageKey.StartsWith("sb_publishable_")) { throw $wrongKey }
+if ($storageKey.StartsWith("eyJ")) {
+    try {
+        $payload = $storageKey.Split(".")[1].Replace("-", "+").Replace("_", "/")
+        $payload += "=" * ((4 - $payload.Length % 4) % 4)
+        $role = ([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($payload)) | ConvertFrom-Json).role
+    } catch { $role = $null }
+    if ($role -ne "service_role") { throw $wrongKey }
+}
 try {
-    $null = Invoke-RestMethod -Uri "https://ngdxyafqvwxejpxucexh.supabase.co/storage/v1/bucket" -Headers @{ Authorization = "Bearer $storageKey"; apikey = $storageKey }
-    Write-Host "  OK"
-} catch { throw "That storage key didn't work (use the service_role / secret key, not the anon key). Nothing was saved." }
+    $buckets = Invoke-RestMethod -Uri "https://ngdxyafqvwxejpxucexh.supabase.co/storage/v1/bucket" -Headers @{ Authorization = "Bearer $storageKey"; apikey = $storageKey }
+} catch { throw "That storage key didn't work (use the secret / service_role key, not the anon key). Nothing was saved." }
+if (-not (@($buckets) | Where-Object { $_.id -eq "Documents" })) { throw $wrongKey }
+Write-Host "  OK"
 
 # 24 random characters (no look-alikes), in groups of 4.
 $alphabet = "abcdefghjkmnpqrstuvwxyz23456789".ToCharArray()
