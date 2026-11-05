@@ -57,21 +57,46 @@ def backup_time(name: str) -> datetime | None:
     return datetime.strptime(match.group(1), "%Y%m%dT%H%M%SZ").replace(tzinfo=timezone.utc)
 
 
+def _reason(response) -> str:
+    """
+    Supabase Storage's short error name ("Bucket not found", "Duplicate",
+    "Unauthorized"...): it answers many different problems with HTTP 400,
+    so the status alone doesn't say which. Never includes request data.
+    """
+    try:
+        body = response.json()
+    except ValueError:
+        return f"HTTP {response.status_code}"
+    detail = str(body.get("error") or body.get("statusCode") or "")[:40] if isinstance(body, dict) else ""
+    return f"HTTP {response.status_code}" + (f" ({detail})" if detail else "")
+
+
+def _get_bucket(bucket: str):
+    return requests.get(f"{_base()}/bucket/{bucket}", headers=_headers(), timeout=TIMEOUT)
+
+
 def ensure_private_bucket(bucket: str) -> None:
-    response = requests.get(f"{_base()}/bucket/{bucket}", headers=_headers(), timeout=TIMEOUT)
-    if response.status_code == 200:
-        if response.json().get("public"):
-            # Never upload into something world-readable.
-            raise OffsiteError(f"Bucket {bucket!r} is public; refusing to store backups in it.")
-        return
-    response = requests.post(
-        f"{_base()}/bucket",
-        headers=_headers("application/json"),
-        json={"id": bucket, "name": bucket, "public": False},
-        timeout=TIMEOUT,
-    )
-    if response.status_code not in (200, 201):
-        raise OffsiteError(f"Couldn't create bucket {bucket!r}: HTTP {response.status_code}")
+    response = _get_bucket(bucket)
+    if response.status_code != 200:
+        created = requests.post(
+            f"{_base()}/bucket",
+            headers=_headers("application/json"),
+            json={"id": bucket, "name": bucket, "public": False},
+            timeout=TIMEOUT,
+        )
+        if created.status_code not in (200, 201):
+            # "Already exists" also comes back as an error: look again.
+            response = _get_bucket(bucket)
+            if response.status_code != 200:
+                raise OffsiteError(
+                    f"Couldn't create bucket {bucket!r}: {_reason(created)}; "
+                    f"reading it: {_reason(response)}"
+                )
+        else:
+            return
+    if response.json().get("public"):
+        # Never upload into something world-readable.
+        raise OffsiteError(f"Bucket {bucket!r} is public; refusing to store backups in it.")
 
 
 def list_backups(bucket: str) -> list[str]:

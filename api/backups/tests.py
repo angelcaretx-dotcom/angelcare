@@ -341,6 +341,39 @@ class OffsiteStoreTests(TestCase):
             offsite.store(self.archive(self.NOW), now=self.NOW)
         self.assertEqual(self.fake.buckets["backups"]["objects"], {})
 
+    def test_bucket_that_already_exists_but_wasnt_found_at_first_is_fine(self):
+        # Supabase can answer both "not found" and "already exists" with 400.
+        real_get = self.fake.get
+        calls = []
+
+        def flaky_get(url, **kwargs):
+            calls.append(url)
+            if len(calls) == 1:
+                return self.fake.Response(400, {"statusCode": "404", "error": "Bucket not found"})
+            return real_get(url, **kwargs)
+
+        self.fake.buckets["backups"] = {"public": False, "objects": {}}
+        real_post = self.fake.post
+
+        def post(url, **kwargs):
+            if url.endswith("/storage/v1/bucket"):
+                return self.fake.Response(400, {"statusCode": "409", "error": "Duplicate"})
+            return real_post(url, **kwargs)
+
+        with mock.patch("backups.offsite.requests.get", flaky_get), mock.patch("backups.offsite.requests.post", post):
+            result = offsite.store(self.archive(self.NOW), now=self.NOW)
+        self.assertIn(result.stored, self.fake.buckets["backups"]["objects"])
+
+    def test_bucket_failure_names_supabases_reason(self):
+        refused = self.fake.Response(400, {"statusCode": "403", "error": "Unauthorized", "message": "secret stuff"})
+        with mock.patch("backups.offsite.requests.get", return_value=refused), mock.patch(
+            "backups.offsite.requests.post", return_value=refused
+        ):
+            with self.assertRaises(offsite.OffsiteError) as caught:
+                offsite.store(self.archive(self.NOW), now=self.NOW)
+        self.assertIn("HTTP 400 (Unauthorized)", str(caught.exception))
+        self.assertNotIn("secret stuff", str(caught.exception))
+
     def test_refuses_unencrypted_or_misnamed_files(self):
         plain = self.tmp / "angelcare-backup-20261102T080000Z.zip"
         plain.write_bytes(b"PK")
