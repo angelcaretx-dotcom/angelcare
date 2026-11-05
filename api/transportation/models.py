@@ -40,6 +40,18 @@ class TripRequestStatus(models.TextChoices):
     CANCELLED = "cancelled", "Cancelled"
 
 
+class BookedFor(models.TextChoices):
+    """
+    Who made the booking (ADR 0031). Decides whether the email gets a
+    rider account: a facility worker's email would collect many
+    patients' requests, so facility bookings never get one.
+    """
+
+    SELF = "self", "Myself"
+    CAREGIVER = "caregiver", "Someone I care for (family member, friend)"
+    FACILITY = "facility", "A patient or resident (I work at a facility)"
+
+
 class TripRequest(models.Model):
     """
     A transportation request submitted through the public website. This is
@@ -75,6 +87,9 @@ class TripRequest(models.Model):
     service_type = models.CharField(max_length=20, choices=ServiceType.choices)
     mobility_notes = models.TextField(blank=True)
     additional_notes = models.TextField(blank=True)
+    booked_for = models.CharField(
+        max_length=20, choices=BookedFor.choices, default=BookedFor.SELF
+    )
 
     status = models.CharField(
         max_length=20,

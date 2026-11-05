@@ -20,6 +20,16 @@ if (!existsSync(APP_DIR)) {
 // Framework-generated error pages, not site content.
 const FRAMEWORK_PAGES = new Set(["_not-found.html", "_global-error.html"]);
 
+// Private rider pages (ADR 0031): real routes, deliberately not in the sitemap.
+const PRIVATE_ROUTES = [
+  "/account",
+  "/account/login",
+  "/account/forgot-password",
+  "/account/set-password",
+  "/account/reset-password",
+  "/account/profile",
+];
+
 const routes = sitemap().map((entry) => new URL(entry.url).pathname);
 
 function fileForRoute(route: string): string {
@@ -50,7 +60,7 @@ const pages = routes.map((route) => ({ route, file: fileForRoute(route) }));
 describe("sitemap", () => {
   it("lists every prerendered page, and every listed page exists", () => {
     const built = readdirSync(APP_DIR)
-      .filter((f) => f.endsWith(".html") && !FRAMEWORK_PAGES.has(f))
+      .filter((f) => f.endsWith(".html") && !FRAMEWORK_PAGES.has(f) && f !== "account.html")
       .sort();
     expect(built).toEqual(pages.map((p) => p.file).sort());
   });
@@ -84,7 +94,10 @@ describe.each(pages)("$route", ({ file }) => {
   it("has no internal links to pages or files that don't exist", () => {
     const broken = [...doc.querySelectorAll('a[href^="/"]')]
       .map((a) => a.getAttribute("href")!.split(/[?#]/)[0])
-      .filter((path) => !routes.includes(path) && !existsSync(join(PUBLIC_DIR, path)));
+      .filter(
+        (path) =>
+          !routes.includes(path) && !PRIVATE_ROUTES.includes(path) && !existsSync(join(PUBLIC_DIR, path)),
+      );
     expect(broken).toEqual([]);
   });
 
@@ -133,3 +146,13 @@ describe("/request", () => {
     }
   });
 });
+
+describe.each(PRIVATE_ROUTES.map((route) => ({ route, file: fileForRoute(route) })))(
+  "private $route",
+  ({ file }) => {
+    it("exists and is never indexed", () => {
+      const robots = load(file).querySelector('meta[name="robots"]')?.getAttribute("content") ?? "";
+      expect(robots).toMatch(/noindex/);
+    });
+  },
+);

@@ -18,6 +18,7 @@ class TripRequestCreateSerializer(serializers.ModelSerializer):
             "service_type",
             "mobility_notes",
             "additional_notes",
+            "booked_for",
         ]
         read_only_fields = ["id"]
 

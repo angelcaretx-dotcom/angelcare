@@ -17,7 +17,7 @@ confirm with the vendor directly; don't rely on this file.
 | Service | What it holds | PHI? | BAA status | Plan needed / cost | Signed (date, by) |
 |---|---|---|---|---|---|
 | **Supabase** (database + file storage) | Every rider, trip, request, uploaded document; encrypted nightly backups | Yes | _to confirm_ | | |
-| **Vercel** (runs the API and website) | Rider data passes through it on every request; server logs | Yes | _to confirm_ | | |
+| **Vercel** (runs the API and website) | Rider data passes through it on every request (including the website's "My trips" pages and `/api` proxy, ADR 0031); server logs | Yes | _to confirm_ | | |
 | **Resend** (sends the automatic emails) | Staff alerts and rider confirmations, both now reference-number only (ADR 0027). Still reveals that an email address booked medical transport | Minimal | _to confirm_ — ask support: "Will you sign a BAA?" | | |
 | **GitHub** (code + nightly backup job) | The backup job reads the database and uploads an encrypted file; the code repo holds no rider data | Briefly, during backup | _to confirm_ | | |
 | **Hotmail / Outlook.com** (angelcaretransit@hotmail.com) | Staff alerts (no PHI now) — but **replies to customers** sent from it would carry PHI | If staff email riders from it | Consumer accounts generally can't be covered | Consider a business email with a BAA | |

@@ -53,7 +53,7 @@ class NotificationService:
             subject=subject,
             body_text=render_to_string("notifications/staff_new_trip_request.txt", context),
             body_html=render_to_string("notifications/staff_new_trip_request.html", context),
-            trip_request=trip_request,
+            related=trip_request,
         )
 
     def _send_to_customer(self, trip_request) -> None:
@@ -70,12 +70,59 @@ class NotificationService:
             subject=subject,
             body_text=render_to_string("notifications/customer_trip_request_confirmation.txt", context),
             body_html=render_to_string("notifications/customer_trip_request_confirmation.html", context),
-            trip_request=trip_request,
+            related=trip_request,
         )
 
     @staticmethod
     def _reference(trip_request) -> str:
         return f"#{str(trip_request.id)[:8].upper()}"
+
+    # --- Rider accounts (ADR 0031). No PHI: just a link, as ever. ---
+
+    def send_rider_invite(self, account, link: str) -> None:
+        self._send_link_email(
+            account,
+            NotificationType.RIDER_ACCOUNT_INVITE,
+            subject="Track your rides with AngelCare Transit — set up your account",
+            template="rider_account_invite",
+            link=link,
+        )
+
+    def send_rider_password_reset(self, account, link: str) -> None:
+        self._send_link_email(
+            account,
+            NotificationType.RIDER_PASSWORD_RESET,
+            subject="Reset your AngelCare Transit password",
+            template="rider_password_reset",
+            link=link,
+        )
+
+    def _send_link_email(self, account, notification_type, *, subject, template, link) -> None:
+        context = {"link": link, "website_url": settings.WEBSITE_URL}
+        self._send(
+            notification_type=notification_type,
+            to=account.email,
+            subject=subject,
+            body_text=render_to_string(f"notifications/{template}.txt", context),
+            body_html=render_to_string(f"notifications/{template}.html", context),
+            related=account,
+        )
+
+    def notify_rider_cancelled(self, trip_request) -> None:
+        reference = self._reference(trip_request)
+        context = {
+            "rows": [("Reference", reference), ("Requested pickup", trip_request.requested_datetime)],
+            "admin_url": f"{settings.SITE_URL}/admin/transportation/triprequest/{trip_request.id}/change/",
+            "website_url": settings.WEBSITE_URL,
+        }
+        self._send(
+            notification_type=NotificationType.RIDER_CANCELLED_STAFF,
+            to=settings.STAFF_NOTIFICATION_EMAIL,
+            subject=f"Trip request {reference} cancelled by the rider",
+            body_text=render_to_string("notifications/staff_rider_cancelled.txt", context),
+            body_html=render_to_string("notifications/staff_rider_cancelled.html", context),
+            related=trip_request,
+        )
 
     @classmethod
     def _staff_rows(cls, trip_request) -> list[tuple[str, str]]:
@@ -101,7 +148,7 @@ class NotificationService:
         subject: str,
         body_text: str,
         body_html: str | None,
-        trip_request,
+        related,
     ) -> None:
         try:
             self.email_provider.send(to=to, subject=subject, body_text=body_text, body_html=body_html)
@@ -119,8 +166,8 @@ class NotificationService:
                 recipient=to,
                 status=NotificationStatus.FAILED,
                 error_message=str(exc),
-                related_object_type="TripRequest",
-                related_object_id=str(trip_request.id),
+                related_object_type=type(related).__name__,
+                related_object_id=str(related.pk),
             )
             return
 
@@ -128,6 +175,6 @@ class NotificationService:
             notification_type=notification_type,
             recipient=to,
             status=NotificationStatus.SENT,
-            related_object_type="TripRequest",
-            related_object_id=str(trip_request.id),
+            related_object_type=type(related).__name__,
+            related_object_id=str(related.pk),
         )

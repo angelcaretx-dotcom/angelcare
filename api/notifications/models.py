@@ -9,6 +9,9 @@ class NotificationType(models.TextChoices):
         "new_trip_request_customer",
         "New trip request confirmation (customer)",
     )
+    RIDER_ACCOUNT_INVITE = "rider_account_invite", "Rider account: set-up link"
+    RIDER_PASSWORD_RESET = "rider_password_reset", "Rider account: password reset link"
+    RIDER_CANCELLED_STAFF = "rider_cancelled_staff", "Rider cancelled a request (staff)"
 
 
 class NotificationStatus(models.TextChoices):

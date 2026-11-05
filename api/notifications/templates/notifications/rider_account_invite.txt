@@ -1,0 +1,18 @@
+Hello,
+
+Thank you for your transportation request. You can track your rides
+online with an AngelCare Transit account: see your request's status,
+your confirmed pickup time, book again without retyping, and cancel if
+plans change.
+
+Set up your account (choose a password) here:
+{{ link|safe }}
+
+This link works for 3 days and only once. If you didn't request a ride
+with us, you can ignore this email: no account is usable until the
+link is used.
+
+Questions? Call 817-766-9228.
+
+— The AngelCare Transit Team
+angelcaretransit.com

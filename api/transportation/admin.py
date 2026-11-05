@@ -18,7 +18,7 @@ class TripRequestAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
         "passenger",
         "created_at",
     )
-    list_filter = ("status", "service_type")
+    list_filter = ("status", "service_type", "booked_for")
     search_fields = ("full_name", "phone", "email", "pickup_address", "dropoff_address")
     readonly_fields = ("id", "created_at", "updated_at", "source")
     autocomplete_fields = ("passenger",)

@@ -29,6 +29,8 @@ See also: [ADR 0001](decisions/0001-monorepo-split-deploy.md),
 [ADR 0027](decisions/0027-hipaa-hardening.md),
 [ADR 0028](decisions/0028-dispatch-foundations.md),
 [ADR 0029](decisions/0029-driver-app.md),
+[ADR 0030](decisions/0030-staff-access-management.md),
+[ADR 0031](decisions/0031-rider-accounts.md),
 [hipaa.md](hipaa.md),
 [roadmap.md](roadmap.md),
 [business-decisions-log.md](business-decisions-log.md),
@@ -125,6 +127,10 @@ monolithic app. Currently:
   sign-in with email or phone, today's manifest, directions, and
   timestamped + located trip steps (`trips.TripEvent`, append-only,
   rules in `trips/events.py`) -- see ADR 0029.
+- `riders/` — (Phase 34) optional website accounts for people who book:
+  offered after a first booking (never facility bookings), set up by
+  emailed link, "My trips" API under `/api/v1/rider/` used by the
+  website's `/account` pages through its `/api` proxy -- see ADR 0031.
 - `backups/` — (Phase 16) no models. `export_backup` /
   `verify_backup` / `restore_backup` commands: one provider-independent
   zip with every row plus every uploaded file, checksummed, and a

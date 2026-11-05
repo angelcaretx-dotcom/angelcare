@@ -137,7 +137,9 @@ class TripRequestNotificationIntegrationTests(APITestCase):
         response = self.client.post(self.url, valid_payload(), format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(len(mail.outbox), 2)
+        # Staff alert, rider confirmation, and (first booking from this
+        # email) the rider account set-up link -- ADR 0031.
+        self.assertEqual(len(mail.outbox), 3)
 
         recipients = {email.to[0] for email in mail.outbox}
         self.assertEqual(recipients, {"angelcaretransit@hotmail.com", "jane@example.com"})

@@ -99,6 +99,7 @@ INSTALLED_APPS = [
     "accounts.apps.AccountsConfig",
     "backups",
     "driver_app",
+    "riders",
 ]
 
 MIDDLEWARE = [
@@ -252,6 +253,8 @@ LOGIN_URL = "/admin/login/"
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "driver_app.auth.DriverLoginBackend",
+    # Website "My trips" accounts (ADR 0031): only answers `rider_email=`.
+    "riders.auth.RiderLoginBackend",
 ]
 LOGIN_REDIRECT_URL = "/admin/"
 
@@ -347,6 +350,11 @@ UNFOLD = {
                         "title": "Passengers",
                         "icon": "groups",
                         "link": reverse_lazy("admin:passengers_passenger_changelist"),
+                    },
+                    {
+                        "title": "Rider accounts",
+                        "icon": "account_circle",
+                        "link": reverse_lazy("admin:riders_rideraccount_changelist"),
                     },
                     {
                         "title": "Drivers",
@@ -473,6 +481,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "20/hour",
+        "rider_auth": "300/hour",
         "user": "1000/hour",
     },
 }
@@ -530,6 +539,17 @@ WEBSITE_URL = os.environ.get(
     "DJANGO_WEBSITE_URL",
     "http://localhost:3000" if DEBUG else "https://www.angelcaretransit.com",
 ).rstrip("/")
+
+# The website proxies /api/ to this app (ADR 0031), so its rider pages'
+# requests arrive with the website's Origin. Trust it for CSRF, with
+# and without "www.".
+_website = urlparse(WEBSITE_URL)
+_website_host = (_website.hostname or "").removeprefix("www.")
+CSRF_TRUSTED_ORIGINS = [
+    f"{_website.scheme}://{h}{f':{_website.port}' if _website.port else ''}"
+    for h in (_website_host, f"www.{_website_host}")
+    if _website_host
+]
 
 if EMAIL_BACKEND == "django.core.mail.backends.smtp.EmailBackend" and not DEBUG:
     if not (EMAIL_HOST and EMAIL_HOST_USER and EMAIL_HOST_PASSWORD):

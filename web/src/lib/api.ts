@@ -14,6 +14,9 @@ export type ServiceType =
   | "stretcher"
   | "equipment_delivery";
 
+/** Who made the booking (ADR 0031); facility bookings get no rider account. */
+export type BookedFor = "self" | "caregiver" | "facility";
+
 export interface TripRequestInput {
   full_name: string;
   phone: string;
@@ -24,6 +27,7 @@ export interface TripRequestInput {
   service_type: ServiceType;
   mobility_notes?: string;
   additional_notes?: string;
+  booked_for?: BookedFor;
 }
 
 export class ApiError extends Error {

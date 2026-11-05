@@ -56,7 +56,7 @@ before the push; vendors sit behind an interface.
 - Company dates entered: SAM (Oct 26, 2027), PEMS revalidation (Dec 2028), Fort Worth VFH license, insurance (Oct 2027).
 - **Email reminders at 90 / 60 / 30 / 7 days** and on expiry, via a scheduled job (same mechanism as backups). Expired = can't be assigned (already enforced for license/registration/inspection; extended to all required items).
 
-### Phase 34: Rider accounts + "My trips" (built right after Phase 24)
+### Phase 34: Rider accounts + "My trips" — ✅ built 2026-11-04 (ADR 0031)
 Numbered 34 so existing phase references stay valid; scheduled second. Owner decisions 2026-11-03:
 - **Booking stays account-free.** The account is an optional layer on top of a completed booking, never a gate in front of it.
 - A rider's **first booking from a new email** creates an account and emails a **set-password link** (valid 3 days; it doubles as email verification — the account is unusable until the inbox owner clicks it). Later bookings from that email attach to it; no new invite.

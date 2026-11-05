@@ -1,0 +1,7 @@
+A rider cancelled their transportation request from their online account.
+
+{% for label, value in rows %}{{ label }}: {{ value }}
+{% endfor %}
+If a trip was scheduled, it has been cancelled too. Rider details are
+only shown in the admin, not in email:
+{{ admin_url|safe }}

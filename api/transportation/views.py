@@ -25,3 +25,8 @@ class TripRequestCreateView(CreateAPIView):
         # trip request is already safely saved by this point.
         # See notifications/services.py for why this can't raise.
         NotificationService().notify_new_trip_request(trip_request)
+        # Offer an online account for tracking the ride (ADR 0031). Like
+        # notifications, this must never fail the booking itself.
+        from riders.services import offer_account_for
+
+        offer_account_for(trip_request)

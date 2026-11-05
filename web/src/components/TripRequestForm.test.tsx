@@ -56,6 +56,7 @@ describe("TripRequestForm", () => {
       service_type: "wheelchair",
       mobility_notes: "Manual wheelchair",
       additional_notes: "",
+      booked_for: "self",
     });
     const status = await screen.findByRole("status");
     expect(status.textContent).toContain("Request received.");
@@ -109,6 +110,30 @@ describe("TripRequestForm", () => {
     const button = submitButton() as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     expect(button.textContent).toBe("Submitting…");
+  });
+
+  it("sends who the ride is for, and only promises an account for non-facility bookings", async () => {
+    const fetchMock = mockFetch({ ok: true, json: async () => ({ id: "abc" }) });
+    const user = await fillForm();
+    await user.click(screen.getByLabelText(/I work at a care facility/));
+    await user.click(submitButton());
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).booked_for).toBe("facility");
+    const status = await screen.findByRole("status");
+    expect(status.textContent).not.toMatch(/set up an account/);
+  });
+
+  it("mentions the account set-up email after an ordinary booking", async () => {
+    mockFetch({ ok: true, json: async () => ({ id: "abc" }) });
+    const user = await fillForm();
+    await user.click(submitButton());
+    expect((await screen.findByRole("status")).textContent).toMatch(/set up an account/);
+  });
+
+  it("never asks the API who is signed in unless this browser has signed in", async () => {
+    const fetchMock = mockFetch({ ok: true, json: async () => ({ id: "abc" }) });
+    render(<TripRequestForm />);
+    await Promise.resolve();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("offers exactly the four confirmed services", () => {

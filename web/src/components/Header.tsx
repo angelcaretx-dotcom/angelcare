@@ -30,6 +30,12 @@ export function Header() {
           ))}
         </nav>
         <div className="flex items-center gap-3">
+          <Link
+            href="/account"
+            className="text-sm font-medium text-foreground/80 hover:text-brand-blue-dark transition-colors"
+          >
+            My trips
+          </Link>
           <a
             href={siteConfig.phoneHref}
             className="hidden text-sm font-semibold text-brand-blue-dark sm:block"

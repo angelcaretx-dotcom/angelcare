@@ -125,6 +125,7 @@ class TripRequestStatusChangeAuditIntegrationTests(TestCase):
             "service_type": self.trip_request.service_type,
             "mobility_notes": "",
             "additional_notes": "",
+            "booked_for": "self",
             "status": "reviewed",
         }
         response = self.client.post(change_url, post_data)

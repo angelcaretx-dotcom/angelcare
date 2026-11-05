@@ -6,18 +6,12 @@ a while, and drivers only ever see their own trips.
 """
 
 import re
-from datetime import timedelta
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.backends import BaseBackend
-from django.utils import timezone
 
-from audit.models import AuditLog
-from audit.services import record_change
+from audit import lockout
+from audit.lockout import MAX_FAILURES  # noqa: F401 - re-exported for tests
 from drivers.models import Driver, DriverStatus
-
-MAX_FAILURES = 5
-LOCKOUT_WINDOW = timedelta(minutes=15)
 
 
 def normalize_phone(value: str) -> str:
@@ -51,25 +45,11 @@ def find_driver(identifier: str, *, with_login=True) -> Driver | None:
 
 
 def is_locked_out(identifier: str) -> bool:
-    return (
-        AuditLog.objects.filter(
-            action="driver_login_failed",
-            resource_type="DriverLogin",
-            resource_id=lockout_key(identifier),
-            created_at__gte=timezone.now() - LOCKOUT_WINDOW,
-        ).count()
-        >= MAX_FAILURES
-    )
+    return lockout.is_locked_out("driver_login_failed", lockout_key(identifier))
 
 
 def record_failure(identifier: str) -> None:
-    record_change(
-        actor=None,
-        action="driver_login_failed",
-        resource_type="DriverLogin",
-        resource_id=lockout_key(identifier),
-        source="driver_app",
-    )
+    lockout.record_failure("driver_login_failed", "DriverLogin", lockout_key(identifier), "driver_app")
 
 
 class DriverLoginBackend(BaseBackend):

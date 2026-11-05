@@ -20,6 +20,7 @@ urlpatterns = [
     path("driver/", include("driver_app.urls")),
     path("healthz/", health_check, name="health-check"),
     path("api/v1/", include("transportation.urls")),
+    path("api/v1/rider/", include("riders.urls")),
 ]
 
 if settings.DEBUG:
