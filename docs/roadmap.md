@@ -80,7 +80,9 @@ Owner review of the live form, 2026-11-04:
 
 ## Stage C â€” Getting paid
 
-### Phase 28: Broker trip import
+### Phase 28: Universal trip intake — ✅ v1 built 2026-11-05 (ADR 0038)
+- Owner, 2026-11-05: format-agnostic, not an MTM importer and a SafeRide importer. Any sender's CSV, Excel or text PDF → saved column mapping per sender → review queue → trips (with linked return legs). Re-importing never duplicates (sender's trip ID, then rider + time). v2: OCR for scanned PDFs (BAA'd or on-server only). v3: the real MTM/SafeRide templates at onboarding.
+- Original plan:
 - Upload the CSV/Excel exported from the MTM or SafeRide portal â†’ preview â†’ create trips. Re-importing the same file updates, never duplicates (keyed on broker trip number).
 - Reconcile report: trips the broker says we did vs. trips we have proof for.
 - We work above the broker portals, not instead of them.
