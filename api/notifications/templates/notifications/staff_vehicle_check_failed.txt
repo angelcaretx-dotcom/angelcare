@@ -1,0 +1,8 @@
+A driver found a problem in the daily vehicle check. The vehicle is
+out of service: no trips can start in it or be assigned to it until an
+Administrator marks it fixed in the admin.
+
+{% for label, value in rows %}{{ label }}: {{ value }}
+{% endfor %}
+Reassign its trips, then mark it fixed once repaired:
+{{ admin_url|safe }}

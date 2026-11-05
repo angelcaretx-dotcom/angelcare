@@ -1,0 +1,14 @@
+{% extends "driver_app/base.html" %}
+{% block title %}End of day · AngelCare Driver{% endblock %}
+{% block content %}
+<p class="small"><a href="{% url 'driver_app:home' %}">← Today</a></p>
+<h1>End of day</h1>
+<p class="muted">{{ check.vehicle }} · {{ check.service_date|date:"l, M j" }}</p>
+<form method="post" class="card">
+  {% csrf_token %}
+  <p style="margin:0">Odometer at start of day: <strong>{{ check.start_odometer }}</strong></p>
+  <label for="odometer">Odometer now (miles)</label>
+  <input type="number" id="odometer" name="odometer" inputmode="numeric" min="{{ check.start_odometer }}" step="1" required value="{{ odometer }}">
+  <button type="submit" class="btn btn-primary">Save odometer</button>
+</form>
+{% endblock %}

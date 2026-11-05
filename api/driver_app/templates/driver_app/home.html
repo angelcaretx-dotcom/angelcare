@@ -4,6 +4,28 @@
 {% timezone zone %}
 <h1>Today, {{ today|date:"l, M j" }}</h1>
 <p class="muted">Hi {{ driver.legal_name }} — {{ open_count }} trip{{ open_count|pluralize }} still to do.</p>
+{% for check in unfinished %}
+<a class="card" href="{% url 'driver_app:vehicle_day_end' check.pk %}">
+  <div class="row"><strong>End-of-day odometer missing</strong><span class="pill warn">{{ check.service_date|date:"M j" }}</span></div>
+  <div class="small muted">{{ check.vehicle }} — tap to add it.</div>
+</a>
+{% endfor %}
+{% for day in vehicle_days %}
+{% if not day.check %}
+<a class="btn btn-primary" href="{% url 'driver_app:vehicle_check' day.vehicle.pk %}">Start of day: check {{ day.vehicle.license_plate }}</a>
+<p class="small muted" style="margin:6px 0 12px">Do the vehicle check and odometer before your first trip.</p>
+{% elif day.check.blocks_vehicle %}
+<div class="msg error" role="alert"><strong>{{ day.vehicle }} is out of service</strong> — it failed today's check. Don't start trips in it; dispatch will reassign them.</div>
+{% elif day.check.end_odometer is None %}
+<div class="card">
+  <div class="row"><strong>{{ day.vehicle.license_plate }}</strong><span class="pill ok">Checked {{ day.check.checked_at|time:"g:i A" }}</span></div>
+  <div class="small muted">Odometer this morning: {{ day.check.start_odometer }}</div>
+  {% if open_count == 0 %}<a class="btn btn-secondary" href="{% url 'driver_app:vehicle_day_end' day.check.pk %}">End of day: odometer</a>{% else %}<p class="small" style="margin:8px 0 0"><a href="{% url 'driver_app:vehicle_day_end' day.check.pk %}">End of day: odometer</a></p>{% endif %}
+</div>
+{% else %}
+<div class="card"><div class="row"><strong>{{ day.vehicle.license_plate }}</strong><span class="pill ok">Day done · {{ day.check.miles }} mi</span></div></div>
+{% endif %}
+{% endfor %}
 {% for trip in trips %}
 <a class="card" href="{% url 'driver_app:trip' trip.pk %}" data-trip="{{ trip.pk }}">
   <div class="row">

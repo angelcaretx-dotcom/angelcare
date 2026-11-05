@@ -13,12 +13,35 @@ from trips.events import TripEventError, record_trip_event
 from trips.models import Trip, TripEvent, TripStatus
 from trips.test_dispatch import direct_trip
 from trips.tests import make_driver, make_passenger, make_vehicle
+from vehicles.checks import texas_today
+from vehicles.models import VehicleCheck
 
 from . import views
 from .access import DriverAccessError, setup_driver_login
 from .auth import MAX_FAILURES, find_driver, normalize_phone
 
 PASSWORD = "Ride-safe-2027!"
+
+
+def checked_vehicle(driver, **overrides):
+    """A vehicle that passed today's check (ADR 0034), so trips can start in it."""
+    vehicle = make_vehicle(**overrides)
+    VehicleCheck.objects.create(vehicle=vehicle, driver=driver, service_date=texas_today(), start_odometer=1000)
+    return vehicle
+
+
+def signature_data_url() -> str:
+    """A small drawn line, as the phone's signature pad sends it."""
+    import base64
+    import io
+
+    from PIL import Image, ImageDraw
+
+    image = Image.new("RGBA", (300, 120), (0, 0, 0, 0))
+    ImageDraw.Draw(image).line([(10, 100), (150, 20), (290, 90)], fill=(17, 17, 17, 255), width=4)
+    out = io.BytesIO()
+    image.save(out, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(out.getvalue()).decode()
 
 
 def driver_with_login(**overrides):
@@ -137,7 +160,7 @@ class SignInTests(TestCase):
 class ManifestTests(TestCase):
     def setUp(self):
         self.driver = driver_with_login()
-        self.vehicle = make_vehicle()
+        self.vehicle = checked_vehicle(self.driver)
         self.client.post(reverse("driver_app:login"), {"identifier": "sam@example.com", "password": PASSWORD})
         self.passenger = make_passenger(legal_name="Morgan Lee")
 
@@ -181,7 +204,7 @@ class ManifestTests(TestCase):
     def test_full_ride_is_stamped_and_completes_the_trip(self):
         trip = self.trip()
         for event_type in ("en_route", "arrived_pickup", "picked_up"):
-            self.step(trip, event_type)
+            self.step(trip, event_type, signature=signature_data_url())
             trip.refresh_from_db()
             self.assertEqual(trip.status, TripStatus.IN_PROGRESS)
         response = self.step(trip, "dropped_off")
@@ -222,7 +245,8 @@ class ManifestTests(TestCase):
 
 class EventRulesTests(TestCase):
     def test_bad_coordinates_are_dropped_not_stored(self):
-        trip = direct_trip(make_passenger(), driver=make_driver(), vehicle=make_vehicle())
+        driver = make_driver()
+        trip = direct_trip(make_passenger(), driver=driver, vehicle=checked_vehicle(driver))
         trip.save()
         event = record_trip_event(trip, "en_route", user=None, latitude="999", longitude="-97")
         self.assertFalse(event.has_location)
@@ -263,7 +287,7 @@ class AdminAppLoginTests(TestCase):
 
     def test_trip_admin_shows_the_timeline(self):
         self.staff("Administrator")
-        trip = direct_trip(make_passenger(), driver=self.driver, vehicle=make_vehicle())
+        trip = direct_trip(make_passenger(), driver=self.driver, vehicle=checked_vehicle(self.driver))
         trip.save()
         record_trip_event(trip, "en_route", user=None, latitude="32.75", longitude="-97.33", accuracy="9")
         response = self.client.get(reverse("admin:trips_trip_change", args=[trip.pk]))

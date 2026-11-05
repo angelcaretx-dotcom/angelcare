@@ -39,11 +39,12 @@ before the push; vendors sit behind an interface.
 - Status buttons, each stamped with server time + phone GPS: **En route → Arrived → Picked up → Dropped off**, or **No-show / Cancelled at door** with a reason code.
 - New `TripEvent` record: the append-only timeline of a trip (who, what, when, where). Dispatcher sees it live on the day board.
 
-### Phase 25: Driver app — the proof
-- Rider signature (or "unable to sign" with reason) at pickup and/or drop-off.
-- Odometer at pickup/drop-off → loaded miles; start-of-day odometer → deadhead miles.
-- Pre-trip vehicle inspection checklist, once per vehicle per day; a failed item blocks the vehicle.
-- Trip proof sheet (printable/PDF) per trip: timestamps, GPS points, signature, miles — what an auditor asks for.
+### Phase 25: Driver app — the proof — ✅ built 2026-11-05 (ADR 0034)
+Owner decisions 2026-11-05:
+- Rider signature (or "unable to sign" with reason) **at pickup**.
+- Odometer at the **start and end of each vehicle's day** (day miles); no per-trip loaded/deadhead miles.
+- Pre-trip vehicle inspection checklist, once per vehicle per day; a failed item blocks the vehicle **until an Administrator marks it fixed**.
+- Trip proof sheet as a **PDF built on download, never stored**: timestamps, GPS points, signature, vehicle check and miles.
 
 ### Phase 26: Recurring trips
 - Standing orders: rider, days of week (e.g. dialysis Mon/Wed/Fri), times, start/end dates, payer, prior auth.
@@ -103,7 +104,7 @@ Owner review of the live form, 2026-11-04:
 ### Phase 32: Driver pay + trip profit
 - Driver pay rule per driver (per trip / per mile / hourly).
 - Pay statement per driver per period; 1099 year-end totals for contractors.
-- Profit per trip and per payer: revenue − driver pay − mileage cost; loaded vs. deadhead miles.
+- Profit per trip and per payer: revenue − driver pay − mileage cost; loaded vs. deadhead miles (odometer is per vehicle-day only, ADR 0034, so per-trip miles come from map estimates).
 
 ### Phase 33: Facility CRM + booking portal
 - Facilities as accounts: contacts, notes, follow-up reminders, trip history (the 22-facility lead list imported).

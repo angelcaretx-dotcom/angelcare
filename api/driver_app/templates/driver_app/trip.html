@@ -31,15 +31,44 @@
   {% endif %}
 </div>
 
-{% if forward_steps or end_steps %}
+{% if vehicle_problem %}
+<div class="msg error" role="alert">{{ vehicle_problem }}{% if "daily vehicle check" in vehicle_problem %} <a href="{% url 'driver_app:home' %}">Go to Today</a>{% endif %}</div>
+{% elif forward_steps or end_steps %}
 <div class="card">
   {% for step in forward_steps %}
+  {% if step.value == "picked_up" %}
+  <form method="post" action="{% url 'driver_app:step' trip.pk %}" data-step-form data-signature-form>
+    {% csrf_token %}
+    <input type="hidden" name="event_type" value="{{ step.value }}">
+    <input type="hidden" name="latitude"><input type="hidden" name="longitude"><input type="hidden" name="accuracy">
+    <input type="hidden" name="signature">
+    <h2>Rider's signature</h2>
+    <p class="small muted" style="margin:0 0 8px">Ask the rider to sign with a finger.</p>
+    <canvas class="sign-pad" aria-label="Signature box: sign here with a finger"></canvas>
+    <div class="row"><span class="small muted">Sign above the line</span><button type="button" class="link-button" data-clear>Clear</button></div>
+    <label for="signed_by_name">Signed by someone else? Their name (optional)</label>
+    <input type="text" id="signed_by_name" name="signed_by_name" maxlength="200" placeholder="e.g. caregiver's name">
+    <details>
+      <summary>Rider can't sign?</summary>
+      <label for="signature_missing_reason">Why not</label>
+      <select id="signature_missing_reason" name="signature_missing_reason">
+        <option value="">Choose…</option>
+        {% for value, label in signature_reasons %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+      <label for="pickup_note">Note</label>
+      <textarea id="pickup_note" name="note"></textarea>
+    </details>
+    <p class="msg error" data-sign-error hidden>Ask the rider to sign, or choose why they can't.</p>
+    <button type="submit" class="btn btn-primary">{{ step.label }}</button>
+  </form>
+  {% else %}
   <form method="post" action="{% url 'driver_app:step' trip.pk %}" data-step-form>
     {% csrf_token %}
     <input type="hidden" name="event_type" value="{{ step.value }}">
     <input type="hidden" name="latitude"><input type="hidden" name="longitude"><input type="hidden" name="accuracy">
     <button type="submit" class="btn {% if forloop.first %}btn-primary{% else %}btn-secondary{% endif %}">{{ step.label }}</button>
   </form>
+  {% endif %}
   {% endfor %}
 
   {% if end_steps %}
@@ -70,7 +99,7 @@
   <h2>Timeline</h2>
   <ol class="timeline">
     {% for event in events %}
-    <li><strong>{{ event.occurred_at|time:"g:i A" }}</strong> — {{ event.get_event_type_display }}{% if event.reason %} ({{ event.get_reason_display }}){% endif %}{% if not event.has_location %} <span class="pill warn">no location</span>{% endif %}</li>
+    <li><strong>{{ event.occurred_at|time:"g:i A" }}</strong> — {{ event.get_event_type_display }}{% if event.reason %} ({{ event.get_reason_display }}){% endif %}{% if event.event_type == "picked_up" %} <span class="pill {% if event.signature_missing_reason %}warn{% else %}ok{% endif %}">{% if event.signature_missing_reason %}not signed{% else %}signed{% endif %}</span>{% endif %}{% if not event.has_location %} <span class="pill warn">no location</span>{% endif %}</li>
     {% endfor %}
   </ol>
 </div>
@@ -80,6 +109,52 @@
 
 {% block scripts %}
 <script>
+// The rider's signature at pickup (ADR 0034): drawn on a canvas, sent as
+// a PNG. Registered before the GPS handler so it's in place when that
+// handler submits the form.
+document.querySelectorAll("form[data-signature-form]").forEach(function (form) {
+  var canvas = form.querySelector("canvas");
+  var ctx = canvas.getContext("2d");
+  var drawn = false, drawing = false;
+  function size() {
+    var ratio = window.devicePixelRatio || 1;
+    canvas.width = canvas.clientWidth * ratio;
+    canvas.height = canvas.clientHeight * ratio;
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    ctx.lineWidth = 2.5; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#111";
+    drawn = false;
+  }
+  function point(e) { var r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  canvas.addEventListener("pointerdown", function (e) {
+    drawing = true; canvas.setPointerCapture(e.pointerId);
+    var p = point(e); ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p[0] + 0.1, p[1] + 0.1); ctx.stroke();
+    drawn = true;
+  });
+  canvas.addEventListener("pointermove", function (e) {
+    if (!drawing) return;
+    var p = point(e); ctx.lineTo(p[0], p[1]); ctx.stroke();
+  });
+  ["pointerup", "pointercancel"].forEach(function (name) {
+    canvas.addEventListener(name, function () { drawing = false; });
+  });
+  form.querySelector("[data-clear]").addEventListener("click", function () {
+    ctx.clearRect(0, 0, canvas.width, canvas.height); drawn = false;
+  });
+  size();
+  form.addEventListener("submit", function (event) {
+    if (form.dataset.located) return;
+    var reason = form.elements.signature_missing_reason.value;
+    var error = form.querySelector("[data-sign-error]");
+    if (!drawn && !reason) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      error.hidden = false;
+      return;
+    }
+    error.hidden = true;
+    form.elements.signature.value = drawn && !reason ? canvas.toDataURL("image/png") : "";
+  });
+});
+
 // Attach the phone's GPS position to each step. If location is off or
 // slow, the step is still saved (flagged "no location") -- a driver is
 // never stuck at a door because of GPS.

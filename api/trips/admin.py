@@ -1,11 +1,14 @@
+import base64
+
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import path
 from django.utils import timezone
 from django.utils.formats import localize_input
 from django.utils.html import format_html
+from django.views.decorators.cache import never_cache
 from unfold.admin import TabularInline
 
 from accounts.admin_base import AngelCareModelAdmin
@@ -13,7 +16,8 @@ from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 from transportation.models import TripRequest, TripRequestStatus
 
-from .models import Trip, TripEvent, TripLeg, TurnDown
+from .models import Trip, TripEvent, TripEventType, TripLeg, TurnDown
+from .proof import build_proof_pdf
 from .returns import create_return_leg, needs_return_leg
 
 
@@ -29,7 +33,7 @@ class TripEventInline(TabularInline):
     can_delete = False
     verbose_name = "timeline step"
     verbose_name_plural = "Timeline (from the driver app)"
-    fields = ("occurred_at", "event_type", "reason", "note", "location", "recorded_by")
+    fields = ("occurred_at", "event_type", "reason", "note", "location", "signature_shown", "recorded_by")
     readonly_fields = fields
     ordering = ("occurred_at",)
 
@@ -38,6 +42,18 @@ class TripEventInline(TabularInline):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+    @admin.display(description="Signature")
+    def signature_shown(self, event):
+        if event.event_type != TripEventType.PICKED_UP:
+            return ""
+        if event.signature:
+            return format_html(
+                '<img src="data:image/png;base64,{}" alt="Rider signature" style="height:48px;background:#fff">{}',
+                base64.b64encode(bytes(event.signature)).decode(),
+                f" ({event.signed_by_name})" if event.signed_by_name else "",
+            )
+        return f"Not signed: {event.get_signature_missing_reason_display() or '—'}"
 
     @admin.display(description="Location")
     def location(self, event):
@@ -120,7 +136,33 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
             self.admin_site.admin_view(self.request_details),
             name="trips_trip_request_details",
         )
-        return board_urls(self) + [details] + super().get_urls()
+        proof = path(
+            "<uuid:pk>/proof.pdf",
+            self.admin_site.admin_view(never_cache(self.proof_sheet)),
+            name="trips_trip_proof",
+        )
+        return board_urls(self) + [details, proof] + super().get_urls()
+
+    def proof_sheet(self, request, pk):
+        """The trip's proof of service as a PDF, built now and never stored (ADR 0034)."""
+        trip = get_object_or_404(
+            Trip.objects.select_related("passenger", "driver", "vehicle", "payer"), pk=pk
+        )
+        if not self.has_view_permission(request, trip):
+            raise PermissionDenied
+        record_change(
+            actor=request.user,
+            action="exported",
+            resource_type="Trip",
+            resource_id=trip.id,
+            after={"what": "proof_sheet"},
+            source="admin",
+        )
+        day = timezone.localtime(trip.scheduled_pickup_datetime) if trip.scheduled_pickup_datetime else None
+        name = f"trip-proof-{day:%Y-%m-%d}-{str(trip.pk)[:8]}.pdf" if day else f"trip-proof-{str(trip.pk)[:8]}.pdf"
+        response = HttpResponse(build_proof_pdf(trip), content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{name}"'
+        return response
 
     def request_details(self, request, pk):
         """

@@ -6,6 +6,14 @@ see them before saving. The same fields are copied on save anyway
 (Trip.fill_from_request). Inline, so no static file is added.
 {% endcomment %}
 
+{% block object-tools-items %}
+{% if not add %}
+{% url 'admin:trips_trip_proof' original.pk as proof_url %}
+{% include "unfold/helpers/tab_action.html" with title="Proof sheet (PDF)" link=proof_url icon="picture_as_pdf" %}
+{% endif %}
+{{ block.super }}
+{% endblock %}
+
 {% block form_after %}
 {{ block.super }}
 {% if add %}

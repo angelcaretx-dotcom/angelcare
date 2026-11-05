@@ -35,6 +35,10 @@ is UNKNOWN and must not be assumed.
 | 2026-11-05 | Email address on the website | None: removed from every page; people write through the contact form, which confirms their email with a one-time code (ADR 0033). angelcaretx@gmail.com stays the business email, unpublished | Owner, chat |
 | 2026-11-05 | Website spam protection | Emailed one-time code on the booking and contact forms, plus Cloudflare Turnstile and built-in bot checks (ADR 0033) | Owner, chat |
 | 2026-11-05 | Prices on the website | None: no rates (wait time included) are published on the website | Owner, chat |
+| 2026-11-05 | Rider signature | At pickup, on the driver's phone; "unable to sign" with a reason is allowed (ADR 0034) | Owner, chat |
+| 2026-11-05 | Mileage | Odometer at the start and end of each vehicle's day only, not per trip (ADR 0034) | Owner, chat |
+| 2026-11-05 | Failed vehicle inspection | Vehicle blocked until an Administrator marks it fixed (ADR 0034) | Owner, chat |
+| 2026-11-05 | Trip proof sheet | PDF created on download, any time; never stored (ADR 0034) | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)
 

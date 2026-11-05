@@ -376,6 +376,11 @@ UNFOLD = {
                         "link": reverse_lazy("admin:vehicles_vehicle_changelist"),
                     },
                     {
+                        "title": "Daily vehicle checks",
+                        "icon": "fact_check",
+                        "link": reverse_lazy("admin:vehicles_vehiclecheck_changelist"),
+                    },
+                    {
                         "title": "Payers",
                         "icon": "payments",
                         "link": reverse_lazy("admin:payers_payer_changelist"),

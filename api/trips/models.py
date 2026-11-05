@@ -373,6 +373,14 @@ class TripEventReason(models.TextChoices):
     OTHER = "other", "Other (see note)"
 
 
+class SignatureMissingReason(models.TextChoices):
+    """Why the rider didn't sign at pickup (ADR 0034)."""
+
+    UNABLE = "unable", "Rider physically or cognitively unable to sign"
+    DECLINED = "declined", "Rider declined to sign"
+    OTHER = "other", "Other (see note)"
+
+
 class TripEvent(models.Model):
     """
     One step in a trip's timeline (ADR 0029), recorded by the driver app
@@ -395,6 +403,15 @@ class TripEvent(models.Model):
     )
     reason = models.CharField(max_length=20, choices=TripEventReason.choices, blank=True)
     note = models.TextField(blank=True)
+    # At pickup (ADR 0034): the rider's signature on the driver's phone,
+    # or why there isn't one. A small black-on-white PNG.
+    signature = models.BinaryField(null=True, blank=True, editable=False)
+    signed_by_name = models.CharField(
+        max_length=200, blank=True, help_text="Who signed, if not the rider (e.g. a caregiver)."
+    )
+    signature_missing_reason = models.CharField(
+        max_length=20, choices=SignatureMissingReason.choices, blank=True
+    )
     recorded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

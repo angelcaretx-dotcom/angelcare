@@ -9,8 +9,10 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 
 from audit.services import record_change
+from vehicles.checks import start_trip_problem
 
-from .models import Trip, TripEvent, TripEventType, TripStatus
+from .models import SignatureMissingReason, Trip, TripEvent, TripEventType, TripStatus
+from .signatures import SignatureError, clean_signature
 
 E = TripEventType
 
@@ -70,6 +72,22 @@ def _accuracy(value):
     return number if number >= 0 else None
 
 
+def _pickup_signature(signature: str, missing_reason: str, note: str):
+    """At pickup the rider signs, or the driver says why not (ADR 0034)."""
+    if missing_reason:
+        if missing_reason not in SignatureMissingReason.values:
+            raise TripEventError("Choose why the rider can't sign.")
+        if missing_reason == SignatureMissingReason.OTHER and not note.strip():
+            raise TripEventError("Add a note saying why the rider didn't sign.")
+        return None, missing_reason
+    if not signature:
+        raise TripEventError("Ask the rider to sign, or choose why they can't.")
+    try:
+        return clean_signature(signature), ""
+    except SignatureError as exc:
+        raise TripEventError(str(exc)) from None
+
+
 @transaction.atomic
 def record_trip_event(
     trip: Trip,
@@ -81,9 +99,12 @@ def record_trip_event(
     accuracy=None,
     reason: str = "",
     note: str = "",
+    signature: str = "",
+    signed_by_name: str = "",
+    signature_missing_reason: str = "",
     source: str = "driver_app",
 ) -> TripEvent:
-    trip = Trip.objects.select_for_update().get(pk=trip.pk)
+    trip = Trip.objects.select_for_update(of=("self",)).select_related("vehicle").get(pk=trip.pk)
     step = E(event_type)
     if step not in next_steps(trip):
         raise TripEventError(
@@ -92,6 +113,20 @@ def record_trip_event(
         )
     if step in NEEDS_REASON and not reason:
         raise TripEventError("Choose a reason.")
+    # The first step starts the trip: the vehicle must have passed
+    # today's check (ADR 0034). Ending at the door needs no vehicle.
+    if last_step(trip) is None and step not in NEEDS_REASON:
+        problem = start_trip_problem(trip)
+        if problem:
+            raise TripEventError(problem)
+
+    signature_png = None
+    if step == E.PICKED_UP:
+        signature_png, signature_missing_reason = _pickup_signature(
+            signature, signature_missing_reason, note
+        )
+    else:
+        signed_by_name = signature_missing_reason = ""
 
     lat, lng = _coordinate(latitude, 90), _coordinate(longitude, 180)
     if lat is None or lng is None:
@@ -104,6 +139,9 @@ def record_trip_event(
         accuracy_m=_accuracy(accuracy) if lat is not None else None,
         reason=reason if step in NEEDS_REASON else "",
         note=note.strip(),
+        signature=signature_png,
+        signed_by_name=signed_by_name.strip()[:200] if signature_png else "",
+        signature_missing_reason=signature_missing_reason,
         recorded_by=user,
         source=source,
     )

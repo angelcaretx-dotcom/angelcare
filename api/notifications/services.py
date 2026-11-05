@@ -154,6 +154,27 @@ class NotificationService:
             related=message,
         )
 
+    def notify_vehicle_check_failed(self, check) -> None:
+        # Vehicle and driver are company details, not rider PHI.
+        context = {
+            "rows": [
+                ("Vehicle", str(check.vehicle)),
+                ("Driver", check.driver.legal_name),
+                ("Checked", check.checked_at),
+                ("Problems", "; ".join(check.failed_labels())),
+            ],
+            "admin_url": f"{settings.SITE_URL}/admin/vehicles/vehiclecheck/{check.id}/change/",
+            "website_url": settings.WEBSITE_URL,
+        }
+        self._send(
+            notification_type=NotificationType.VEHICLE_CHECK_FAILED_STAFF,
+            to=settings.STAFF_NOTIFICATION_EMAIL,
+            subject=f"Vehicle out of service: {check.vehicle.license_plate} failed its daily check",
+            body_text=render_to_string("notifications/staff_vehicle_check_failed.txt", context),
+            body_html=render_to_string("notifications/staff_vehicle_check_failed.html", context),
+            related=check,
+        )
+
     @classmethod
     def _staff_rows(cls, trip_request) -> list[tuple[str, str]]:
         # Reference and timing only: enough to judge urgency, nothing

@@ -27,7 +27,9 @@ from accounts.onboarding import mark_password_changed, must_change_password
 from audit.services import record_change
 from drivers.models import DriverStatus
 from trips.events import NEEDS_REASON, TripEventError, next_steps, record_trip_event
-from trips.models import Trip, TripEventReason, TripEventType, TripStatus
+from trips.models import SignatureMissingReason, Trip, TripEventReason, TripEventType, TripStatus
+from vehicles import checks
+from vehicles.models import VehicleCheck, check_items_for
 
 from .auth import is_locked_out, record_failure
 
@@ -163,7 +165,97 @@ def home(request):
             "zone": settings.OPERATIONS_TIME_ZONE,
             "trips": trips,
             "open_count": len(open_trips),
+            "vehicle_days": _vehicle_days(request.driver, trips, today),
+            "unfinished": VehicleCheck.objects.filter(
+                driver=request.driver,
+                end_odometer__isnull=True,
+                service_date__lt=today,
+                service_date__gte=today - timedelta(days=7),
+            ).select_related("vehicle"),
         },
+    )
+
+
+def _vehicle_days(driver, trips, today):
+    """Each vehicle on the driver's trips today, with today's check (ADR 0034)."""
+    vehicles = {t.vehicle_id: t.vehicle for t in trips if t.vehicle_id}
+    found = {c.vehicle_id: c for c in VehicleCheck.objects.filter(vehicle__in=vehicles, service_date=today)}
+    return [{"vehicle": v, "check": found.get(pk)} for pk, v in vehicles.items()]
+
+
+def _todays_vehicle(driver, vehicle_id):
+    trips, _ = _visible_trips(driver)
+    trip = trips.filter(vehicle_id=vehicle_id).first()
+    if trip is None:
+        raise Http404
+    return trip.vehicle
+
+
+@driver_required
+def vehicle_check(request, vehicle_id):
+    """Start of day: the pre-trip inspection and the odometer."""
+    vehicle = _todays_vehicle(request.driver, vehicle_id)
+    items = check_items_for(vehicle)
+    if checks.todays_check(vehicle) is not None:
+        messages.info(request, f"{vehicle} is already checked today.")
+        return redirect("driver_app:home")
+    if request.method == "POST":
+        try:
+            check = checks.record_start(
+                vehicle,
+                request.driver,
+                ok_items=request.POST.getlist("ok"),
+                odometer=request.POST.get("odometer", ""),
+                notes=request.POST.get("notes", ""),
+                user=request.user,
+            )
+        except checks.VehicleCheckError as exc:
+            messages.error(request, str(exc))
+        else:
+            if check.passed:
+                messages.success(request, "Vehicle check saved. Drive safe!")
+            else:
+                messages.error(
+                    request,
+                    "Problem saved. This vehicle is out of service until it's fixed: "
+                    "dispatch has been told. Don't start trips in it.",
+                )
+            return redirect("driver_app:home")
+    return render(
+        request,
+        "driver_app/vehicle_check.html",
+        {
+            "vehicle": vehicle,
+            "items": items,
+            "ticked": set(request.POST.getlist("ok")),
+            "odometer": request.POST.get("odometer", ""),
+            "notes": request.POST.get("notes", ""),
+        },
+    )
+
+
+@driver_required
+def vehicle_day_end(request, check_id):
+    """End of day: the odometer again, for the day's miles."""
+    check = VehicleCheck.objects.select_related("vehicle").filter(pk=check_id, end_odometer__isnull=True).first()
+    if check is None:
+        raise Http404
+    if check.driver_id != request.driver.pk:
+        _todays_vehicle(request.driver, check.vehicle_id)  # 404 unless it's theirs today
+    if request.method == "POST":
+        try:
+            check = checks.record_end(
+                check, request.driver, odometer=request.POST.get("odometer", ""), user=request.user
+            )
+        except checks.VehicleCheckError as exc:
+            messages.error(request, str(exc))
+        else:
+            messages.success(request, f"Saved: {check.miles:,} miles today. Thank you!")
+            return redirect("driver_app:home")
+    return render(
+        request,
+        "driver_app/vehicle_day_end.html",
+        {"check": check, "odometer": request.POST.get("odometer", "")},
     )
 
 
@@ -191,6 +283,8 @@ def trip_detail(request, trip_id):
             "forward_steps": [s for s in steps if s not in NEEDS_REASON],
             "end_steps": [s for s in steps if s in NEEDS_REASON],
             "reasons": TripEventReason.choices,
+            "signature_reasons": SignatureMissingReason.choices,
+            "vehicle_problem": checks.start_trip_problem(trip) if not trip.events.all() else None,
             "pickup_maps_url": _maps_url(trip.pickup_address),
             "dropoff_maps_url": _maps_url(trip.dropoff_address),
             # Before pickup the driver heads to the pickup; after, to the drop-off.
@@ -216,6 +310,9 @@ def record_step(request, trip_id):
             accuracy=request.POST.get("accuracy"),
             reason=request.POST.get("reason", ""),
             note=request.POST.get("note", ""),
+            signature=request.POST.get("signature", ""),
+            signed_by_name=request.POST.get("signed_by_name", ""),
+            signature_missing_reason=request.POST.get("signature_missing_reason", ""),
         )
     except (TripEventError, ValueError) as exc:
         messages.error(request, str(exc) if isinstance(exc, TripEventError) else "Unknown step.")

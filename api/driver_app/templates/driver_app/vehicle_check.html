@@ -1,0 +1,21 @@
+{% extends "driver_app/base.html" %}
+{% block title %}Vehicle check · AngelCare Driver{% endblock %}
+{% block content %}
+<p class="small"><a href="{% url 'driver_app:home' %}">← Today</a></p>
+<h1>Start of day</h1>
+<p class="muted">{{ vehicle }}</p>
+<form method="post" class="card">
+  {% csrf_token %}
+  <h2>Check each item</h2>
+  <p class="small muted" style="margin:0 0 4px">Tick what's OK. Leave anything unsafe unticked and describe it below: the vehicle will be taken out of service until it's fixed.</p>
+  {% for key, label in items %}
+  <label class="check-item"><input type="checkbox" name="ok" value="{{ key }}"{% if key in ticked %} checked{% endif %}> {{ label }}</label>
+  {% endfor %}
+  <label for="notes">Problems (if anything is unticked)</label>
+  <textarea id="notes" name="notes" placeholder="e.g. right rear tire low, brake light out">{{ notes }}</textarea>
+  <label for="odometer">Odometer now (miles)</label>
+  <input type="number" id="odometer" name="odometer" inputmode="numeric" min="0" step="1" required value="{{ odometer }}">
+  <button type="submit" class="btn btn-primary">Save vehicle check</button>
+  <p class="small muted" style="margin:10px 0 0">Saved with the time, as proof the vehicle was inspected.</p>
+</form>
+{% endblock %}
