@@ -31,11 +31,12 @@ is UNKNOWN and must not be assumed.
 | 2026-08-26 | Production email provider | Resend, SMTP relay, sending from `notifications@angelcaretransit.com` (domain verification with Resend in progress as of this date — real sends will start working automatically once it completes, no config change needed) | Owner, chat |
 | 2026-08-26 | Production file storage | Supabase Storage (bucket `Documents`, private), accessed via Supabase's own Storage REST API — verified working end to end for real (upload/download/sign/delete). See ADR 0012 | Owner, chat |
 | 2026-08-31 | EIN | 93-312-2590 | Owner, chat |
+| 2026-11-04 | Wait time (wait-and-return) | $1 per minute while the driver waits; shown on the booking form's "driver waits" option. Billing from Phase 29 rates | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)
 
 - Payer / broker relationships (Medicaid MCOs, brokers, private pay terms, facility contracts)
-- Pricing / rate schedules
+- Pricing / rate schedules (except wait time: $1/minute, see the table above)
 - Fleet size, vehicle details
 - Driver employment classification (employee vs. contractor)
 - Business hours

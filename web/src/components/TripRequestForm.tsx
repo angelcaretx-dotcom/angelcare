@@ -35,7 +35,7 @@ const returnRideOptions: { value: ReturnRide; label: string; hint?: string }[] =
   {
     value: "wait",
     label: "Yes, the driver waits for me",
-    hint: "The driver stays nearby during the appointment and brings you back.",
+    hint: "The driver stays nearby during the appointment and brings you back. Waiting time is $1 per minute.",
   },
 ];
 

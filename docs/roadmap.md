@@ -70,7 +70,7 @@ Numbered 34 so existing phase references stay valid; scheduled second. Owner dec
 Owner review of the live form, 2026-11-04:
 - Pickup and drop-off as **street, apt/suite, city, state, ZIP** (claims and broker files need them separately).
 - **"Do you need a ride back?"** on the same booking: one way / at a set time / I'll call when ready (will-call) / the driver waits (wait-and-return). Scheduling the trip creates the return leg too.
-- Wait-time pricing: decide with Phase 29 rates.
+- Wait time: **$1 per minute** (owner, 2026-11-04), shown on the form. Phase 29 bills it from the driver app timestamps (outbound drop-off → return pick-up).
 
 ## Stage C — Getting paid
 

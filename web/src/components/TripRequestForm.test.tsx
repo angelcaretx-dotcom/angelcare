@@ -177,6 +177,7 @@ describe("TripRequestForm", () => {
   it("can ask the driver to wait", async () => {
     const fetchMock = mockFetch({ ok: true, json: async () => ({ id: "abc" }) });
     const user = await fillForm();
+    expect(screen.getByText(/Waiting time is \$1 per minute/)).toBeTruthy();
     await user.click(screen.getByLabelText(/the driver waits for me/));
     await user.click(submitButton());
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
