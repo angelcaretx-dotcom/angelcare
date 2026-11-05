@@ -111,6 +111,8 @@ class DocumentAdminIntegrationTests(TestCase):
             "license_expiration_date": self.driver.license_expiration_date.isoformat(),
             "notes": "",
             "status": self.driver.status,
+            "credentials-TOTAL_FORMS": "0",
+            "credentials-INITIAL_FORMS": "0",
             "documents-document-content_type-object_id-TOTAL_FORMS": "1",
             "documents-document-content_type-object_id-INITIAL_FORMS": "0",
             "documents-document-content_type-object_id-MIN_NUM_FORMS": "0",

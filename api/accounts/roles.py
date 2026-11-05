@@ -58,6 +58,7 @@ def seed_roles(sender, **kwargs):
         # Dispatchers need to see who/what is available, not edit HR/fleet
         # records -- that stays with Administrator (least privilege).
         + list(_permissions("drivers", "driver", ["view"]))
+        + list(_permissions("drivers", "drivercredential", ["view"]))
         + list(_permissions("vehicles", "vehicle", ["view"]))
         # Daily checks are the driver app's proof: dispatch reads them to
         # reassign trips; only an Administrator marks a failed one fixed.
@@ -88,6 +89,7 @@ def seed_roles(sender, **kwargs):
         list(_permissions("transportation", "triprequest", ["view", "change", "add", "delete"]))
         + list(_permissions("passengers", "passenger", ["view", "change", "add", "delete"]))
         + list(_permissions("drivers", "driver", ["view", "change", "add", "delete"]))
+        + list(_permissions("drivers", "drivercredential", ["view", "change", "add", "delete"]))
         + list(_permissions("vehicles", "vehicle", ["view", "change", "add", "delete"]))
         + list(_permissions("vehicles", "vehiclecheck", ["view", "change"]))
         + list(_permissions("trips", "trip", ["view", "change", "add", "delete"]))

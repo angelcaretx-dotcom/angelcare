@@ -304,8 +304,38 @@ class Trip(models.Model):
                     "-- cannot assign to a trip."
                 )
 
+        self._check_new_assignment(errors, today)
+
         if errors:
             raise ValidationError(errors)
+
+    def _check_new_assignment(self, errors, today):
+        """
+        Credentials and insurance (ADR 0036), checked when a driver or
+        vehicle is put on the trip (or the service/payer changes), so
+        trips assigned before these rules existed keep working.
+        """
+        from drivers.models import missing_credentials
+
+        before = None
+        if not self._state.adding:
+            before = Trip.objects.filter(pk=self.pk).values("driver_id", "vehicle_id", "service_type", "payer_id").first()
+        changed = before is None or (before["service_type"], before["payer_id"]) != (self.service_type, self.payer_id)
+
+        if self.driver_id and "driver" not in errors and (changed or before["driver_id"] != self.driver_id):
+            missing = missing_credentials(self.driver, service_type=self.service_type, payer=self.payer, day=today)
+            if missing:
+                errors["driver"] = (
+                    f"{self.driver.legal_name} is missing or has expired: {', '.join(missing)} "
+                    "-- add it on the driver's page before assigning."
+                )
+
+        if self.vehicle_id and "vehicle" not in errors and (before is None or before["vehicle_id"] != self.vehicle_id):
+            ends = self.vehicle.insurance_expiration_date
+            if ends is None:
+                errors["vehicle"] = "No insurance date on file for this vehicle -- add it before assigning."
+            elif ends < today:
+                errors["vehicle"] = f"Vehicle insurance expired {ends} -- cannot assign to a trip."
 
 
 class TurnDownReason(models.TextChoices):

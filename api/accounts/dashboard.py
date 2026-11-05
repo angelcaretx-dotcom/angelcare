@@ -25,13 +25,13 @@ from django.utils import timezone
 
 from billing.models import Invoice, InvoiceStatus
 from claims.models import Claim, ClaimStatus
-from compliance.models import ComplianceRecord, ComplianceRecordStatus
+from compliance.models import ComplianceRecord
 from documents.models import Document, DocumentStatus
-from drivers.models import Driver, DriverStatus
+from drivers.models import Driver
 from notifications.models import NotificationLog, NotificationStatus
 from transportation.models import TripRequest, TripRequestStatus
 from trips.models import Trip, TripStatus
-from vehicles.models import Vehicle, VehicleStatus
+from vehicles.models import Vehicle
 
 from .mfa import backup_codes_remaining
 
@@ -265,51 +265,30 @@ def build_dashboard(user, now: datetime | None = None) -> Dashboard:
 
 def _expiring_credentials(user, today: date) -> Panel | None:
     """
-    Every active credential expiring within EXPIRY_WARNING_DAYS, plus
-    any already expired. Expired Driver/Vehicle credentials already
-    block trip assignment (ADR 0008); this is the advance warning.
+    Every current credential expiring within EXPIRY_WARNING_DAYS, plus
+    any already expired: drivers' licenses and credentials, vehicles'
+    registration, inspection and insurance, company records. The same
+    list feeds the daily reminder email (compliance.expiry, ADR 0036).
     """
+    from compliance.expiry import expiring_items
+
     cutoff = today + timedelta(days=EXPIRY_WARNING_DAYS)
+    can_drivers, can_vehicles = _can_view(user, Driver), _can_view(user, Vehicle)
+    can_company = _can_view(user, ComplianceRecord)
+    shown = can_drivers or can_vehicles or can_company
     items: list[tuple[date, Row]] = []
-    shown = False
-
-    def add(obj, who: str, what: str, expires: date):
-        items.append(
-            (
-                expires,
-                Row(
-                    [who, what, expires.strftime("%b %d, %Y"), _expiry_text(expires, today)],
-                    _change(obj),
-                    alert=expires < today,
-                ),
+    for item in expiring_items(drivers=can_drivers, vehicles=can_vehicles, company=can_company):
+        if item.expires <= cutoff:
+            items.append(
+                (
+                    item.expires,
+                    Row(
+                        [item.who, item.what, item.expires.strftime("%b %d, %Y"), _expiry_text(item.expires, today)],
+                        _change(item.obj),
+                        alert=item.expires < today,
+                    ),
+                )
             )
-        )
-
-    if _can_view(user, Driver):
-        shown = True
-        for d in Driver.objects.filter(
-            status=DriverStatus.ACTIVE, license_expiration_date__lte=cutoff
-        ):
-            add(d, d.legal_name, "Driver's license", d.license_expiration_date)
-
-    if _can_view(user, Vehicle):
-        shown = True
-        in_use = [VehicleStatus.ACTIVE, VehicleStatus.MAINTENANCE]
-        for v in Vehicle.objects.filter(status__in=in_use):
-            name = f"{v.make} {v.model} ({v.license_plate})"
-            if v.registration_expiration_date <= cutoff:
-                add(v, name, "Registration", v.registration_expiration_date)
-            if v.inspection_expiration_date <= cutoff:
-                add(v, name, "Inspection", v.inspection_expiration_date)
-
-    if _can_view(user, ComplianceRecord):
-        shown = True
-        for c in ComplianceRecord.objects.filter(
-            status=ComplianceRecordStatus.ACTIVE,
-            expiration_date__isnull=False,
-            expiration_date__lte=cutoff,
-        ):
-            add(c, c.name, c.get_record_type_display(), c.expiration_date)
 
     if not shown:
         return None

@@ -48,7 +48,12 @@ AREAS = [
     Area(
         "drivers_vehicles",
         "Drivers & vehicles",
-        (("drivers", "driver"), ("vehicles", "vehicle"), ("vehicles", "vehiclecheck")),
+        (
+            ("drivers", "driver"),
+            ("drivers", "drivercredential"),
+            ("vehicles", "vehicle"),
+            ("vehicles", "vehiclecheck"),
+        ),
     ),
     Area("payers", "Payers", (("payers", "payer"),)),
     Area("billing", "Billing (invoices)", (("billing", "invoice"),)),

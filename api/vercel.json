@@ -13,7 +13,7 @@
   ],
   "crons": [
     {
-      "path": "/api/v1/cron/standing-orders/",
+      "path": "/api/v1/cron/daily/",
       "schedule": "0 10 * * *"
     }
   ]

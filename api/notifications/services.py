@@ -194,6 +194,35 @@ class NotificationService:
             related=order,
         )
 
+    def notify_expiring_credentials(self, items) -> None:
+        """The daily digest (ADR 0036): (who, what, expires, days left) rows. Staff and fleet only, no riders."""
+        rows = []
+        for who, what, expires, days_left in items:
+            if days_left < 0:
+                when = f"EXPIRED {expires:%b %d, %Y}"
+            elif days_left == 0:
+                when = f"expires TODAY ({expires:%b %d, %Y})"
+            else:
+                when = f"{expires:%b %d, %Y} (in {days_left} day{'s' if days_left != 1 else ''})"
+            rows.append((f"{who} — {what}", when))
+        expired = sum(1 for item in items if item[3] <= 0)
+        context = {
+            "rows": rows,
+            "admin_url": f"{settings.SITE_URL}/admin/",
+            "website_url": settings.WEBSITE_URL,
+        }
+        subject = f"{len(items)} credential{'s' if len(items) != 1 else ''} expiring"
+        if expired:
+            subject += f" ({expired} expired)"
+        self._send(
+            notification_type=NotificationType.EXPIRY_REMINDER_STAFF,
+            to=settings.STAFF_NOTIFICATION_EMAIL,
+            subject=subject + " — AngelCare Transit",
+            body_text=render_to_string("notifications/staff_expiry_reminder.txt", context),
+            body_html=render_to_string("notifications/staff_expiry_reminder.html", context),
+            related=ExpiryDigest(),
+        )
+
     @classmethod
     def _staff_rows(cls, trip_request) -> list[tuple[str, str]]:
         # Reference and timing only: enough to judge urgency, nothing
@@ -248,3 +277,9 @@ class NotificationService:
             related_object_type=type(related).__name__,
             related_object_id=str(related.pk),
         )
+
+
+class ExpiryDigest:
+    """Stands in for the related record of a digest email, which covers many."""
+
+    pk = "daily-digest"

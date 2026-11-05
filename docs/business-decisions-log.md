@@ -40,6 +40,9 @@ is UNKNOWN and must not be assumed.
 | 2026-11-05 | Failed vehicle inspection | Vehicle blocked until an Administrator marks it fixed (ADR 0034) | Owner, chat |
 | 2026-11-05 | Trip proof sheet | PDF created on download, any time; never stored (ADR 0034) | Owner, chat |
 | 2026-11-05 | Standing orders | Trips created 14 days ahead; regular driver/vehicle assigned when available; ride back with the same options as booking; prior-auth warning 14 days before its end, no trips after it (ADR 0035) | Owner, chat |
+| 2026-11-05 | Required driver credentials | Every driver: MVR check, criminal background check, drug and alcohol screen, CPR/first aid, defensive driving; plus wheelchair securement for wheelchair/stretcher trips. Payers can require more, set per payer (ADR 0036) | Owner, chat |
+| 2026-11-05 | Expiry reminders | To the office only, at 90/60/30/7 days and on expiry (ADR 0036) | Owner, chat |
+| 2026-11-05 | Company dates | SAM.gov registration ends Oct 26, 2027; PEMS revalidation December 2028; business insurance October 2027; Fort Worth vehicle-for-hire license (date not given) (ADR 0036) | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)
 
@@ -49,7 +52,7 @@ is UNKNOWN and must not be assumed.
 - Driver employment classification (employee vs. contractor)
 - Business hours
 - Legal entity type / state registration details (EIN is now confirmed — see the table above)
-- Insurance and credentialing specifics
+- Insurance and credentialing specifics beyond the required driver credentials and the dates above (insurer, policy numbers, coverage amounts, each broker's own requirement list)
 - Any regulatory claims (Medicaid enrollment status, state licensure numbers, etc.)
 
 Any of the above appearing anywhere in the app must trace back to an entry

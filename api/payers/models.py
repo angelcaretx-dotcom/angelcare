@@ -57,6 +57,13 @@ class Payer(models.Model):
     email = models.EmailField(blank=True)
 
     notes = models.TextField(blank=True)
+    # Credentials this payer demands on top of the company-wide set
+    # (ADR 0036), e.g. a broker that requires defensive driving yearly.
+    required_credentials = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Driver credentials this payer requires, on top of the ones every driver needs.",
+    )
     status = models.CharField(
         max_length=20, choices=PayerStatus.choices, default=PayerStatus.ACTIVE
     )

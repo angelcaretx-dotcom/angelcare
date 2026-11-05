@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from django.urls import include, path
 from django.views.generic import RedirectView
 
-from trips.views import standing_orders_cron
+from config import cron
 
 
 def health_check(request):
@@ -25,8 +25,8 @@ urlpatterns = [
     path("api/v1/rider/", include("riders.urls")),
     path("api/v1/verify/", include("verification.urls")),
     path("api/v1/contact/", include("contact.urls")),
-    # Vercel Cron, daily (ADR 0035).
-    path("api/v1/cron/standing-orders/", standing_orders_cron, name="cron-standing-orders"),
+    # Vercel Cron, daily: standing orders and expiry reminders (ADR 0035, 0036).
+    path("api/v1/cron/daily/", cron.daily, name="cron-daily"),
 ]
 
 if settings.DEBUG:

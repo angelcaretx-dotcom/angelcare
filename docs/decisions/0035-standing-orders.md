@@ -55,7 +55,7 @@ series carries on around them.
     is **kept as is**, and the admin says how many were kept.
   - A kept trip on a newly skipped date is **cancelled** (audited), not
     deleted.
-- **Every morning**: Vercel Cron calls `GET /api/v1/cron/standing-orders/`
+- **Every morning**: Vercel Cron calls `GET /api/v1/cron/daily/` (renamed from `/cron/standing-orders/` when ADR 0036 added expiry reminders to the same job)
   at 10:00 UTC (about 4–5 AM Texas time).
   - The call must carry `Authorization: Bearer $CRON_SECRET`. Without
     `CRON_SECRET` set, the endpoint refuses to run.

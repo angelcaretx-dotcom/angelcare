@@ -1,13 +1,32 @@
+from django import forms
 from django.contrib import admin
+from unfold.widgets import UnfoldAdminCheckboxSelectMultipleWidget
 
 from accounts.admin_base import AngelCareModelAdmin
 from audit.services import record_change
 
+from drivers.models import CredentialType
+
 from .models import Payer
+
+
+class PayerForm(forms.ModelForm):
+    required_credentials = forms.MultipleChoiceField(
+        choices=CredentialType.choices,
+        required=False,
+        widget=UnfoldAdminCheckboxSelectMultipleWidget,
+        help_text="Driver credentials this payer requires on its trips, on top of the ones every "
+        "driver needs (ADR 0036). A driver missing one can't be assigned this payer's trips.",
+    )
+
+    class Meta:
+        model = Payer
+        fields = "__all__"
 
 
 @admin.register(Payer)
 class PayerAdmin(AngelCareModelAdmin):
+    form = PayerForm
     list_display = (
         "name",
         "payer_type",

@@ -46,7 +46,22 @@ def make_driver(**overrides) -> Driver:
         "status": "active",
     }
     defaults.update(overrides)
-    return Driver.objects.create(**defaults)
+    driver = Driver.objects.create(**defaults)
+    give_all_credentials(driver)
+    return driver
+
+
+def give_all_credentials(driver, expires_on=None):
+    """Every credential a trip can need (ADR 0036), valid for a year."""
+    from drivers.models import CredentialType, DriverCredential
+
+    for kind in CredentialType.values:
+        DriverCredential.objects.create(
+            driver=driver,
+            credential_type=kind,
+            completed_on=date.today() - timedelta(days=30),
+            expires_on=expires_on or date.today() + timedelta(days=365),
+        )
 
 
 def make_vehicle(**overrides) -> Vehicle:
@@ -59,6 +74,7 @@ def make_vehicle(**overrides) -> Vehicle:
         "passenger_capacity": 4,
         "registration_expiration_date": date.today() + timedelta(days=180),
         "inspection_expiration_date": date.today() + timedelta(days=90),
+        "insurance_expiration_date": date.today() + timedelta(days=200),
         "status": "active",
     }
     defaults.update(overrides)

@@ -1,0 +1,8 @@
+These licenses, credentials and company records expire soon, or have
+expired. A driver missing a required credential, or a vehicle without
+current insurance, can't be assigned to trips.
+
+{% for label, value in rows %}{{ label }}: {{ value }}
+{% endfor %}
+Update them in the admin:
+{{ admin_url|safe }}

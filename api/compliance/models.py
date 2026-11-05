@@ -83,3 +83,18 @@ class ComplianceRecord(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} ({self.status})"
+
+
+class ExpiryReminder(models.Model):
+    """
+    The last reminder point (90/60/30/7/0 days) the office was emailed
+    about for one expiring item (ADR 0036). The key includes the expiry
+    date, so a renewal starts its reminders afresh.
+    """
+
+    key = models.CharField(max_length=200, unique=True)
+    stage = models.PositiveSmallIntegerField()
+    sent_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f"{self.key} ({self.stage} days)"

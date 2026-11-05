@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 from django.conf import settings
 from django.core.validators import RegexValidator
@@ -81,3 +82,84 @@ class Driver(models.Model):
 
     def __str__(self) -> str:
         return f"{self.legal_name} ({self.status})"
+
+
+class CredentialType(models.TextChoices):
+    """
+    What a driver must hold besides the license on the Driver record
+    (ADR 0036). Owner decision 2026-11-05: all of these are required for
+    every driver; wheelchair securement only for wheelchair/stretcher trips.
+    """
+
+    MVR = "mvr", "Motor vehicle record (MVR) check"
+    BACKGROUND_CHECK = "background_check", "Criminal background check"
+    DRUG_SCREEN = "drug_screen", "Drug and alcohol screen"
+    CPR_FIRST_AID = "cpr_first_aid", "CPR / first aid"
+    DEFENSIVE_DRIVING = "defensive_driving", "Defensive driving"
+    WHEELCHAIR_SECUREMENT = "wheelchair_securement", "Wheelchair securement (e.g. PASS)"
+
+
+REQUIRED_FOR_EVERY_TRIP = [
+    CredentialType.MVR,
+    CredentialType.BACKGROUND_CHECK,
+    CredentialType.DRUG_SCREEN,
+    CredentialType.CPR_FIRST_AID,
+    CredentialType.DEFENSIVE_DRIVING,
+]
+# Service types where the rider travels in their wheelchair or on a stretcher.
+SECUREMENT_SERVICES = {"wheelchair", "stretcher"}
+
+
+class DriverCredential(models.Model):
+    """
+    One credential a driver holds (ADR 0036). Renewing adds a new row:
+    the newest of each type is the current one, older rows are history.
+    The scanned document itself goes in the driver's Documents.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name="credentials")
+    credential_type = models.CharField(max_length=30, choices=CredentialType.choices)
+    completed_on = models.DateField("date done / issued")
+    expires_on = models.DateField(null=True, blank=True, help_text="Leave blank if it never expires.")
+    reference = models.CharField(max_length=100, blank=True, help_text="Certificate or report number.")
+    notes = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["credential_type", "-completed_on"]
+        verbose_name = "credential"
+
+    def __str__(self) -> str:
+        return self.get_credential_type_display()
+
+    def is_valid_on(self, day: date) -> bool:
+        return self.expires_on is None or self.expires_on >= day
+
+
+def current_credentials(driver) -> dict:
+    """The newest credential of each type the driver holds."""
+    current = {}
+    for credential in driver.credentials.order_by("-completed_on", "-created_at"):
+        current.setdefault(credential.credential_type, credential)
+    return current
+
+
+def missing_credentials(driver, *, service_type: str = "", payer=None, day: date | None = None) -> list[str]:
+    """
+    Labels of the credentials this driver lacks, or has expired, for a
+    trip of this service and payer (ADR 0036). Empty means good to go.
+    """
+    day = day or date.today()
+    needed = list(REQUIRED_FOR_EVERY_TRIP)
+    if service_type in SECUREMENT_SERVICES:
+        needed.append(CredentialType.WHEELCHAIR_SECUREMENT)
+    if payer is not None:
+        needed += [t for t in payer.required_credentials if t not in needed]
+    current = current_credentials(driver)
+    labels = dict(CredentialType.choices)
+    return [
+        labels.get(kind, kind)
+        for kind in needed
+        if kind not in current or not current[kind].is_valid_on(day)
+    ]

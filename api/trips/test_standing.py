@@ -178,12 +178,12 @@ class DailyJobTests(TestCase):
 
     @override_settings(CRON_SECRET="")
     def test_cron_endpoint_refuses_without_a_secret(self):
-        self.assertEqual(self.client.get("/api/v1/cron/standing-orders/").status_code, 503)
+        self.assertEqual(self.client.get("/api/v1/cron/daily/").status_code, 503)
 
     @override_settings(CRON_SECRET="s3cret")
     def test_cron_endpoint_needs_the_right_secret(self):
         make_order()
-        url = "/api/v1/cron/standing-orders/"
+        url = "/api/v1/cron/daily/"
         self.assertEqual(self.client.get(url, HTTP_AUTHORIZATION="Bearer wrong").status_code, 403)
         response = self.client.get(url, HTTP_AUTHORIZATION="Bearer s3cret")
         self.assertEqual(response.status_code, 200)

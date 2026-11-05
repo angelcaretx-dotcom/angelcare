@@ -51,7 +51,7 @@ Owner decisions 2026-11-05:
 - Trips generated automatically **14 days ahead** (on save and every morning); skip a date (holiday, hospital stay) without breaking the series.
 - Prior-auth expiry: warning and staff email **14 days before**; no trips after it ends.
 
-### Phase 27: Credential vault + reminders
+### Phase 27: Credential vault + reminders — ✅ built 2026-11-05 (ADR 0036)
 - Driver credentials as a typed list: license, MVR, background check, drug screen, CPR/first aid, defensive driving, wheelchair securement, plus per-payer required sets (what SafeRide/MTM demand).
 - Vehicle insurance added to registration/inspection.
 - Company dates entered: SAM (Oct 26, 2027), PEMS revalidation (Dec 2028), Fort Worth VFH license, insurance (Oct 2027).

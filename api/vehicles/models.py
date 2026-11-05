@@ -45,6 +45,10 @@ class Vehicle(models.Model):
 
     registration_expiration_date = models.DateField()
     inspection_expiration_date = models.DateField()
+    # ADR 0036: missing or expired insurance blocks assigning the vehicle.
+    insurance_expiration_date = models.DateField(
+        null=True, blank=True, help_text="When this vehicle's insurance cover ends."
+    )
 
     status = models.CharField(
         max_length=20, choices=VehicleStatus.choices, default=VehicleStatus.ACTIVE

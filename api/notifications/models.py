@@ -16,6 +16,7 @@ class NotificationType(models.TextChoices):
     CONTACT_MESSAGE_STAFF = "contact_message_staff", "Website message (staff)"
     VEHICLE_CHECK_FAILED_STAFF = "vehicle_check_failed_staff", "Vehicle failed its daily check (staff)"
     PRIOR_AUTH_ENDING_STAFF = "prior_auth_ending_staff", "Standing order: prior authorization ending (staff)"
+    EXPIRY_REMINDER_STAFF = "expiry_reminder_staff", "Credentials and licenses expiring (staff)"
 
 
 class NotificationStatus(models.TextChoices):
