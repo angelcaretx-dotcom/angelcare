@@ -173,12 +173,15 @@ class ReminderTests(TestCase):
 
 class CompanyDatesTests(TestCase):
     def test_owner_dates_are_entered_and_covered_by_reminders(self):
+        # As corrected by compliance.0004 from the owner's verified records.
         sam = ComplianceRecord.objects.get(name="SAM.gov entity registration")
-        self.assertEqual(sam.expiration_date, date(2027, 10, 26))
-        self.assertTrue(ComplianceRecord.objects.filter(name__contains="PEMS", expiration_date=date(2028, 12, 31)).exists())
-        self.assertIsNone(ComplianceRecord.objects.get(name__contains="vehicle-for-hire").expiration_date)
+        self.assertEqual(sam.expiration_date, date(2027, 11, 3))
+        self.assertTrue(ComplianceRecord.objects.filter(name__contains="PEMS", expiration_date=date(2028, 12, 3)).exists())
+        auto = ComplianceRecord.objects.get(name="Commercial auto insurance")
+        self.assertEqual((auto.reference_number, auto.expiration_date), ("WCAN261110", date(2027, 10, 13)))
+        self.assertFalse(ComplianceRecord.objects.filter(name__contains="vehicle-for-hire").exists())
         keys = {item.key for item in expiring_items(drivers=False, vehicles=False)}
-        self.assertIn(f"compliance:{sam.pk}:2027-10-26", keys)
+        self.assertIn(f"compliance:{sam.pk}:2027-11-03", keys)
 
 
 class AdminTests(TestCase):

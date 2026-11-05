@@ -77,17 +77,17 @@ reminder email**.
 - It runs in the same Vercel Cron job as standing orders, now
   `/api/v1/cron/daily/`.
 
-**Company dates** (data migration `compliance.0003`), created unless a
-record with the same name exists:
+**Company dates** (data migrations `compliance.0003`, corrected by
+`0004` from the owner's verified records the same day):
 
-| Record | Expiry entered |
+| Record | Expiry |
 | --- | --- |
-| SAM.gov registration | Oct 26, 2027 |
-| PEMS revalidation | Dec 31, 2028 (owner gave December) |
-| Business insurance | Oct 1, 2027 (owner gave October; the earliest day, so reminders aren't late) |
-| Fort Worth vehicle-for-hire license | none yet |
+| SAM.gov registration | Nov 3, 2027 (reset Nov 4, 2026 by the NAICS 492110 update) |
+| PEMS revalidation | Dec 3, 2028 |
+| Commercial auto insurance | Oct 13, 2027 (WCAN261110, Incline Casualty, policy 10/13/2026 to 10/13/2027) |
 
-Each record's note says what to correct.
+There is no Fort Worth vehicle-for-hire license yet, so it has no
+record. `0004` only changes records still as `0003` left them.
 
 ## Consequences
 
@@ -95,10 +95,8 @@ Each record's note says what to correct.
   vehicle's insurance date.** Until then, new assignments of those
   drivers and vehicles are refused with a message saying what's missing.
 - Credentials that don't expire (left blank) never trigger reminders.
-- The Fort Worth license has no date, so it isn't reminded until one is
-  added.
 - Release: these change the database; run `ops/migrate-production.ps1`
   before pushing:
   - `drivers.0003`, `payers.0002`, `vehicles.0003`;
-  - `compliance.0002` and `0003`;
+  - `compliance.0002`, `0003` and `0004`;
   - `notifications.0006`.

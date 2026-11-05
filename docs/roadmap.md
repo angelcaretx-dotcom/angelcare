@@ -54,7 +54,7 @@ Owner decisions 2026-11-05:
 ### Phase 27: Credential vault + reminders — ✅ built 2026-11-05 (ADR 0036)
 - Driver credentials as a typed list: license, MVR, background check, drug screen, CPR/first aid, defensive driving, wheelchair securement, plus per-payer required sets (what SafeRide/MTM demand).
 - Vehicle insurance added to registration/inspection.
-- Company dates entered: SAM (Oct 26, 2027), PEMS revalidation (Dec 2028), Fort Worth VFH license, insurance (Oct 2027).
+- Company dates entered (verified 2026-11-05): SAM (Nov 3, 2027), PEMS revalidation (Dec 3, 2028), commercial auto insurance WCAN261110 (Oct 13, 2027); no Fort Worth VFH license yet.
 - **Email reminders at 90 / 60 / 30 / 7 days** and on expiry, via a scheduled job (same mechanism as backups). Expired = can't be assigned (already enforced for license/registration/inspection; extended to all required items).
 
 ### Phase 34: Rider accounts + "My trips" — ✅ built 2026-11-04 (ADR 0031)
