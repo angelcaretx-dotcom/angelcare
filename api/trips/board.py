@@ -22,6 +22,7 @@ from drivers.models import Driver, DriverStatus
 from vehicles.models import Vehicle, VehicleStatus
 
 from .models import Trip, TripStatus
+from .sla import build_sla, week_of
 
 
 @dataclass
@@ -146,7 +147,24 @@ def board_urls(model_admin):
         )
         return redirect(back)
 
+    def sla(request):
+        """How the week went, per payer (ADR 0037)."""
+        if not model_admin.has_view_permission(request):
+            raise PermissionDenied
+        this_week = week_of(timezone.now().astimezone(_zone()).date())
+        monday = week_of(_parse_day(request.GET.get("week")))
+        context = {
+            **site.each_context(request),
+            "title": f"On-time & SLA — week of {monday:%B} {monday.day}, {monday.year}",
+            "this_week": this_week,
+            "previous_week": monday - timedelta(weeks=1),
+            "next_week": monday + timedelta(weeks=1),
+            **build_sla(monday),
+        }
+        return TemplateResponse(request, "admin/trips/sla.html", context)
+
     return [
+        path("sla/", site.admin_view(sla), name="trips_trip_sla"),
         path("board/", site.admin_view(board), name="trips_trip_board"),
         path("board/assign/<uuid:trip_id>/", site.admin_view(assign), name="trips_trip_board_assign"),
     ]

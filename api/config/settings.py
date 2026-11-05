@@ -335,6 +335,11 @@ UNFOLD = {
                         "link": reverse_lazy("admin:trips_trip_board"),
                     },
                     {
+                        "title": "On-time & SLA",
+                        "icon": "monitoring",
+                        "link": reverse_lazy("admin:trips_trip_sla"),
+                    },
+                    {
                         "title": "Trips",
                         "icon": "route",
                         "link": reverse_lazy("admin:trips_trip_changelist"),

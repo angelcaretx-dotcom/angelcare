@@ -1,0 +1,12 @@
+<tr data-sla-row="{{ row.name }}">
+    <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800 {% if bold %}font-semibold{% endif %}">{{ row.name }}</td>
+    <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">{{ row.trips }}</td>
+    <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800 {% if row.on_time_low %}font-medium text-red-600{% endif %}">{% if row.on_time_percent is not None %}{{ row.on_time_percent }}% <span class="text-subtle text-xs">({{ row.on_time }}/{{ row.measured }})</span>{% else %}—{% endif %}</td>
+    <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">{{ row.late }}</td>
+    <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">{{ row.not_measured }}</td>
+    <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">{{ row.no_shows }}{% if row.no_show_percent is not None %} <span class="text-subtle text-xs">({{ row.no_show_percent }}%)</span>{% endif %}</td>
+    <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">{{ row.cancelled }}</td>
+    <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">{{ row.accepted }}</td>
+    <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">{{ row.turned_down }}</td>
+    <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800 {% if row.acceptance_low %}font-medium text-red-600{% endif %}">{% if row.acceptance_percent is not None %}{{ row.acceptance_percent }}%{% else %}—{% endif %}</td>
+</tr>
