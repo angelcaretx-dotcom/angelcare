@@ -1,0 +1,48 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Driver pay statement (ADR 0039). Only CSS classes present in Unfold's precompiled
+stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <p class="text-sm text-subtle">
+        Worked out from the driver's pay plan: completed and no-show trips in the range (Texas time), plus hours on
+        duty from the daily vehicle check to the end-of-day odometer. Nothing is stored; download it as a CSV.
+    </p>
+    <form method="get" class="bg-white border border-base-200 flex flex-wrap gap-4 items-center p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <label class="flex flex-col gap-2 text-sm">Driver
+            <select name="driver" class="{{ input_class }}">{% for value, label in form.driver.field.choices %}<option value="{{ value }}"{% if form.driver.value|stringformat:"s" == value|stringformat:"s" %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+        </label>
+        <label class="flex flex-col gap-2 text-sm">From <input type="date" name="start" value="{{ form.start.value|date:'Y-m-d'|default:form.start.value }}" class="{{ input_class }}"></label>
+        <label class="flex flex-col gap-2 text-sm">To <input type="date" name="end" value="{{ form.end.value|date:'Y-m-d'|default:form.end.value }}" class="{{ input_class }}"></label>
+        <button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Show</button>
+    </form>
+
+    {% if result %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-pay-total="{{ result.total }}">
+        <div class="flex flex-wrap gap-4 items-center justify-between">
+            <h2 class="font-semibold mb-2 text-important">Total ${{ result.total }}</h2>
+            <a href="?{{ query }}&amp;format=csv" class="text-primary-600 underline text-sm">Download CSV</a>
+        </div>
+        <table class="text-sm w-full"><tbody>
+            {% for row in result.rows %}<tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 whitespace-nowrap dark:border-base-800"><a href="{% url 'admin:trips_trip_change' row.trip.pk %}" class="text-primary-600 underline">{{ row.trip.scheduled_pickup_datetime|date:"D M j, g:i A" }}</a></td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{% for line in row.lines %}<div>{{ line.label }}: {{ line.quantity }} × ${{ line.unit }} = ${{ line.amount }}</div>{% endfor %}{% for note in row.notes %}<div class="text-red-600">Not paid: {{ note }}</div>{% endfor %}</td>
+                <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">${{ row.amount }}</td>
+            </tr>{% endfor %}
+            {% for hours in result.hours %}<tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 whitespace-nowrap dark:border-base-800">{{ hours.check.service_date|date:"D M j" }}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ hours.line.label }}: {{ hours.line.quantity }} h × ${{ hours.line.unit }}</td>
+                <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">${{ hours.line.amount }}</td>
+            </tr>{% endfor %}
+            {% if not result.rows and not result.hours %}<tr><td class="px-3 py-2 text-subtle">Nothing to pay in that range.</td></tr>{% endif %}
+        </tbody></table>
+        {% for note in result.notes %}<p class="font-medium text-red-600 text-sm">{{ note }}</p>{% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

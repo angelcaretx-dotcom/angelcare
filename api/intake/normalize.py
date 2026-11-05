@@ -12,6 +12,7 @@ All dates and times in a file are Texas (Central) time.
 
 import re
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
@@ -167,6 +168,17 @@ def normalize(values: dict) -> tuple[dict, list]:
         problems.append(problem("Stretcher rows aren't created by import: a person decides."))
     elif not data["service_type"]:
         problems.append(problem(f"Service '{values.get('service_type')}' isn't ambulatory or wheelchair."))
+
+    data["miles"] = ""
+    if values.get("miles", "").strip():
+        try:
+            miles = Decimal(values["miles"].strip().lower().replace("mi", "").replace(",", "").strip())
+        except InvalidOperation:
+            miles = None
+        if miles is None or miles < 0 or miles > 2000:
+            problems.append(problem(f"Miles '{values['miles']}' isn't a distance we can use."))
+        else:
+            data["miles"] = str(miles.quantize(Decimal("0.01")))
 
     data["return_ride"], data["return_at"] = ReturnRide.NONE, ""
     return_text = values.get("return_time", "").strip()

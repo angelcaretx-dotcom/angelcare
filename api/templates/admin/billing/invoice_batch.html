@@ -1,0 +1,45 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Create invoices for completed trips (ADR 0039). Only CSS classes present in Unfold's precompiled
+stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <p class="text-sm text-subtle">
+        Makes a Draft invoice for each completed or no-show trip of that payer in the date range (Texas time) that
+        isn't invoiced yet, priced from the payer's rate card. Check them, then mark them Sent.
+    </p>
+    <form method="post" class="bg-white border border-base-200 flex flex-wrap gap-4 items-center p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        {% csrf_token %}
+        <label class="flex flex-col gap-2 text-sm">Payer
+            <select name="payer" class="{{ input_class }}">{% for value, label in form.payer.field.choices %}<option value="{{ value }}"{% if form.payer.value == value %} selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+        </label>
+        <label class="flex flex-col gap-2 text-sm">From <input type="date" name="start" value="{{ form.start.value|date:'Y-m-d'|default:form.start.value }}" class="{{ input_class }}"></label>
+        <label class="flex flex-col gap-2 text-sm">To <input type="date" name="end" value="{{ form.end.value|date:'Y-m-d'|default:form.end.value }}" class="{{ input_class }}"></label>
+        <button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Create draft invoices</button>
+        {% for error in form.non_field_errors %}<span class="font-medium text-red-600">{{ error }}</span>{% endfor %}
+    </form>
+
+    {% if made is not None %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-batch-result>
+        <h2 class="font-semibold mb-2 text-important">{{ made|length }} created{% if skipped %}, {{ skipped|length }} not billed{% endif %}</h2>
+        <table class="text-sm w-full"><tbody>
+            {% for invoice in made %}<tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800"><a href="{% url 'admin:billing_invoice_change' invoice.pk %}" class="text-primary-600 underline">{{ invoice.trip.scheduled_pickup_datetime|date:"M j, g:i A" }}</a></td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ invoice.rate_card }}</td>
+                <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">${{ invoice.amount }}</td>
+            </tr>{% endfor %}
+            {% for trip, why in skipped %}<tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800"><a href="{% url 'admin:trips_trip_change' trip.pk %}" class="text-primary-600 underline">{{ trip.scheduled_pickup_datetime|date:"M j, g:i A" }}</a></td>
+                <td class="align-top border-b border-base-200 font-medium px-3 py-2 text-red-600 dark:border-base-800" colspan="2">Not billed: {{ why }}</td>
+            </tr>{% endfor %}
+            {% if not made and not skipped %}<tr><td class="px-3 py-2 text-subtle">No completed trips to invoice in that range.</td></tr>{% endif %}
+        </tbody></table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

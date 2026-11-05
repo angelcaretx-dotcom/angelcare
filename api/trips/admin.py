@@ -134,6 +134,7 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
                     "payer",
                     "broker_trip_number",
                     "prior_authorization_number",
+                    "billable_miles",
                 )
             },
         ),

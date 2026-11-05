@@ -170,6 +170,12 @@ class Trip(models.Model):
         related_name="trips", editable=False,
     )
     standing_date = models.DateField(null=True, blank=True, editable=False)
+    # For per-mile charges and pay (ADR 0039): from the import file's miles
+    # column, or typed by staff. The odometer is per vehicle-day only.
+    billable_miles = models.DecimalField(
+        max_digits=7, decimal_places=2, null=True, blank=True,
+        help_text="Trip miles for billing and driver pay (from the import, or entered here).",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

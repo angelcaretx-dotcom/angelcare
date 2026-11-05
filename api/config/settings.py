@@ -287,6 +287,18 @@ def _can_view_billing(request):
     return request.user.has_perm("billing.view_invoice")
 
 
+def _can_view_rate_cards(request):
+    return request.user.has_perm("billing.view_ratecard")
+
+
+def _can_view_driver_pay(request):
+    return request.user.has_perm("billing.view_driverpayplan")
+
+
+def _can_create_invoices(request):
+    return request.user.has_perm("billing.add_invoice")
+
+
 def _can_view_claims(request):
     return request.user.has_perm("claims.view_claim")
 
@@ -412,6 +424,30 @@ UNFOLD = {
                         "icon": "receipt_long",
                         "link": reverse_lazy("admin:billing_invoice_changelist"),
                         "permission": _can_view_billing,
+                    },
+                    {
+                        "title": "Create invoices",
+                        "icon": "request_quote",
+                        "link": reverse_lazy("admin:billing_invoice_batch"),
+                        "permission": _can_create_invoices,
+                    },
+                    {
+                        "title": "Rate cards",
+                        "icon": "sell",
+                        "link": reverse_lazy("admin:billing_ratecard_changelist"),
+                        "permission": _can_view_rate_cards,
+                    },
+                    {
+                        "title": "Driver pay plans",
+                        "icon": "payments",
+                        "link": reverse_lazy("admin:billing_driverpayplan_changelist"),
+                        "permission": _can_view_driver_pay,
+                    },
+                    {
+                        "title": "Driver pay statement",
+                        "icon": "receipt",
+                        "link": reverse_lazy("admin:billing_driverpayplan_statement"),
+                        "permission": _can_view_driver_pay,
                     },
                     {
                         "title": "Claims",

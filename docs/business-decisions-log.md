@@ -43,6 +43,7 @@ is UNKNOWN and must not be assumed.
 | 2026-11-05 | Required driver credentials | Every driver: MVR check, criminal background check, drug and alcohol screen, CPR/first aid, defensive driving; plus wheelchair securement for wheelchair/stretcher trips. Payers can require more, set per payer (ADR 0036) | Owner, chat |
 | 2026-11-05 | Expiry reminders | To the office only, at 90/60/30/7 days and on expiry (ADR 0036) | Owner, chat |
 | 2026-11-05 | Trip intake | Format-agnostic importer for any sender's PDF/Excel/CSV, reviewed before anything is scheduled; imports create ambulatory and wheelchair trips only (stretcher rows go to review); files never go to an outside extraction/OCR service without a BAA (ADR 0038) | Owner, chat |
+| 2026-11-05 | Rates and driver pay | Administrators enter and edit payer rate cards (incl. private pay) and driver pay plans in the admin; drivers can be paid per trip, per mile, hourly and/or a % of the trip charge; trip miles from the import file or typed by staff; invoices made by batch as drafts to check; after-hours window set per rate card (ADR 0039) | Owner, chat |
 | 2026-11-05 | Company dates (corrected from verified records) | SAM.gov registration renews Nov 3, 2027 (reset Nov 4, 2026 by the NAICS 492110 update); PEMS revalidation due Dec 3, 2028; commercial auto insurance WCAN261110, Incline Casualty, 10/13/2026 to 10/13/2027; no Fort Worth vehicle-for-hire license yet (ADR 0036) | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)

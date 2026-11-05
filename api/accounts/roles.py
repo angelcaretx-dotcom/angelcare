@@ -111,6 +111,9 @@ def seed_roles(sender, **kwargs):
         # confirmed day-to-day dispatch need (least privilege, same
         # reasoning ADR 0007 applied to Driver/Vehicle edit access).
         + list(_permissions("billing", "invoice", ["view", "change", "add", "delete"]))
+        # Rates and pay are money: Administrator only (ADR 0039).
+        + list(_permissions("billing", "ratecard", ["view", "change", "add", "delete"]))
+        + list(_permissions("billing", "driverpayplan", ["view", "change", "add", "delete"]))
         + list(_permissions("claims", "claim", ["view", "change", "add", "delete"]))
         + list(
             _permissions(

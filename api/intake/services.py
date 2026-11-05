@@ -4,6 +4,7 @@ create trips from the approved ones. The admin screens call these.
 """
 
 from datetime import datetime
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from django.conf import settings
@@ -126,6 +127,7 @@ def create_trips(row: ImportRow, *, user) -> ImportRow:
         appointment_datetime=datetime.fromisoformat(data["appointment_at"]) if data["appointment_at"] else None,
         status=TripStatus.SCHEDULED,
         notes=data["notes"],
+        billable_miles=Decimal(data["miles"]) if data.get("miles") else None,
     )
     order = _standing_match(passenger, pickup_at)
     if order:

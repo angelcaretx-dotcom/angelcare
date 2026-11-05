@@ -87,7 +87,7 @@ Owner review of the live form, 2026-11-04:
 - Reconcile report: trips the broker says we did vs. trips we have proof for.
 - We work above the broker portals, not instead of them.
 
-### Phase 29: Rates + automatic invoices
+### Phase 29: Rates + automatic invoices — ✅ rate cards + calculated draft invoices built 2026-11-05 (ADR 0039); payer-specific invoice formats and prior-auth usage still to do
 - Rate schedule per payer: base rate by service level (ambulatory / wheelchair / stretcher), per loaded mile, wait time, no-show fee, after-hours.
 - Invoice amount calculated from the trip's proof (miles, wait) instead of typed.
 - Batch: "invoice all completed MTM trips for last week", in that payer's format.
@@ -103,7 +103,7 @@ Owner review of the live form, 2026-11-04:
 ### Phase 31: SLA dashboard — ✅ built 2026-11-05 (ADR 0037)
 - Per payer, per week: acceptance rate, on-time pickup % (from Phase 24 timestamps), no-shows, turn-downs by reason. Red when under target (e.g. 95%).
 
-### Phase 32: Driver pay + trip profit
+### Phase 32: Driver pay + trip profit — ✅ pay plans + pay statement (CSV) built 2026-11-05 (ADR 0039); 1099 totals and profit still to do
 - Driver pay rule per driver (per trip / per mile / hourly).
 - Pay statement per driver per period; 1099 year-end totals for contractors.
 - Profit per trip and per payer: revenue − driver pay − mileage cost; loaded vs. deadhead miles (odometer is per vehicle-day only, ADR 0034, so per-trip miles come from map estimates).
