@@ -1,0 +1,6 @@
+These facility follow-ups are due today or overdue.
+
+{% for label, value in rows %}{{ label }}: {{ value }}
+{% endfor %}
+Log the call or visit, and set the next follow-up date, in the admin:
+{{ admin_url|safe }}

@@ -6,8 +6,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      // Private rider pages (ADR 0031).
-      disallow: "/account",
+      // Private rider pages (ADR 0031) and the facility portal (ADR 0042).
+      disallow: ["/account", "/facility"],
     },
     sitemap: `${siteConfig.url}/sitemap.xml`,
   };

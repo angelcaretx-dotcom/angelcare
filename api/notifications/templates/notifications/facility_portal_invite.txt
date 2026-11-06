@@ -1,0 +1,17 @@
+Hello,
+
+AngelCare Transit has set up a facility portal account for you. In the
+portal you can book rides for your patients or residents and see every
+ride for your facility: its status, the confirmed pickup time and the
+driver.
+
+Set up your account (choose a password) here:
+{{ link|safe }}
+
+This link works for 3 days and only once. Each time you sign in we also
+email you a 6-digit code, because the portal shows patients' rides.
+
+Questions? Call 817-766-9228.
+
+— The AngelCare Transit Team
+angelcaretransit.com

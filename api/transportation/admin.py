@@ -18,14 +18,14 @@ class TripRequestAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
         "passenger",
         "created_at",
     )
-    list_filter = ("status", "service_type", "booked_for", "return_ride")
+    list_filter = ("status", "service_type", "booked_for", "return_ride", "source")
     search_fields = ("full_name", "phone", "email", "pickup_address", "dropoff_address")
-    readonly_fields = ("id", "created_at", "updated_at", "source")
+    readonly_fields = ("id", "created_at", "updated_at", "source", "facility", "facility_user")
     autocomplete_fields = ("passenger",)
     ordering = ("-created_at",)
     fieldsets = (
         (None, {"fields": ("status", "passenger", "source")}),
-        ("Who", {"fields": ("full_name", "phone", "email", "booked_for")}),
+        ("Who", {"fields": ("full_name", "phone", "email", "booked_for", "facility", "facility_user")}),
         (
             "Pickup",
             {"fields": ("pickup_address", "pickup_street", "pickup_unit", "pickup_city", "pickup_state", "pickup_zip")},

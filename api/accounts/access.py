@@ -45,6 +45,12 @@ AREAS = [
     Area("trip_imports", "Trip imports", (("intake", "importbatch"), ("intake", "mappingtemplate"))),
     Area("passengers", "Passengers", (("passengers", "passenger"),)),
     Area("rider_accounts", "Rider website accounts", (("riders", "rideraccount"),)),
+    Area(
+        "facilities",
+        "Facilities (accounts, contacts, activity)",
+        (("facilities", "facility"), ("facilities", "facilitycontact"), ("facilities", "facilityactivity")),
+    ),
+    Area("facility_portal", "Facility portal logins", (("facilities", "facilityuser"),)),
     Area("contact_messages", "Website messages", (("contact", "contactmessage"),)),
     Area(
         "drivers_vehicles",

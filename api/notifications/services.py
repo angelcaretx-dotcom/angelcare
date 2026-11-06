@@ -108,17 +108,54 @@ class NotificationService:
             related=account,
         )
 
-    def notify_rider_cancelled(self, trip_request) -> None:
+    # --- Facility portal (ADR 0042). A link only; no rider details. ---
+
+    def send_facility_invite(self, portal_user, link: str) -> None:
+        self._send_link_email(
+            portal_user,
+            NotificationType.FACILITY_PORTAL_INVITE,
+            subject="Your AngelCare Transit facility portal account — set it up",
+            template="facility_portal_invite",
+            link=link,
+        )
+
+    def send_facility_password_reset(self, portal_user, link: str) -> None:
+        self._send_link_email(
+            portal_user,
+            NotificationType.FACILITY_PASSWORD_RESET,
+            subject="Reset your AngelCare Transit facility portal password",
+            template="rider_password_reset",
+            link=link,
+        )
+
+    def notify_facility_follow_ups(self, rows) -> None:
+        """The morning digest (ADR 0042): (facility, about, due) rows. Business contacts only, no riders."""
+        context = {
+            "rows": rows,
+            "admin_url": f"{settings.SITE_URL}/admin/facilities/facility/?follow_up=due",
+            "website_url": settings.WEBSITE_URL,
+        }
+        self._send(
+            notification_type=NotificationType.FACILITY_FOLLOW_UPS_STAFF,
+            to=settings.STAFF_NOTIFICATION_EMAIL,
+            subject=f"{len(rows)} facility follow-up{'s' if len(rows) != 1 else ''} due — AngelCare Transit",
+            body_text=render_to_string("notifications/staff_facility_follow_ups.txt", context),
+            body_html=render_to_string("notifications/staff_facility_follow_ups.html", context),
+            related=ExpiryDigest(),
+        )
+
+    def notify_rider_cancelled(self, trip_request, by: str = "rider") -> None:
         reference = self._reference(trip_request)
         context = {
             "rows": [("Reference", reference), ("Requested pickup", trip_request.requested_datetime)],
             "admin_url": f"{settings.SITE_URL}/admin/transportation/triprequest/{trip_request.id}/change/",
+            "by": by,
             "website_url": settings.WEBSITE_URL,
         }
         self._send(
             notification_type=NotificationType.RIDER_CANCELLED_STAFF,
             to=settings.STAFF_NOTIFICATION_EMAIL,
-            subject=f"Trip request {reference} cancelled by the rider",
+            subject=f"Trip request {reference} cancelled by the {by}",
             body_text=render_to_string("notifications/staff_rider_cancelled.txt", context),
             body_html=render_to_string("notifications/staff_rider_cancelled.html", context),
             related=trip_request,

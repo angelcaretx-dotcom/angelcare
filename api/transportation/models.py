@@ -137,6 +137,23 @@ class TripRequest(models.Model):
         default="website",
         help_text="Where this request originated (website, phone, etc.).",
     )
+    # Booked through the facility portal (ADR 0042): the facility's
+    # portal users all see it.
+    facility = models.ForeignKey(
+        "facilities.Facility",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="trip_requests",
+    )
+    facility_user = models.ForeignKey(
+        "facilities.FacilityUser",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="trip_requests",
+        verbose_name="booked by (facility portal)",
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

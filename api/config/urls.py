@@ -23,6 +23,7 @@ urlpatterns = [
     path("healthz/", health_check, name="health-check"),
     path("api/v1/", include("transportation.urls")),
     path("api/v1/rider/", include("riders.urls")),
+    path("api/v1/facility/", include("facilities.urls")),
     path("api/v1/verify/", include("verification.urls")),
     path("api/v1/contact/", include("contact.urls")),
     # Vercel Cron, daily: standing orders and expiry reminders (ADR 0035, 0036).

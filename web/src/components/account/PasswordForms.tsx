@@ -6,7 +6,11 @@ import { useId, useState, type FormEvent } from "react";
 import { riderApi, RiderApiError } from "@/lib/rider";
 import { Alert, inputClass, primaryButtonClass } from "./ui";
 
-export function ForgotPasswordForm() {
+/** Shared with the facility portal (ADR 0042), which passes its own API call and label. */
+export function ForgotPasswordForm({
+  send = riderApi.forgotPassword,
+  emailLabel = "Email address you booked with",
+}: { send?: (email: string) => Promise<unknown>; emailLabel?: string } = {}) {
   const id = useId();
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -17,7 +21,7 @@ export function ForgotPasswordForm() {
     setBusy(true);
     setError(null);
     try {
-      await riderApi.forgotPassword(String(new FormData(event.currentTarget).get("email") ?? ""));
+      await send(String(new FormData(event.currentTarget).get("email") ?? ""));
       setSent(true);
     } catch (err) {
       setError(err instanceof RiderApiError ? err.message : "Couldn't reach us. Please try again.");
@@ -39,7 +43,7 @@ export function ForgotPasswordForm() {
       {error && <Alert kind="error">{error}</Alert>}
       <div>
         <label htmlFor={`${id}-email`} className="block text-sm font-medium">
-          Email address you booked with
+          {emailLabel}
         </label>
         <input id={`${id}-email`} name="email" type="email" autoComplete="email" required className={inputClass} />
       </div>
@@ -50,7 +54,15 @@ export function ForgotPasswordForm() {
   );
 }
 
-export function SetPasswordForm() {
+export function SetPasswordForm({
+  save = riderApi.setPassword,
+  home = "/account",
+  forgotHref = "/account/forgot-password",
+}: {
+  save?: (uid: string, token: string, password: string) => Promise<unknown>;
+  home?: string;
+  forgotHref?: string;
+} = {}) {
   const id = useId();
   const router = useRouter();
   const params = useSearchParams();
@@ -72,8 +84,8 @@ export function SetPasswordForm() {
     setError(null);
     setFieldErrors([]);
     try {
-      await riderApi.setPassword(uid, token, password);
-      router.replace("/account");
+      await save(uid, token, password);
+      router.replace(home);
     } catch (err) {
       if (err instanceof RiderApiError) {
         setFieldErrors(err.fieldErrors.password ?? []);
@@ -89,7 +101,7 @@ export function SetPasswordForm() {
     return (
       <Alert kind="error">
         This link is incomplete. Open the link from your email again, or{" "}
-        <Link href="/account/forgot-password" className="underline">
+        <Link href={forgotHref} className="underline">
           ask for a new one
         </Link>
         .
@@ -101,7 +113,7 @@ export function SetPasswordForm() {
       {error && (
         <Alert kind="error">
           {error}{" "}
-          <Link href="/account/forgot-password" className="underline">
+          <Link href={forgotHref} className="underline">
             Get a new link
           </Link>
         </Alert>

@@ -195,7 +195,8 @@ def rider_status(trip_request) -> tuple[str, str]:
 
 
 @transaction.atomic
-def cancel_request(account: RiderAccount, trip_request: TripRequest) -> None:
+def cancel_request(account, trip_request: TripRequest, *, by: str = "rider", source: str = "rider_portal") -> None:
+    """Cancel a request and its trips. `account` is a RiderAccount, or a facility portal user (ADR 0042)."""
     trip_request = TripRequest.objects.select_for_update().get(pk=trip_request.pk)
     if not can_cancel(trip_request):
         raise RiderAccountError("This ride can't be cancelled online any more. Please call us.")
@@ -209,8 +210,8 @@ def cancel_request(account: RiderAccount, trip_request: TripRequest) -> None:
         resource_type="TripRequest",
         resource_id=trip_request.pk,
         before={"status": previous},
-        after={"status": TripRequestStatus.CANCELLED, "by": "rider"},
-        source="rider_portal",
+        after={"status": TripRequestStatus.CANCELLED, "by": by},
+        source=source,
     )
     # The outbound trip, and the ride home booked with it (ADR 0032).
     for trip in (trip_of(trip_request), return_trip_of(trip_request)):
@@ -224,7 +225,7 @@ def cancel_request(account: RiderAccount, trip_request: TripRequest) -> None:
             resource_type="Trip",
             resource_id=trip.pk,
             before={"status": TripStatus.SCHEDULED},
-            after={"status": TripStatus.CANCELLED, "by": "rider"},
-            source="rider_portal",
+            after={"status": TripStatus.CANCELLED, "by": by},
+            source=source,
         )
-    transaction.on_commit(lambda: NotificationService().notify_rider_cancelled(trip_request))
+    transaction.on_commit(lambda: NotificationService().notify_rider_cancelled(trip_request, by=by))

@@ -109,7 +109,7 @@ Owner review of the live form, 2026-11-04:
 - Pay statement per driver per period; 1099 year-end totals for contractors.
 - Profit per trip and per payer: revenue − driver pay − mileage cost; loaded vs. deadhead miles (odometer is per vehicle-day only, ADR 0034, so per-trip miles come from map estimates).
 
-### Phase 33: Facility CRM + booking portal
+### Phase 33: Facility CRM + booking portal — ✅ built 2026-11-06 (ADR 0042): facilities, contacts, activity, follow-ups (dashboard + morning email), CSV lead import; portal at /facility with password + emailed code, bookings as requests, all the facility's rides
 - Facilities as accounts: contacts, notes, follow-up reminders, trip history (the 22-facility lead list imported).
 - Facility staff log in and book/see their residents' trips; discharge planners stop phoning.
 

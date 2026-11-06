@@ -103,6 +103,7 @@ INSTALLED_APPS = [
     "verification",
     "contact",
     "intake",
+    "facilities",
 ]
 
 MIDDLEWARE = [
@@ -260,6 +261,8 @@ AUTHENTICATION_BACKENDS = [
     "driver_app.auth.DriverLoginBackend",
     # Website "My trips" accounts (ADR 0031): only answers `rider_email=`.
     "riders.auth.RiderLoginBackend",
+    # Facility portal (ADR 0042): only answers `facility_email=`.
+    "facilities.auth.FacilityLoginBackend",
 ]
 LOGIN_REDIRECT_URL = "/admin/"
 
@@ -277,6 +280,7 @@ LOGIN_REDIRECT_URL = "/admin/"
 
 from django.templatetags.static import static  # noqa: E402
 from django.urls import reverse_lazy  # noqa: E402
+from django.utils.text import format_lazy  # noqa: E402
 
 
 def _is_superuser(request):
@@ -293,6 +297,10 @@ def _can_view_rate_cards(request):
 
 def _can_view_driver_pay(request):
     return request.user.has_perm("billing.view_driverpayplan")
+
+
+def _can_view_facilities(request):
+    return request.user.has_perm("facilities.view_facility")
 
 
 def _can_view_profit(request):
@@ -380,6 +388,36 @@ UNFOLD = {
                         "title": "Website messages",
                         "icon": "mail",
                         "link": reverse_lazy("admin:contact_contactmessage_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Facilities",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Facilities",
+                        "icon": "local_hospital",
+                        "link": reverse_lazy("admin:facilities_facility_changelist"),
+                        "permission": _can_view_facilities,
+                    },
+                    {
+                        "title": "Follow-ups due",
+                        "icon": "event_upcoming",
+                        "link": format_lazy("{}?follow_up=due", reverse_lazy("admin:facilities_facility_changelist")),
+                        "permission": _can_view_facilities,
+                    },
+                    {
+                        "title": "Import facilities",
+                        "icon": "upload_file",
+                        "link": reverse_lazy("admin:facilities_facility_import"),
+                        "permission": lambda request: request.user.has_perm("facilities.add_facility"),
+                    },
+                    {
+                        "title": "Portal users",
+                        "icon": "key",
+                        "link": reverse_lazy("admin:facilities_facilityuser_changelist"),
+                        "permission": lambda request: request.user.has_perm("facilities.view_facilityuser"),
                     },
                 ],
             },
@@ -588,6 +626,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "20/hour",
         "rider_auth": "300/hour",
+        "facility_auth": "300/hour",
         # Website email codes, per visitor IP (ADR 0033).
         "verify": "30/hour",
         "user": "1000/hour",

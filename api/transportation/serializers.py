@@ -55,9 +55,12 @@ class TripRequestCreateSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def email_is_proven(self, attrs) -> bool:
+        return token_is_valid(attrs.pop("verification_token", ""), attrs.get("email", ""))
+
     def validate(self, attrs):
         errors = {}
-        if not token_is_valid(attrs.pop("verification_token", ""), attrs.get("email", "")):
+        if not self.email_is_proven(attrs):
             errors["verification_token"] = ["Please confirm your email address again."]
 
         for side, label in (("pickup", "Pickup"), ("dropoff", "Drop-off")):

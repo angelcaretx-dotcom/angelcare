@@ -88,6 +88,14 @@ class Trip(models.Model):
     source = models.CharField(
         max_length=20, choices=TripSource.choices, default=TripSource.PHONE
     )
+    facility = models.ForeignKey(
+        "facilities.Facility",
+        on_delete=models.PROTECT,
+        related_name="trips",
+        null=True,
+        blank=True,
+        help_text="The facility this ride is for. Its portal users can see the trip (ADR 0042).",
+    )
     subcontract_partner = models.CharField(
         max_length=100,
         blank=True,
@@ -223,6 +231,8 @@ class Trip(models.Model):
             self.dropoff_address = request.dropoff_address
         if not self.service_type:
             self.service_type = request.service_type
+        if not self.facility_id and request.facility_id:
+            self.facility_id = request.facility_id
 
     def fill_payer_from_passenger(self) -> None:
         if not self.payer_id and self.passenger_id and self.passenger.payer_id:
@@ -499,6 +509,10 @@ class StandingOrder(models.Model):
     payer = models.ForeignKey(
         "payers.Payer", on_delete=models.PROTECT, related_name="standing_orders", null=True, blank=True,
         help_text="Leave blank to use the passenger's payer.",
+    )
+    facility = models.ForeignKey(
+        "facilities.Facility", on_delete=models.PROTECT, related_name="standing_orders", null=True, blank=True,
+        help_text="e.g. the dialysis center: its portal users see these trips (ADR 0042).",
     )
     prior_authorization_number = models.CharField(max_length=50, blank=True)
     prior_authorization_ends = models.DateField(

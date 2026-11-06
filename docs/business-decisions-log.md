@@ -49,6 +49,7 @@ is UNKNOWN and must not be assumed.
 | 2026-11-05 | Broker sample files | Can't be supplied until a broker onboards us (no portal access); the universal intake (ADR 0038) covers it, and real broker layouts become saved mappings later | Owner, chat |
 | 2026-11-05 | Stretcher rate | Leave the stretcher base rate blank on every rate card: stretcher transport isn't sold (no EMS license) | Owner, chat |
 | 2026-11-05 | Company dates (corrected from verified records) | SAM.gov registration renews Nov 3, 2027 (reset Nov 4, 2026 by the NAICS 492110 update); PEMS revalidation due Dec 3, 2028; commercial auto insurance WCAN261110, Incline Casualty, 10/13/2026 to 10/13/2027; no Fort Worth vehicle-for-hire license yet (ADR 0036) | Owner, chat |
+| 2026-11-06 | Facility portal and CRM (Phase 33) | Portal bookings arrive as ride requests the office confirms; facility staff see all their facility's rides; sign-in is password plus an emailed 6-digit code, accounts by office invitation only; facility follow-ups due show on the dashboard and in one morning email to the office (ADR 0042) | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)
 

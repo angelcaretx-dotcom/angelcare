@@ -112,6 +112,7 @@ def generate(order: StandingOrder, *, actor=None, today=None) -> list[Trip]:
             source=order.source,
             subcontract_partner=order.subcontract_partner,
             payer_id=order.payer_id,
+            facility_id=order.facility_id,
             prior_authorization_number=order.prior_authorization_number,
             leg=TripLeg.ONE_WAY if order.return_ride == ReturnRide.NONE else TripLeg.OUTBOUND,
             service_type=order.service_type,

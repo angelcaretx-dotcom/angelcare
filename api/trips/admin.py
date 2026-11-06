@@ -104,7 +104,7 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
         "prior_authorization_number",
         "driver__legal_name",
     )
-    autocomplete_fields = ("trip_request", "passenger", "payer", "driver", "vehicle", "outbound_trip")
+    autocomplete_fields = ("trip_request", "passenger", "payer", "facility", "driver", "vehicle", "outbound_trip")
     readonly_fields = ("id", "standing_order_link", "import_link", "created_at", "updated_at")
     ordering = ("-scheduled_pickup_datetime",)
     inlines = [TripEventInline]
@@ -132,6 +132,7 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
                     "source",
                     "subcontract_partner",
                     "payer",
+                    "facility",
                     "broker_trip_number",
                     "prior_authorization_number",
                     "billable_miles",
@@ -358,7 +359,7 @@ class StandingOrderAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
     list_display = ("reference", "passenger", "days", "pickup_time", "return_ride", "authorization", "active")
     list_filter = ("active", "source", "payer", "return_ride")
     search_fields = ("passenger__legal_name", "passenger__phone", "prior_authorization_number")
-    autocomplete_fields = ("passenger", "payer", "driver", "vehicle")
+    autocomplete_fields = ("passenger", "payer", "facility", "driver", "vehicle")
     readonly_fields = ("authorization", "upcoming_trips", "created_at", "updated_at")
     actions = ["create_upcoming_trips"]
     fieldsets = (
@@ -386,6 +387,7 @@ class StandingOrderAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
                     "source",
                     "subcontract_partner",
                     "payer",
+                    "facility",
                     "prior_authorization_number",
                     "prior_authorization_ends",
                     "authorization",

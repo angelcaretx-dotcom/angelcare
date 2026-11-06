@@ -17,6 +17,9 @@ class NotificationType(models.TextChoices):
     VEHICLE_CHECK_FAILED_STAFF = "vehicle_check_failed_staff", "Vehicle failed its daily check (staff)"
     PRIOR_AUTH_ENDING_STAFF = "prior_auth_ending_staff", "Standing order: prior authorization ending (staff)"
     EXPIRY_REMINDER_STAFF = "expiry_reminder_staff", "Credentials and licenses expiring (staff)"
+    FACILITY_PORTAL_INVITE = "facility_portal_invite", "Facility portal: set-up link"
+    FACILITY_PASSWORD_RESET = "facility_password_reset", "Facility portal: password reset link"
+    FACILITY_FOLLOW_UPS_STAFF = "facility_follow_ups_staff", "Facility follow-ups due (staff)"
 
 
 class NotificationStatus(models.TextChoices):

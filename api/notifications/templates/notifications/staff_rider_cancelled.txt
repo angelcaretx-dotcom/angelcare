@@ -1,4 +1,4 @@
-A rider cancelled their transportation request from their online account.
+The {{ by }} cancelled this transportation request online.
 
 {% for label, value in rows %}{{ label }}: {{ value }}
 {% endfor %}

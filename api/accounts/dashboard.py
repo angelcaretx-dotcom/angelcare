@@ -256,11 +256,45 @@ def build_dashboard(user, now: datetime | None = None) -> Dashboard:
             )
         )
 
+    follow_ups = _facility_follow_ups(user, today)
+    if follow_ups is not None:
+        dash.panels.append(follow_ups)
+
     expiring = _expiring_credentials(user, today)
     if expiring is not None:
         dash.panels.append(expiring)
 
     return dash
+
+
+def _overdue_text(due: date, today: date) -> str:
+    late = (today - due).days
+    return "Today" if late == 0 else f"{due:%b %d} ({late} day{'s' if late != 1 else ''} overdue)"
+
+
+def _facility_follow_ups(user, today: date) -> Panel | None:
+    """Facility calls and visits due today or overdue (ADR 0042); the same list as the morning email."""
+    from facilities.models import Facility
+    from facilities.services import due_follow_ups
+
+    if not _can_view(user, Facility):
+        return None
+    due = list(due_follow_ups(today))
+    return Panel(
+        "Facility follow-ups due",
+        ["Facility", "About", "Due"],
+        [
+            Row(
+                [f.name, f.follow_up_note or f.get_stage_display(), _overdue_text(f.next_follow_up, today)],
+                _change(f),
+                alert=f.next_follow_up < today,
+            )
+            for f in due[:LIST_LIMIT]
+        ],
+        empty_text="No follow-ups due.",
+        more_url=_changelist(Facility, follow_up="due"),
+        more_count=max(len(due) - LIST_LIMIT, 0),
+    )
 
 
 def _expiring_credentials(user, today: date) -> Panel | None:

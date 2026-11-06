@@ -6,6 +6,7 @@ from django.db import models
 class Purpose(models.TextChoices):
     BOOKING = "booking", "Ride booking"
     CONTACT = "contact", "Contact form"
+    FACILITY_SIGN_IN = "facility_sign_in", "Facility portal sign-in"
 
 
 class EmailVerification(models.Model):

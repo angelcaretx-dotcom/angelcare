@@ -14,6 +14,7 @@ const legalLinks = [
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms of Use" },
   { href: "/accessibility", label: "Accessibility" },
+  { href: "/facility/login", label: "Facility portal" },
 ];
 
 export function Footer() {

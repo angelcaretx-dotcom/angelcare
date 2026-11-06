@@ -1,0 +1,32 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Import facilities from a CSV (ADR 0042). Only CSS classes present in Unfold's precompiled
+stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <p class="text-sm text-subtle">
+        Each row becomes a new facility at the <strong>Lead</strong> stage. Needs a header row with at least a
+        name column; these columns are read if present: {{ columns }}. A facility already on file with the same
+        name and city is skipped, never changed. Save a spreadsheet as CSV to import it.
+    </p>
+    <form method="post" enctype="multipart/form-data" class="bg-white border border-base-200 flex flex-col gap-4 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        {% csrf_token %}
+        <input type="file" name="file" accept=".csv,text/csv" required class="text-sm">
+        {% for error in form.file.errors %}<span class="font-medium text-red-600">{{ error }}</span>{% endfor %}
+        <div><button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Import</button></div>
+    </form>
+    {% if made is not None %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <h2 class="font-semibold mb-2 text-important">{{ made|length }} added</h2>
+        <ul class="text-sm">{% for facility in made %}<li><a href="{% url 'admin:facilities_facility_change' facility.pk %}" class="text-primary-600 underline">{{ facility.name }}</a>{% if facility.city %} · {{ facility.city }}{% endif %}</li>{% endfor %}</ul>
+        {% if skipped %}<h2 class="font-semibold mb-2 mt-4 text-important">Skipped</h2>
+        <ul class="text-sm">{% for line in skipped %}<li class="text-red-600">{{ line }}</li>{% endfor %}</ul>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

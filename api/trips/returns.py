@@ -58,6 +58,7 @@ def return_leg_for(outbound: Trip, choice: str, return_at=None) -> Trip:
         source=outbound.source,
         subcontract_partner=outbound.subcontract_partner,
         payer_id=outbound.payer_id,
+        facility_id=outbound.facility_id,
         prior_authorization_number=outbound.prior_authorization_number,
         leg=TripLeg.RETURN,
         outbound_trip=outbound,

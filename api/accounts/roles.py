@@ -49,6 +49,7 @@ def seed_roles(sender, **kwargs):
             "riders",
             "contact",
             "intake",
+            "facilities",
         ]
     )
 
@@ -86,6 +87,12 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("riders", "rideraccount", ["view"]))
         # Answering the website's messages is front-desk work.
         + list(_permissions("contact", "contactmessage", ["view", "change"]))
+        # Facilities (ADR 0042): dispatch books for them and logs their
+        # calls; who gets a portal login stays with Administrator.
+        + list(_permissions("facilities", "facility", ["view", "change", "add"]))
+        + list(_permissions("facilities", "facilitycontact", ["view", "change", "add", "delete"]))
+        + list(_permissions("facilities", "facilityactivity", ["view", "add"]))
+        + list(_permissions("facilities", "facilityuser", ["view"]))
     )
 
     administrator, _ = Group.objects.get_or_create(name="Administrator")
@@ -119,6 +126,12 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("claims", "claimsettings", ["view", "change"]))
         + list(_permissions("claims", "claimfile", ["view"]))
         + list(_permissions("claims", "responsefile", ["view", "add"]))
+        # Facilities and their portal logins (ADR 0042). Activity is a
+        # history: added, never edited.
+        + list(_permissions("facilities", "facility", ["view", "change", "add", "delete"]))
+        + list(_permissions("facilities", "facilitycontact", ["view", "change", "add", "delete"]))
+        + list(_permissions("facilities", "facilityactivity", ["view", "add", "delete"]))
+        + list(_permissions("facilities", "facilityuser", ["view", "change", "add"]))
         + list(
             _permissions(
                 "compliance", "compliancerecord", ["view", "change", "add", "delete"]
