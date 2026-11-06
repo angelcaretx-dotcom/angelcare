@@ -17,7 +17,7 @@ from audit.services import record_change
 from drivers.models import Driver
 from payers.models import Payer
 
-from . import pricing
+from . import pricing, reports
 from .models import DriverPayPlan, Invoice, RateCard
 
 INPUT = "border border-base-200 px-2 py-1 rounded-default text-sm dark:bg-base-900 dark:border-base-800"
@@ -85,7 +85,28 @@ class InvoiceAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
         return [
             path("create-batch/", self.admin_site.admin_view(never_cache(self.batch_view)),
                  name="billing_invoice_batch"),
+            path("profit/", self.admin_site.admin_view(never_cache(self.profit_view)), name="billing_invoice_profit"),
         ] + super().get_urls()
+
+    def profit_view(self, request):
+        """Trip profit (ADR 0041): charge - driver pay - mileage cost, by payer, for a date range."""
+        if not (self.has_view_permission(request) and request.user.has_perm("billing.view_driverpayplan")):
+            raise PermissionDenied
+        start, end = _last_week()
+        form = ProfitForm(request.GET or None, initial={"start": start, "end": end})
+        result = None
+        if form.is_bound and form.is_valid():
+            start, end = form.cleaned_data["start"], form.cleaned_data["end"]
+            result = reports.profit(start, end, cost_per_mile=form.cleaned_data["cost_per_mile"])
+            record_change(actor=request.user, action="viewed", resource_type="ProfitReport", resource_id=f"{start}..{end}",
+                          after={"from": str(start), "to": str(end)}, source="admin")
+            if request.GET.get("format") == "csv":
+                return _profit_csv(start, end, result)
+        return TemplateResponse(request, "admin/billing/profit.html", {
+            **self.admin_site.each_context(request), "opts": self.model._meta,
+            "title": "Trip profit", "form": form, "result": result, "input_class": INPUT,
+            "query": request.GET.urlencode(),
+        })
 
     def batch_view(self, request):
         """'Create invoices for completed trips' (ADR 0039): drafts to check, with what couldn't be billed and why."""
@@ -167,6 +188,25 @@ class RateCardAdmin(AuditedSaveMixin, AngelCareModelAdmin):
         return card.payer or "Private pay"
 
 
+class ProfitForm(forms.Form):
+    start = forms.DateField(label="From", widget=forms.DateInput(attrs={"type": "date"}))
+    end = forms.DateField(label="To", widget=forms.DateInput(attrs={"type": "date"}))
+    cost_per_mile = forms.DecimalField(required=False, min_value=0, max_digits=6, decimal_places=3,
+                                       help_text="Fuel, wear and insurance per mile, if you want it counted.")
+
+    def clean(self):
+        data = super().clean()
+        if data.get("start") and data.get("end") and data["end"] < data["start"]:
+            raise forms.ValidationError("The end date is before the start date.")
+        return data
+
+
+class YearEndForm(forms.Form):
+    year = forms.IntegerField(min_value=2020, max_value=2100)
+    threshold = forms.DecimalField(required=False, min_value=0, max_digits=10, decimal_places=2,
+                                   help_text="Leave blank for the IRS 1099-NEC floor for that year.")
+
+
 class PayStatementForm(forms.Form):
     driver = forms.ModelChoiceField(queryset=Driver.objects.order_by("legal_name"))
     start = forms.DateField(label="From", widget=forms.DateInput(attrs={"type": "date"}))
@@ -193,7 +233,32 @@ class DriverPayPlanAdmin(AuditedSaveMixin, AngelCareModelAdmin):
         return [
             path("statement/", self.admin_site.admin_view(never_cache(self.statement_view)),
                  name="billing_driverpayplan_statement"),
+            path("year-end/", self.admin_site.admin_view(never_cache(self.year_end_view)),
+                 name="billing_driverpayplan_year_end"),
         ] + super().get_urls()
+
+    def year_end_view(self, request):
+        """1099 year-end totals (ADR 0041): each contractor's calculated pay for a calendar year."""
+        if not self.has_view_permission(request):
+            raise PermissionDenied
+        last_year = pricing.local(timezone.now()).year - 1
+        form = YearEndForm(request.GET or None, initial={"year": last_year})
+        result = threshold = year = None
+        if form.is_bound and form.is_valid():
+            year = form.cleaned_data["year"]
+            threshold = form.cleaned_data["threshold"]
+            if threshold is None:
+                threshold = reports.default_threshold(year)
+            result = reports.year_end(year, threshold)
+            record_change(actor=request.user, action="viewed", resource_type="YearEndTotals", resource_id=str(year),
+                          after={"year": year}, source="admin")
+            if request.GET.get("format") == "csv":
+                return _year_end_csv(year, threshold, result)
+        return TemplateResponse(request, "admin/billing/year_end.html", {
+            **self.admin_site.each_context(request), "opts": self.model._meta,
+            "title": "1099 year-end totals", "form": form, "result": result, "year": year,
+            "threshold": threshold, "input_class": INPUT, "query": request.GET.urlencode(),
+        })
 
     def statement_view(self, request):
         if not self.has_view_permission(request):
@@ -230,4 +295,33 @@ def _statement_csv(driver, start, end, result) -> HttpResponse:
         line = hours["line"]
         writer.writerow([hours["check"].service_date, line.label, line.quantity, line.unit, line.amount, ""])
     writer.writerow(["", "Total", "", "", result["total"], "; ".join(result["notes"])])
+    return response
+
+
+def _profit_csv(start, end, result) -> HttpResponse:
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="profit-{start}-{end}.csv"'
+    writer = csv.writer(response)
+    writer.writerow(["Date", "Trip", "Payer", "Driver", "Charge", "Driver pay", "Mileage cost", "Profit", "Notes"])
+    for row in result["rows"]:
+        trip = row["trip"]
+        writer.writerow([pricing.local(trip.scheduled_pickup_datetime).strftime("%Y-%m-%d %H:%M"), str(trip.pk)[:8],
+                         trip.payer.name if trip.payer_id else reports.PRIVATE,
+                         trip.driver.legal_name if trip.driver_id else "",
+                         *("" if row[k] is None else row[k] for k in ("charge", "pay", "mileage", "profit")),
+                         "; ".join(row["notes"])])
+    writer.writerow(["", "", "", "Hourly pay (all drivers)", "", result["hourly"], "", "", "; ".join(result["notes"])])
+    writer.writerow(["", "", "", "Total", result["revenue"], "", "", result["total"],
+                     f"{len(result['incomplete'])} trip(s) not counted"])
+    return response
+
+
+def _year_end_csv(year, threshold, result) -> HttpResponse:
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = f'attachment; filename="1099-totals-{year}.csv"'
+    writer = csv.writer(response)
+    writer.writerow(["Driver", "Trips", f"Calculated pay {year}", f"At or over ${threshold}", "Trips/days not paid"])
+    for row in result:
+        writer.writerow([row["driver"].legal_name, row["trips"], row["total"], "yes" if row["reportable"] else "no",
+                         row["flagged"]])
     return response

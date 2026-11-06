@@ -295,6 +295,10 @@ def _can_view_driver_pay(request):
     return request.user.has_perm("billing.view_driverpayplan")
 
 
+def _can_view_profit(request):
+    return request.user.has_perm("billing.view_invoice") and request.user.has_perm("billing.view_driverpayplan")
+
+
 def _can_create_invoices(request):
     return request.user.has_perm("billing.add_invoice")
 
@@ -448,6 +452,18 @@ UNFOLD = {
                         "icon": "receipt",
                         "link": reverse_lazy("admin:billing_driverpayplan_statement"),
                         "permission": _can_view_driver_pay,
+                    },
+                    {
+                        "title": "1099 year-end totals",
+                        "icon": "calendar_month",
+                        "link": reverse_lazy("admin:billing_driverpayplan_year_end"),
+                        "permission": _can_view_driver_pay,
+                    },
+                    {
+                        "title": "Trip profit",
+                        "icon": "trending_up",
+                        "link": reverse_lazy("admin:billing_invoice_profit"),
+                        "permission": _can_view_profit,
                     },
                     {
                         "title": "Claims",

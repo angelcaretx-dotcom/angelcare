@@ -104,7 +104,7 @@ Owner review of the live form, 2026-11-04:
 ### Phase 31: SLA dashboard — ✅ built 2026-11-05 (ADR 0037)
 - Per payer, per week: acceptance rate, on-time pickup % (from Phase 24 timestamps), no-shows, turn-downs by reason. Red when under target (e.g. 95%).
 
-### Phase 32: Driver pay + trip profit — ✅ pay plans + pay statement (CSV) built 2026-11-05 (ADR 0039); 1099 totals and profit still to do
+### Phase 32: Driver pay + trip profit — ✅ built: pay plans + pay statement 2026-11-05 (ADR 0039); 1099 year-end totals + trip profit by payer 2026-11-06 (ADR 0041); deadhead miles wait on the maps decision
 - Driver pay rule per driver (per trip / per mile / hourly).
 - Pay statement per driver per period; 1099 year-end totals for contractors.
 - Profit per trip and per payer: revenue − driver pay − mileage cost; loaded vs. deadhead miles (odometer is per vehicle-day only, ADR 0034, so per-trip miles come from map estimates).

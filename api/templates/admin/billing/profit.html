@@ -1,0 +1,75 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Trip profit (ADR 0041). Only CSS classes present in Unfold's precompiled
+stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <p class="text-sm text-subtle">
+        For completed and no-show trips in the range (Texas time): what each trip is billed (its invoice, or the rate
+        card if there's no invoice yet), minus the driver's pay from their pay plan, minus mileage cost if you enter
+        one. Hourly pay is per day on duty, so it comes off the total. A trip missing any number isn't counted and is
+        listed below. Empty miles between trips aren't known, so they aren't in the mileage cost.
+    </p>
+    <form method="get" class="bg-white border border-base-200 flex flex-wrap gap-4 items-center p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <label class="flex flex-col gap-2 text-sm">From <input type="date" name="start" value="{{ form.start.value|date:'Y-m-d'|default:form.start.value }}" class="{{ input_class }}"></label>
+        <label class="flex flex-col gap-2 text-sm">To <input type="date" name="end" value="{{ form.end.value|date:'Y-m-d'|default:form.end.value }}" class="{{ input_class }}"></label>
+        <label class="flex flex-col gap-2 text-sm">Cost per mile ($, optional) <input type="number" step="0.001" min="0" name="cost_per_mile" value="{{ form.cost_per_mile.value|default_if_none:'' }}" class="{{ input_class }}"></label>
+        <button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Show</button>
+        {% for error in form.non_field_errors %}<span class="font-medium text-red-600 text-sm">{{ error }}</span>{% endfor %}
+    </form>
+
+    {% if result %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-profit-total="{{ result.total }}">
+        <div class="flex flex-wrap gap-4 items-center justify-between">
+            <h2 class="font-semibold mb-2 text-important">Profit ${{ result.total }} on ${{ result.revenue }} billed</h2>
+            <a href="?{{ query }}&amp;format=csv" class="text-primary-600 underline text-sm">Download CSV (every trip)</a>
+        </div>
+        <table class="text-sm w-full">
+            <thead><tr>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Payer</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 text-right dark:border-base-800">Trips counted</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 text-right dark:border-base-800">Billed</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 text-right dark:border-base-800">Driver pay</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 text-right dark:border-base-800">Mileage cost</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 text-right dark:border-base-800">Profit</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 text-right dark:border-base-800">Margin</th>
+            </tr></thead>
+            <tbody>
+            {% for group in result.payers %}<tr data-payer="{{ group.payer }}">
+                <td class="border-b border-base-200 px-3 py-2 dark:border-base-800">{{ group.payer }}</td>
+                <td class="border-b border-base-200 px-3 py-2 text-right dark:border-base-800">{{ group.counted }} of {{ group.trips }}</td>
+                <td class="border-b border-base-200 px-3 py-2 text-right dark:border-base-800">${{ group.charge }}</td>
+                <td class="border-b border-base-200 px-3 py-2 text-right dark:border-base-800">${{ group.pay }}</td>
+                <td class="border-b border-base-200 px-3 py-2 text-right dark:border-base-800">${{ group.mileage }}</td>
+                <td class="border-b border-base-200 font-medium px-3 py-2 text-right dark:border-base-800 {% if group.profit < 0 %}text-red-600{% endif %}">${{ group.profit }}</td>
+                <td class="border-b border-base-200 px-3 py-2 text-right dark:border-base-800">{% if group.margin is not None %}{{ group.margin }}%{% else %}—{% endif %}</td>
+            </tr>{% empty %}<tr><td class="px-3 py-2 text-subtle">No completed or no-show trips in that range.</td></tr>{% endfor %}
+            {% if result.hourly %}<tr>
+                <td class="border-b border-base-200 px-3 py-2 dark:border-base-800" colspan="5">Hourly pay (all drivers, days on duty)</td>
+                <td class="border-b border-base-200 px-3 py-2 text-right dark:border-base-800">−${{ result.hourly }}</td>
+                <td class="border-b border-base-200 px-3 py-2 dark:border-base-800"></td>
+            </tr>{% endif %}
+            </tbody>
+        </table>
+        {% for note in result.notes %}<p class="font-medium text-red-600 text-sm">{{ note }}</p>{% endfor %}
+    </div>
+
+    {% if result.incomplete %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <h2 class="font-semibold mb-2 text-important">Not counted: {{ result.incomplete|length }} trip{{ result.incomplete|length|pluralize }}</h2>
+        <table class="text-sm w-full"><tbody>
+            {% for row in result.incomplete %}<tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 whitespace-nowrap dark:border-base-800"><a href="{% url 'admin:trips_trip_change' row.trip.pk %}" class="text-primary-600 underline">{{ row.trip.scheduled_pickup_datetime|date:"D M j, g:i A" }}</a></td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{% for note in row.notes %}<div class="text-red-600">{{ note }}</div>{% endfor %}</td>
+            </tr>{% endfor %}
+        </tbody></table>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

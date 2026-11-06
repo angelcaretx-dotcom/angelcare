@@ -1,0 +1,53 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+1099 year-end totals (ADR 0041). Only CSS classes present in Unfold's precompiled
+stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <p class="text-sm text-subtle">
+        Each driver marked <strong>Contractor</strong>, with their pay for the calendar year as worked out from their
+        pay plans (the same figures as the pay statement). This is pay <em>earned</em> on trips in the year; a 1099-NEC
+        reports what was <em>paid</em> in the year, so check it against your payment records. Employees get a W-2
+        from payroll instead. Tax IDs and addresses come from each contractor's W-9 and aren't kept here. Give this to
+        whoever files your 1099s.
+    </p>
+    <form method="get" class="bg-white border border-base-200 flex flex-wrap gap-4 items-center p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <label class="flex flex-col gap-2 text-sm">Year <input type="number" name="year" min="2020" max="2100" value="{{ form.year.value|default_if_none:'' }}" class="{{ input_class }}"></label>
+        <label class="flex flex-col gap-2 text-sm">Reporting threshold ($, optional) <input type="number" step="0.01" min="0" name="threshold" value="{{ form.threshold.value|default_if_none:'' }}" class="{{ input_class }}"></label>
+        <button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Show</button>
+    </form>
+
+    {% if result is not None %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <div class="flex flex-wrap gap-4 items-center justify-between">
+            <h2 class="font-semibold mb-2 text-important">{{ year }}: threshold ${{ threshold }}</h2>
+            <a href="?{{ query }}&amp;format=csv" class="text-primary-600 underline text-sm">Download CSV</a>
+        </div>
+        <p class="text-sm text-subtle">Blank threshold uses the IRS 1099-NEC floor: $600 through 2025, $2,000 from 2026 (adjusted for inflation in later years, so confirm it with your tax preparer).</p>
+        <table class="text-sm w-full">
+            <thead><tr>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Driver</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 text-right dark:border-base-800">Trips</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 text-right dark:border-base-800">Calculated pay</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">1099-NEC</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Check</th>
+            </tr></thead>
+            <tbody>
+            {% for row in result %}<tr data-driver="{{ row.driver.legal_name }}">
+                <td class="border-b border-base-200 px-3 py-2 dark:border-base-800">{{ row.driver.legal_name }}</td>
+                <td class="border-b border-base-200 px-3 py-2 text-right dark:border-base-800">{{ row.trips }}</td>
+                <td class="border-b border-base-200 px-3 py-2 text-right dark:border-base-800">${{ row.total }}</td>
+                <td class="border-b border-base-200 font-medium px-3 py-2 dark:border-base-800">{% if row.reportable %}Required{% else %}Under threshold{% endif %}</td>
+                <td class="border-b border-base-200 px-3 py-2 dark:border-base-800">{% if row.flagged %}<span class="text-red-600">{{ row.flagged }} trip{{ row.flagged|pluralize }}/day{{ row.flagged|pluralize }} couldn't be paid: open the pay statement</span>{% else %}—{% endif %}</td>
+            </tr>{% empty %}<tr><td class="px-3 py-2 text-subtle">No contractor drivers with pay that year.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
