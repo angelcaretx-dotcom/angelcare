@@ -93,7 +93,7 @@ Owner review of the live form, 2026-11-04:
 - Batch: "invoice all completed MTM trips for last week", in that payer's format.
 - Prior-auth tracking: authorized trips used vs. remaining.
 
-### Phase 30: Claims output + denials
+### Phase 30: Claims output + denials — ✅ 837P / 999 / 277CA / 835, denials queue, 95-day deadline built 2026-11-05 (ADR 0040); automated TMHP submission waits on EDI enrollment
 - **Decided 2026-11-05:** TexMedConnect directly (no clearinghouse): 837P per the TMHP EDI companion guide, submitted to TMHP; 277CA rejections, Remittance & Status report, denials/appeals; 95-day filing deadline tracked per claim.
 - Claim lines with HCPCS codes (T2003 and modifiers) per trip.
 - Export for TMHP / TexMedConnect (format depends on the submission route — see decisions).

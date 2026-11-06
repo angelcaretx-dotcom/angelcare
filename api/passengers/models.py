@@ -74,6 +74,17 @@ class Passenger(models.Model):
         max_length=20, choices=PassengerStatus.choices, default=PassengerStatus.ACTIVE
     )
 
+    # For Medicaid claims (ADR 0040): the 837P needs the member's ID,
+    # date of birth, sex and home address. Blank until staff enter them;
+    # a claim can't go in a file without them.
+    medicaid_id = models.CharField("Medicaid ID", max_length=30, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    sex = models.CharField(max_length=1, blank=True, choices=[("F", "Female"), ("M", "Male"), ("U", "Unknown")])
+    home_street = models.CharField(max_length=200, blank=True)
+    home_city = models.CharField(max_length=100, blank=True)
+    home_state = models.CharField(max_length=2, blank=True)
+    home_zip = models.CharField("home ZIP", max_length=10, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

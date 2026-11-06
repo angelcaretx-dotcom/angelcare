@@ -62,7 +62,11 @@ AREAS = [
         "Billing (invoices, rate cards, driver pay)",
         (("billing", "invoice"), ("billing", "ratecard"), ("billing", "driverpayplan")),
     ),
-    Area("claims", "Claims", (("claims", "claim"),)),
+    Area(
+        "claims",
+        "Claims (TMHP files, responses, settings)",
+        (("claims", "claim"), ("claims", "claimsettings"), ("claims", "claimfile"), ("claims", "responsefile")),
+    ),
     Area(
         "compliance",
         "Compliance records & documents",

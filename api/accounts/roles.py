@@ -115,6 +115,10 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("billing", "ratecard", ["view", "change", "add", "delete"]))
         + list(_permissions("billing", "driverpayplan", ["view", "change", "add", "delete"]))
         + list(_permissions("claims", "claim", ["view", "change", "add", "delete"]))
+        # TMHP electronic claims (ADR 0040): files and responses are records, never edited.
+        + list(_permissions("claims", "claimsettings", ["view", "change"]))
+        + list(_permissions("claims", "claimfile", ["view"]))
+        + list(_permissions("claims", "responsefile", ["view", "add"]))
         + list(
             _permissions(
                 "compliance", "compliancerecord", ["view", "change", "add", "delete"]

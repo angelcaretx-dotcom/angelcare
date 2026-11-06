@@ -1,0 +1,48 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Claims needing attention (ADR 0040). Only CSS classes present in Unfold's precompiled
+stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <div class="flex flex-wrap gap-4 items-center justify-between">
+        <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+        {% if can_change %}
+        <form method="post" action="{% url 'admin:claims_claim_from_invoices' %}" class="flex gap-2 items-center">
+            {% csrf_token %}
+            <button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Create draft claims from TMHP invoices</button>
+        </form>
+        {% endif %}
+    </div>
+    <p class="text-sm text-subtle">
+        Rejected and denied claims not yet resubmitted, and drafts within {{ warn_days }} days of TMHP's 95-day filing
+        deadline, soonest first. Resubmit from the Claims list (select, then “Resubmit”). Upload TMHP's 999, 277CA and
+        835 files under TMHP response files and claims update themselves.
+    </p>
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <table class="text-sm w-full">
+            <thead><tr>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Claim</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Why</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Reasons</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 text-right dark:border-base-800">Deadline</th>
+            </tr></thead>
+            <tbody>
+            {% for row in rows %}
+            <tr data-claim="{{ row.claim.patient_control_number }}">
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800"><a href="{% url 'admin:claims_claim_change' row.claim.pk %}" class="text-primary-600 underline">{{ row.claim.patient_control_number }}</a> · ${{ row.claim.amount_claimed }}</td>
+                <td class="align-top border-b border-base-200 font-medium px-3 py-2 text-red-600 dark:border-base-800">{{ row.reason }}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{% for r in row.claim.response_details %}<div>{{ r }}</div>{% endfor %}</td>
+                <td class="align-top border-b border-base-200 py-2 text-right whitespace-nowrap dark:border-base-800 {% if row.days_left is not None and row.days_left <= warn_days %}font-medium text-red-600{% endif %}">{% if row.deadline %}{{ row.deadline|date:"M j, Y" }} ({{ row.days_left }} days){% else %}—{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td class="px-3 py-2 text-subtle">Nothing needs attention.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

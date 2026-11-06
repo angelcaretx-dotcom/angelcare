@@ -455,6 +455,30 @@ UNFOLD = {
                         "link": reverse_lazy("admin:claims_claim_changelist"),
                         "permission": _can_view_claims,
                     },
+                    {
+                        "title": "Claims needing attention",
+                        "icon": "priority_high",
+                        "link": reverse_lazy("admin:claims_claim_attention"),
+                        "permission": _can_view_claims,
+                    },
+                    {
+                        "title": "837P files",
+                        "icon": "description",
+                        "link": reverse_lazy("admin:claims_claimfile_changelist"),
+                        "permission": _can_view_claims,
+                    },
+                    {
+                        "title": "TMHP response files",
+                        "icon": "move_to_inbox",
+                        "link": reverse_lazy("admin:claims_responsefile_changelist"),
+                        "permission": _can_view_claims,
+                    },
+                    {
+                        "title": "Claims settings",
+                        "icon": "settings",
+                        "link": reverse_lazy("admin:claims_claimsettings_changelist"),
+                        "permission": _can_view_claims,
+                    },
                 ],
             },
             {

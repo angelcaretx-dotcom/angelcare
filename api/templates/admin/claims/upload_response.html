@@ -1,0 +1,25 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Upload a TMHP response (ADR 0040). Only CSS classes present in Unfold's precompiled
+stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <p class="text-sm text-subtle">
+        Download the file from TexMedConnect and upload it here: a 999 says whether TMHP took a whole 837P file; a
+        277CA accepts or rejects each claim; an 835 (the electronic Remittance &amp; Status) says what was paid or
+        denied, and why. Each claim updates by its claim ID; anything not ours is listed, never guessed.
+    </p>
+    <form method="post" enctype="multipart/form-data" class="bg-white border border-base-200 flex flex-col gap-4 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        {% csrf_token %}
+        <input type="file" name="file" required class="text-sm">
+        <span class="text-subtle text-xs">{{ form.file.help_text }}</span>
+        {% for error in form.file.errors %}<span class="font-medium text-red-600">{{ error }}</span>{% endfor %}
+        <div><button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Read the file</button></div>
+    </form>
+</div>
+{% endblock %}
