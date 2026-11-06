@@ -20,7 +20,7 @@ if (!existsSync(APP_DIR)) {
 // Framework-generated error pages, not site content.
 const FRAMEWORK_PAGES = new Set(["_not-found.html", "_global-error.html"]);
 
-// Private rider pages (ADR 0031): real routes, deliberately not in the sitemap.
+// Private rider pages (ADR 0031) and the facility portal (ADR 0042): real routes, deliberately not in the sitemap.
 const PRIVATE_ROUTES = [
   "/account",
   "/account/login",
@@ -28,6 +28,12 @@ const PRIVATE_ROUTES = [
   "/account/set-password",
   "/account/reset-password",
   "/account/profile",
+  "/facility",
+  "/facility/login",
+  "/facility/book",
+  "/facility/forgot-password",
+  "/facility/set-password",
+  "/facility/reset-password",
 ];
 
 const routes = sitemap().map((entry) => new URL(entry.url).pathname);
@@ -60,7 +66,7 @@ const pages = routes.map((route) => ({ route, file: fileForRoute(route) }));
 describe("sitemap", () => {
   it("lists every prerendered page, and every listed page exists", () => {
     const built = readdirSync(APP_DIR)
-      .filter((f) => f.endsWith(".html") && !FRAMEWORK_PAGES.has(f) && f !== "account.html")
+      .filter((f) => f.endsWith(".html") && !FRAMEWORK_PAGES.has(f) && f !== "account.html" && f !== "facility.html")
       .sort();
     expect(built).toEqual(pages.map((p) => p.file).sort());
   });
