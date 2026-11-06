@@ -341,7 +341,10 @@ class PriorAuthorizationAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
         (None, {"fields": ("number", "passenger", "payer")}),
         ("What it covers", {"fields": ("valid_from", "valid_to", "trips_authorized", "counts", "usage"),
                             "description": "Trips with this number, for this rider and payer, count against it "
-                                           "unless cancelled. Dates are Texas dates."}),
+                                           "unless cancelled. Dates are Texas dates. A trip can't be saved under "
+                                           "this number once every trip is used, for a pickup outside these "
+                                           "dates, or for another rider or payer; standing orders stop creating "
+                                           "trips when it runs out."}),
         ("Notes", {"fields": ("notes",)}),
         ("Trips", {"fields": ("trips",)}),
         ("Record", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),

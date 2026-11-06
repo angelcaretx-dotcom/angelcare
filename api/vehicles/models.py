@@ -25,10 +25,9 @@ class Vehicle(models.Model):
     exist yet and real operational data this project can't invent --
     see docs/decisions/0007-driver-vehicle-domains.md.
 
-    wheelchair_capable/stretcher_capable are independent booleans (not
-    a single "vehicle type" choice) because a single vehicle can serve
-    more than one service type -- e.g. a wheelchair-accessible van can
-    also carry ambulatory passengers.
+    wheelchair_capable is a boolean (not a single "vehicle type" choice)
+    because a wheelchair-accessible van also carries ambulatory
+    passengers. No stretcher: it isn't a service (owner, 2026-11-06).
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -40,7 +39,6 @@ class Vehicle(models.Model):
     license_plate = models.CharField(max_length=20)
 
     wheelchair_capable = models.BooleanField(default=False)
-    stretcher_capable = models.BooleanField(default=False)
     passenger_capacity = models.PositiveIntegerField()
 
     registration_expiration_date = models.DateField()
@@ -86,16 +84,13 @@ WHEELCHAIR_ITEMS = [
     ("lift_ramp", "Wheelchair lift or ramp works"),
     ("securement", "Wheelchair tie-downs and occupant belts"),
 ]
-STRETCHER_ITEMS = [("stretcher", "Stretcher and its locks")]
-ALL_CHECK_ITEMS = dict(CHECK_ITEMS + WHEELCHAIR_ITEMS + STRETCHER_ITEMS)
+ALL_CHECK_ITEMS = dict(CHECK_ITEMS + WHEELCHAIR_ITEMS)
 
 
 def check_items_for(vehicle) -> list[tuple[str, str]]:
     items = list(CHECK_ITEMS)
     if vehicle.wheelchair_capable:
         items += WHEELCHAIR_ITEMS
-    if vehicle.stretcher_capable:
-        items += STRETCHER_ITEMS
     return items
 
 

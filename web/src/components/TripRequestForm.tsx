@@ -16,7 +16,6 @@ interface FieldErrors {
 const serviceTypeOptions: { value: ServiceType; label: string }[] = [
   { value: "ambulatory", label: "Ambulatory" },
   { value: "wheelchair", label: "Wheelchair" },
-  { value: "stretcher", label: "Stretcher" },
   { value: "equipment_delivery", label: "Medical Supply & Equipment Delivery" },
 ];
 

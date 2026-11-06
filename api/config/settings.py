@@ -583,6 +583,12 @@ UNFOLD = {
                         "link": reverse_lazy("admin:audit_auditlog_changelist"),
                     },
                     {
+                        "title": "Admin history (adds, changes, deletes)",
+                        "icon": "manage_history",
+                        "link": reverse_lazy("admin:admin_logentry_changelist"),
+                        "permission": _is_superuser,
+                    },
+                    {
                         "title": "Staff Users",
                         "icon": "person",
                         "link": reverse_lazy("admin:auth_user_changelist"),

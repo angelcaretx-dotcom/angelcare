@@ -357,8 +357,11 @@ def _expiring_credentials(user, today: date) -> Panel | None:
     if not shown:
         return None
     items.sort(key=lambda item: item[0])
+    expired = sum(1 for expires, _ in items if expires < today)
     return Panel(
-        f"Credentials expiring within {EXPIRY_WARNING_DAYS} days",
+        # Expired ones stay listed (they block assignments) and the title counts both kinds.
+        f"Credentials expiring within {EXPIRY_WARNING_DAYS} days, or expired: "
+        f"{expired} expired, {len(items) - expired} expiring",
         ["Who / what", "Credential", "Expires", "Status"],
         [row for _, row in items],
         empty_text=f"Nothing expires in the next {EXPIRY_WARNING_DAYS} days.",

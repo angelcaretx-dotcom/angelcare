@@ -152,19 +152,20 @@ def create_trips(row: ImportRow, *, user) -> ImportRow:
     return row
 
 
-def create_ready(batch: ImportBatch, *, user) -> tuple[int, list[str]]:
-    """Bulk approve: every ready row. Returns (rows made, failures)."""
-    made, failures = 0, []
+def create_ready(batch: ImportBatch, *, user) -> tuple[int, int, list[str]]:
+    """Bulk approve: every ready row. Returns (rows made, trips made counting rides back, failures)."""
+    made, trips, failures = 0, 0, []
     for row in batch.rows.filter(status=RowStatus.READY).order_by("number"):
         try:
-            create_trips(row, user=user)
+            row = create_trips(row, user=user)
             made += 1
+            trips += 1 + bool(row.return_trip_id)
         except ValidationError as exc:
             row.status = RowStatus.FAILED
             row.problems = [{"message": m, "hard": True} for m in exc.messages]
             row.save(update_fields=["status", "problems"])
             failures.append(f"Row {row.number}: " + "; ".join(exc.messages))
-    return made, failures
+    return made, trips, failures
 
 
 def reject(row: ImportRow, *, user) -> None:

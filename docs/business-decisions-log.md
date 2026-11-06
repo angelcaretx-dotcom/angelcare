@@ -51,6 +51,9 @@ is UNKNOWN and must not be assumed.
 | 2026-11-05 | Company dates (corrected from verified records) | SAM.gov registration renews Nov 3, 2027 (reset Nov 4, 2026 by the NAICS 492110 update); PEMS revalidation due Dec 3, 2028; commercial auto insurance WCAN261110, Incline Casualty, 10/13/2026 to 10/13/2027; no Fort Worth vehicle-for-hire license yet (ADR 0036) | Owner, chat |
 | 2026-11-06 | Facility portal and CRM (Phase 33) | Portal bookings arrive as ride requests the office confirms; facility staff see all their facility's rides; sign-in is password plus an emailed 6-digit code, accounts by office invitation only; facility follow-ups due show on the dashboard and in one morning email to the office (ADR 0042) | Owner, chat |
 | 2026-11-06 | Prior authorizations | Block trips under an authorization that's used up, out of its dates, or for another rider/payer; authorizations running low (3 or fewer trips left, or ending within 14 days) show on the dashboard and in the morning office email (ADR 0043) | Owner, chat |
+| 2026-11-06 | Services offered (correction) | **No stretcher**, anywhere: ambulatory and wheelchair transport plus medical supply and equipment delivery only. No DSHS EMS license held or pursued. Removed from the website, booking forms, service lists, rate cards and vehicles; this supersedes the 2026-08-22 and 2026-08-24 rows (ADR 0044) | Owner, developer report |
+| 2026-11-06 | Claims identifiers | The TPI was retired in 2021 and the business has none: TPI is optional in Claims settings; the billing provider is identified by NPI 1184404279, taxonomy 343800000X (ADR 0044) | Owner, developer report |
+| 2026-11-06 | Trip imports, state | A file with no state column is Texas (the service area is Texas only) (ADR 0044) | Owner, developer report |
 
 ## Explicitly UNKNOWN (do not invent)
 

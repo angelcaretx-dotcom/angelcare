@@ -1,8 +1,32 @@
 from django.contrib import admin
+from django.contrib.admin.models import LogEntry
 
 from accounts.admin_base import AngelCareModelAdmin
 
 from .models import AuditLog
+
+
+@admin.register(LogEntry)
+class AdminHistoryAdmin(AngelCareModelAdmin):
+    """
+    Django's own record of every add, change and delete made in the admin,
+    with the record's name as it was then: it answers "what was that
+    record we deleted?". Superusers only (no role is given it); read-only.
+    """
+
+    list_display = ("action_time", "user", "action_flag", "content_type", "object_repr", "change_message")
+    list_filter = ("action_flag", "content_type")
+    search_fields = ("object_repr", "user__username")
+    ordering = ("-action_time",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(AuditLog)

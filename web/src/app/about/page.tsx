@@ -18,8 +18,9 @@ export default function AboutPage() {
         <p>
           {siteConfig.name} provides non-emergency medical transportation
           (NEMT) across {siteConfig.serviceAreaLower}, offering
-          ambulatory, wheelchair, and stretcher transportation for passengers
-          getting to and from medical appointments.
+          ambulatory and wheelchair transportation for passengers getting to
+          and from medical appointments, plus medical supply and equipment
+          delivery.
         </p>
         <p>
           For questions about our company, service history, or credentials,

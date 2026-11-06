@@ -6,12 +6,12 @@ import { services, siteConfig } from "@/lib/site-config";
 
 export const metadata: Metadata = {
   title: "Services",
-  description: `Ambulatory, wheelchair, and stretcher non-emergency medical transportation from ${siteConfig.name}.`,
+  description: `Ambulatory and wheelchair non-emergency medical transportation, plus medical supply and equipment delivery, from ${siteConfig.name}.`,
 };
 
 // Only services with a real, matching photo get a banner -- no image
-// is shown for a service we don't have matching imagery for
-// (stretcher), rather than using a mismatched picture.
+// is shown for a service we don't have matching imagery for, rather
+// than using a mismatched picture.
 const serviceImages: Partial<Record<string, { src: string; alt: string }>> = {
   ambulatory: {
     src: "/marketing/hero-safe-reliable-rides.png",

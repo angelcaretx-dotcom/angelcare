@@ -160,8 +160,8 @@ class Trip(models.Model):
     )
 
     scheduled_pickup_datetime = models.DateTimeField(
-        help_text="Confirmed pickup time, stored in UTC -- may differ "
-        "from the trip request's originally requested time."
+        help_text="Confirmed pickup, Texas (Central) time. It may differ "
+        "from the time the request asked for."
     )
     appointment_datetime = models.DateTimeField(
         null=True,
@@ -365,7 +365,7 @@ class Trip(models.Model):
 
 class TurnDownReason(models.TextChoices):
     NO_DRIVER = "no_driver", "No driver available"
-    NO_VEHICLE = "no_vehicle", "No suitable vehicle (e.g. wheelchair / stretcher)"
+    NO_VEHICLE = "no_vehicle", "No suitable vehicle (e.g. wheelchair)"
     OUTSIDE_AREA = "outside_area", "Outside service area"
     SHORT_NOTICE = "short_notice", "Too short notice"
     RATE = "rate", "Rate too low"

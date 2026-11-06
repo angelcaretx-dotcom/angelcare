@@ -88,7 +88,7 @@ Owner review of the live form, 2026-11-04:
 - We work above the broker portals, not instead of them.
 
 ### Phase 29: Rates + automatic invoices — ✅ rate cards + calculated draft invoices built 2026-11-05 (ADR 0039); prior-auth tracking built 2026-11-06 (ADR 0043); payer-specific invoice formats still to do
-- Rate schedule per payer: base rate by service level (ambulatory / wheelchair / stretcher), per loaded mile, wait time, no-show fee, after-hours.
+- Rate schedule per payer: base rate by service level (ambulatory / wheelchair / equipment delivery; no stretcher, owner 2026-11-06), per loaded mile, wait time, no-show fee, after-hours.
 - Invoice amount calculated from the trip's proof (miles, wait) instead of typed.
 - Batch: "invoice all completed MTM trips for last week", in that payer's format.
 - Prior-auth tracking: authorized trips used vs. remaining.

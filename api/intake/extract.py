@@ -4,7 +4,9 @@ format (ADR 0038). Everything happens here on our own server: no file
 is ever sent to an outside extraction or OCR service.
 
 - CSV: any delimiter, UTF-8 or Windows encoding.
-- Excel (.xlsx): the first sheet; the first non-empty row is the header.
+- Excel (.xlsx): the first sheet.
+- CSV and Excel: a title row above the header (a report name, a run
+  date) is skipped: the header is the first row filled across.
 - PDF with text: tables become rows. A PDF with no table is read as one
   order form of "Label: value" lines. Scanned PDFs (images, no text)
   need OCR, which isn't built yet: they're refused with a clear message.
@@ -56,6 +58,13 @@ def _clean_headers(cells) -> list[str]:
     return headers
 
 
+def _header_index(lines) -> int:
+    """The first row filled at least half as wide as the widest row: what's above it is a title."""
+    filled = [sum(1 for cell in line if str(cell).strip()) for line in lines[:20]]
+    need = max(2, (max(filled) + 1) // 2)
+    return next((i for i, count in enumerate(filled) if count >= need), 0)
+
+
 def _text(value) -> str:
     """Excel cells as text the normalizer understands (no time zone: file times are Texas time)."""
     if value is None:
@@ -85,6 +94,7 @@ def _csv(content: bytes):
     lines = [line for line in csv.reader(io.StringIO(text), dialect) if any(c.strip() for c in line)]
     if not lines:
         return [], []
+    lines = lines[_header_index(lines):]
     headers = _clean_headers(lines[0])
     return headers, [dict(zip(headers, (c.strip() for c in line))) for line in lines[1:]]
 
@@ -100,6 +110,7 @@ def _excel(content: bytes):
     lines = [line for line in lines if any(line)]
     if not lines:
         return [], []
+    lines = lines[_header_index(lines):]
     headers = _clean_headers(lines[0])
     return headers, [dict(zip(headers, line)) for line in lines[1:]]
 

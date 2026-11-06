@@ -16,6 +16,13 @@ from . import services, x12
 from .models import Claim, ClaimFile, ClaimSettings, ClaimStatus, ResponseFile
 
 
+HOW_TO_MAKE_837P = (
+    "To make an 837P file: on the Claims list, tick the Draft claims, choose “Make an 837P file from the "
+    "selected draft claims” in the Action menu, and click Run. Drafts come from TMHP invoices: “Create draft "
+    "claims from TMHP invoices” on Claims needing attention."
+)
+
+
 @admin.register(Claim)
 class ClaimAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
     list_display = (
@@ -36,6 +43,11 @@ class ClaimAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
     exclude = ("response_details",)
     ordering = ("-created_at",)
     actions = ["make_837p", "resubmit"]
+
+    def changelist_view(self, request, extra_context=None):
+        if request.method == "GET":
+            self.message_user(request, HOW_TO_MAKE_837P, messages.INFO)
+        return super().changelist_view(request, extra_context)
 
     @admin.display(description="Filing deadline")
     def deadline(self, claim):
@@ -179,6 +191,15 @@ class ClaimFileAdmin(AngelCareModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    def add_view(self, request, form_url="", extra_context=None):
+        """Files are made from draft claims, not added here: send people there."""
+        return redirect(reverse("admin:claims_claim_changelist") + "?status__exact=draft")
+
+    def changelist_view(self, request, extra_context=None):
+        if request.method == "GET":
+            self.message_user(request, HOW_TO_MAKE_837P, messages.INFO)
+        return super().changelist_view(request, extra_context)
 
     @admin.display(description="Claims")
     def claim_count(self, claim_file):

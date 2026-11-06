@@ -106,13 +106,20 @@ class Build837PTests(ClaimsTestCase):
         self.assertIn("SV1*HC:T2003:RH*45*UN*1***1", text)
         self.assertIn("SV1*HC:S0215*18.5*UN*7.4***1", text)
 
-    def test_incomplete_settings_or_rider_details_make_no_file(self):
+    def test_no_tpi_is_needed(self):
         self.config.tpi = ""
         self.config.save()
+        self.assertNotIn("TPI", self.config.missing())
+        text = services.make_file([self.claim()], user=None).content
+        self.assertNotIn("REF*G2", text)
+
+    def test_incomplete_settings_or_rider_details_make_no_file(self):
+        self.config.billing_npi = ""
+        self.config.save()
         claim = self.claim()
-        with self.assertRaisesMessage(x12.X12Error, "TPI"):
+        with self.assertRaisesMessage(x12.X12Error, "billing NPI"):
             services.make_file([claim], user=None)
-        self.config.tpi = "TPI0000001"
+        self.config.billing_npi = "1234567893"
         self.config.save()
         self.passenger.medicaid_id = ""
         self.passenger.save()
@@ -223,6 +230,13 @@ class AdminTests(ClaimsTestCase):
         response = self.client.post("/admin/claims/responsefile/add/",
                                     {"file": SimpleUploadedFile("era.835", body.encode())}, follow=True)
         self.assertContains(response, "paid $63.5")
+
+    def test_the_837p_pages_say_where_files_are_made(self):
+        how = "choose “Make an 837P file from"
+        self.assertContains(self.client.get("/admin/claims/claimfile/"), how)
+        self.assertContains(self.client.get("/admin/claims/claim/"), how)
+        add = self.client.get("/admin/claims/claimfile/add/")
+        self.assertRedirects(add, "/admin/claims/claim/?status__exact=draft")
         self.assertContains(self.client.get("/admin/claims/claim/attention/"), "Nothing needs attention")
 
     def test_settings_page_says_what_is_still_needed(self):

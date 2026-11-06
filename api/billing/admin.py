@@ -174,8 +174,7 @@ class RateCardAdmin(AuditedSaveMixin, AngelCareModelAdmin):
         (None, {"fields": ("name", "payer", "effective_from", "effective_to"),
                 "description": "Times are Texas (Central) time. A blank base rate means that service isn't billed "
                                "on this card. Invoices already made keep the card they used."}),
-        ("Base rate per trip", {"fields": ("base_ambulatory", "base_wheelchair", "base_stretcher",
-                                           "base_equipment_delivery")}),
+        ("Base rate per trip", {"fields": ("base_ambulatory", "base_wheelchair", "base_equipment_delivery")}),
         ("Mileage", {"fields": ("per_mile", "included_miles")}),
         ("Wait time (wait-and-return rides)", {"fields": ("wait_free_minutes", "wait_per_minute")}),
         ("No-shows and after-hours", {"fields": ("no_show_fee", "after_hours_fee", "after_hours_start",

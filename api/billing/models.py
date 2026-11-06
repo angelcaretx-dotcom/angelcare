@@ -106,7 +106,6 @@ class RateCard(models.Model):
 
     base_ambulatory = money(null=True, blank=True)
     base_wheelchair = money(null=True, blank=True)
-    base_stretcher = money(null=True, blank=True)
     base_equipment_delivery = money(null=True, blank=True)
     per_mile = money(default=0, help_text="Per billable mile, after any included miles.")
     included_miles = models.DecimalField(

@@ -88,7 +88,7 @@ class CredentialType(models.TextChoices):
     """
     What a driver must hold besides the license on the Driver record
     (ADR 0036). Owner decision 2026-11-05: all of these are required for
-    every driver; wheelchair securement only for wheelchair/stretcher trips.
+    every driver; wheelchair securement only for wheelchair trips.
     """
 
     MVR = "mvr", "Motor vehicle record (MVR) check"
@@ -106,8 +106,8 @@ REQUIRED_FOR_EVERY_TRIP = [
     CredentialType.CPR_FIRST_AID,
     CredentialType.DEFENSIVE_DRIVING,
 ]
-# Service types where the rider travels in their wheelchair or on a stretcher.
-SECUREMENT_SERVICES = {"wheelchair", "stretcher"}
+# Service types where the rider travels in their wheelchair.
+SECUREMENT_SERVICES = {"wheelchair"}
 
 
 class DriverCredential(models.Model):

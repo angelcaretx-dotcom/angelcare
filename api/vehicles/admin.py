@@ -14,12 +14,11 @@ class VehicleAdmin(DocumentUploaderAdminMixin, AngelCareModelAdmin):
         "__str__",
         "vin",
         "wheelchair_capable",
-        "stretcher_capable",
         "passenger_capacity",
         "status",
         "created_at",
     )
-    list_filter = ("status", "wheelchair_capable", "stretcher_capable")
+    list_filter = ("status", "wheelchair_capable")
     search_fields = ("vin", "make", "model", "license_plate")
     readonly_fields = ("id", "created_at", "updated_at")
     ordering = ("make", "model")

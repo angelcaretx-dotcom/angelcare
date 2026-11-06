@@ -56,12 +56,12 @@ class TripWithoutRequestTests(TestCase):
             self.assertIn(field, ctx.exception.message_dict)
 
     def test_blank_fields_are_filled_from_the_website_request(self):
-        request = make_trip_request(passenger=self.passenger, service_type="stretcher")
+        request = make_trip_request(passenger=self.passenger, service_type="wheelchair")
         trip = Trip(trip_request=request, scheduled_pickup_datetime=timezone.now())
         trip.full_clean()
         self.assertEqual(trip.passenger, self.passenger)
         self.assertEqual(trip.pickup_address, "1 Main St")
-        self.assertEqual(trip.service_type, "stretcher")
+        self.assertEqual(trip.service_type, "wheelchair")
 
     def test_payer_defaults_to_the_passengers_payer(self):
         self.passenger.payer = make_payer()
@@ -144,7 +144,7 @@ class BackfillMigrationTests(TestCase):
     def test_existing_trips_get_rider_and_route_from_their_request(self):
         payer = make_payer()
         passenger = make_passenger(payer=payer)
-        request = make_trip_request(passenger=passenger, service_type="stretcher")
+        request = make_trip_request(passenger=passenger, service_type="wheelchair")
         trip = Trip.objects.create(trip_request=request, scheduled_pickup_datetime=timezone.now())
         # Simulate a pre-ADR 0028 row: only the request carried the details.
         Trip.objects.filter(pk=trip.pk).update(
@@ -158,7 +158,7 @@ class BackfillMigrationTests(TestCase):
         trip.refresh_from_db()
         self.assertEqual(trip.passenger, passenger)
         self.assertEqual(trip.pickup_address, "1 Main St")
-        self.assertEqual(trip.service_type, "stretcher")
+        self.assertEqual(trip.service_type, "wheelchair")
         self.assertEqual(trip.source, "website")
         self.assertEqual(trip.payer, payer)
 
@@ -267,11 +267,11 @@ class TurnDownTests(TestCase):
                 "offered_at_0": "2027-03-10",
                 "offered_at_1": "09:00:00",
                 "reason": "no_vehicle",
-                "service_type": "stretcher",
+                "service_type": "wheelchair",
                 "notes": "",
             },
         )
         self.assertEqual(response.status_code, 302)
         turn_down = TurnDown.objects.get()
         self.assertEqual(turn_down.recorded_by, user)
-        self.assertEqual(str(turn_down), "SafeRide SR-42: No suitable vehicle (e.g. wheelchair / stretcher)")
+        self.assertEqual(str(turn_down), "SafeRide SR-42: No suitable vehicle (e.g. wheelchair)")

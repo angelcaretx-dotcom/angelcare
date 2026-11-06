@@ -132,7 +132,11 @@ class ClaimSettings(models.Model):
     )
     payer_id = models.CharField("payer ID (2010BB)", max_length=80, blank=True, help_text="From TMHP's companion guide.")
     billing_npi = models.CharField("billing NPI", max_length=10, blank=True)
-    tpi = models.CharField("TPI (Texas Provider Identifier)", max_length=20, blank=True)
+    tpi = models.CharField(
+        "TPI (Texas Provider Identifier)", max_length=20, blank=True,
+        help_text="Optional. TMHP retired the TPI in 2021 and identifies providers by NPI; leave blank unless "
+                  "TMHP's companion guide asks for one.",
+    )
     taxonomy_code = models.CharField(max_length=10, blank=True)
     billing_street = models.CharField(max_length=55, blank=True, help_text="A street address, not a P.O. box.")
     billing_city = models.CharField(max_length=30, blank=True)
@@ -160,7 +164,7 @@ class ClaimSettings(models.Model):
 
     REQUIRED = [
         ("tmhp_payer", "TMHP payer"), ("submitter_id", "submitter ID"), ("receiver_name", "receiver name"),
-        ("receiver_id", "receiver ID"), ("payer_id", "payer ID"), ("billing_npi", "billing NPI"), ("tpi", "TPI"),
+        ("receiver_id", "receiver ID"), ("payer_id", "payer ID"), ("billing_npi", "billing NPI"),
         ("taxonomy_code", "taxonomy code"), ("billing_street", "billing street"), ("billing_city", "billing city"),
         ("billing_state", "billing state"), ("billing_zip", "billing ZIP+4"), ("place_of_service", "place of service"),
         ("submitter_contact_name", "contact name"), ("submitter_contact_phone", "contact phone"),

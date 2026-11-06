@@ -65,7 +65,6 @@ class DailyVehicleCheckTests(DriverAppTestCase):
     def test_wheelchair_van_gets_the_lift_and_tie_down_items(self):
         page = self.client.get(reverse("driver_app:vehicle_check", args=[self.vehicle.pk]))
         self.assertContains(page, "Wheelchair lift or ramp works")
-        self.assertNotContains(page, "Stretcher and its locks")
         self.assertEqual(len(check_items_for(self.vehicle)), len(CHECK_ITEMS) + 2)
 
     def test_passed_check_lets_trips_start(self):

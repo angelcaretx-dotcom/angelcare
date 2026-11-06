@@ -119,7 +119,8 @@ def build_837p(claims, settings, *, control_number: int, now: datetime) -> str:
         s.add("N4", clean(passenger.home_city, 30), clean(passenger.home_state), re.sub(r"\D", "", passenger.home_zip))
         s.add("DMG", "D8", passenger.date_of_birth.strftime("%Y%m%d"), passenger.sex)
         s.add("NM1", "PR", "2", clean(settings.receiver_name, 60), "", "", "", "", "PI", clean(settings.payer_id))
-        s.add("REF", "G2", clean(settings.tpi))
+        if settings.tpi:  # optional since TMHP retired the TPI
+            s.add("REF", "G2", clean(settings.tpi))
         frequency = "7" if claim.replaces_id else "1"
         s.add("CLM", clean(claim.patient_control_number, 20), amount(claim.amount_claimed), "", "",
               COMPONENT.join([clean(settings.place_of_service), "B", frequency]), "Y", "A", "Y", "Y")

@@ -143,8 +143,9 @@ class ImportBatchAdmin(AngelCareModelAdmin):
         batch = get_object_or_404(ImportBatch, pk=pk)
         if request.method != "POST" or not self.has_change_permission(request, batch):
             raise PermissionDenied
-        made, failures = services.create_ready(batch, user=request.user)
-        self.message_user(request, f"{made} row{'s' if made != 1 else ''} created as trips.", messages.SUCCESS)
+        made, trips, failures = services.create_ready(batch, user=request.user)
+        self.message_user(request, f"{made} row{'s' if made != 1 else ''} approved: {trips} trip{'s' if trips != 1 else ''} "
+                          "created, counting rides back.", messages.SUCCESS)
         for failure in failures:
             self.message_user(request, failure, messages.WARNING)
         return redirect("admin:intake_importbatch_change", batch.pk)
@@ -181,7 +182,9 @@ class ImportBatchAdmin(AngelCareModelAdmin):
                 except ValidationError as exc:
                     self.message_user(request, "Not created: " + "; ".join(exc.messages), messages.ERROR)
                 else:
-                    self.message_user(request, f"Row {row.number}: trip created.", messages.SUCCESS)
+                    row.refresh_from_db()
+                    made = "trip and its ride back" if row.return_trip_id else "trip"
+                    self.message_user(request, f"Row {row.number}: {made} created.", messages.SUCCESS)
                     return redirect("admin:intake_importbatch_change", row.batch_id)
             row.refresh_from_db()
         else:

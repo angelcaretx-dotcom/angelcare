@@ -227,6 +227,17 @@ class AddressPartsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(set(response.data), {"pickup_city", "pickup_zip", "dropoff_state"})
 
+    def test_same_pickup_and_drop_off_is_refused(self):
+        same = {f"dropoff_{part}": parts_payload()[f"pickup_{part}"] for part in ("street", "unit", "city", "state", "zip")}
+        response = self.client.post(self.url, parts_payload(**dict(same, dropoff_city="fort worth")), format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("same as the pickup", response.data["dropoff_street"][0])
+
+    def test_stretcher_is_not_a_service(self):
+        response = self.client.post(self.url, parts_payload(service_type="stretcher"), format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("service_type", response.data)
+
     def test_one_line_address_still_accepted_from_older_clients(self):
         response = self.client.post(self.url, valid_payload(), format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)

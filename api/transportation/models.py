@@ -15,11 +15,12 @@ class ServiceType(models.TextChoices):
     """
     Services AngelCare Transit actually offers. Do not add a value here
     without confirming it in docs/business-decisions-log.md first.
+    No stretcher: AngelCare holds no EMS license and doesn't sell it
+    (owner, 2026-11-06).
     """
 
     AMBULATORY = "ambulatory", "Ambulatory"
     WHEELCHAIR = "wheelchair", "Wheelchair"
-    STRETCHER = "stretcher", "Stretcher"
     EQUIPMENT_DELIVERY = "equipment_delivery", "Medical Supply & Equipment Delivery"
 
 
@@ -109,7 +110,7 @@ class TripRequest(models.Model):
     dropoff_state = models.CharField(max_length=2, blank=True)
     dropoff_zip = models.CharField("drop-off ZIP", max_length=10, blank=True)
     requested_datetime = models.DateTimeField(
-        help_text="Requested pickup date/time, stored in UTC."
+        help_text="Requested pickup date and time, Texas (Central) time."
     )
 
     service_type = models.CharField(max_length=20, choices=ServiceType.choices)
@@ -124,7 +125,7 @@ class TripRequest(models.Model):
     return_datetime = models.DateTimeField(
         null=True,
         blank=True,
-        help_text="Requested return pickup, for 'at a set time' only. Stored in UTC.",
+        help_text="Requested return pickup, for 'at a set time' only. Texas (Central) time.",
     )
 
     status = models.CharField(

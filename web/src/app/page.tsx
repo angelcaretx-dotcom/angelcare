@@ -1,4 +1,4 @@
-import { Accessibility, BedSingle, Footprints, PackagePlus } from "lucide-react";
+import { Accessibility, Footprints, PackagePlus } from "lucide-react";
 import Link from "next/link";
 import { Container } from "@/components/Container";
 import { ImageBanner } from "@/components/ImageBanner";
@@ -9,7 +9,6 @@ import { services, siteConfig } from "@/lib/site-config";
 const serviceIcons: Record<string, typeof Footprints> = {
   ambulatory: Footprints,
   wheelchair: Accessibility,
-  stretcher: BedSingle,
   "equipment-delivery": PackagePlus,
 };
 
@@ -27,7 +26,7 @@ export default function Home() {
               Non-Emergency Medical Transportation, done right.
             </h1>
             <p className="text-base text-foreground/70">
-              {siteConfig.name} provides ambulatory, wheelchair, and stretcher
+              {siteConfig.name} provides ambulatory and wheelchair
               transportation across {siteConfig.serviceAreaLower}, so you can
               get to and from medical appointments safely and on time.
             </p>

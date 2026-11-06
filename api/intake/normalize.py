@@ -36,7 +36,7 @@ STRETCHER_CODES = {"stretcher", "str", "s", "gurney", "stretcher van"}
 YES = {"y", "yes", "true", "1", "x", "will call", "willcall"}
 ONE_LINE_ADDRESS = re.compile(
     r"^(?P<street>[^,]+?),\s*(?:(?P<unit>(?:apt|apartment|unit|suite|ste|#|bldg|room|rm)\.?\s*[^,]*),\s*)?"
-    r"(?P<city>[^,]+?),?\s+(?P<state>[A-Za-z]{2})\.?\s+(?P<zip>[0-9-]{3,10})$",
+    r"(?P<city>[^,]+?),?(?:\s+(?P<state>[A-Za-z]{2})\.?)?\s+(?P<zip>[0-9-]{3,10})$",
     re.IGNORECASE,
 )
 
@@ -83,7 +83,8 @@ def _date_and_time(date_text: str, time_text: str):
 
 
 def split_address(text: str) -> dict:
-    match = ONE_LINE_ADDRESS.match(re.sub(r"\s+", " ", text.strip()))
+    text = re.sub(r"\s*,?\s*[\r\n]+\s*", ", ", text.strip())  # an Excel cell on two lines
+    match = ONE_LINE_ADDRESS.match(re.sub(r"\s+", " ", text))
     if not match:
         return {"street": text.strip(), "unit": "", "city": "", "state": "", "zip": ""}
     return {k: (match.group(k) or "").strip() for k in ("street", "unit", "city", "state", "zip")}
@@ -96,6 +97,8 @@ def _address(values: dict, side: str, label: str, problems: list) -> str:
     if not any(parts.values()):
         problems.append(problem(f"No {label} address."))
         return ""
+    if not parts["state"]:
+        parts["state"] = "TX"  # AngelCare serves Texas only: a file with no state is Texas
     cleaned, errors = validate_parts(parts)
     for messages in errors.values():
         message = messages[0].rstrip(".")
@@ -165,7 +168,7 @@ def normalize(values: dict) -> tuple[dict, list]:
     if not code:
         problems.append(problem("No service type (ambulatory or wheelchair)."))
     elif code in STRETCHER_CODES:
-        problems.append(problem("Stretcher rows aren't created by import: a person decides."))
+        problems.append(problem("Stretcher isn't a service AngelCare provides: reject this row."))
     elif not data["service_type"]:
         problems.append(problem(f"Service '{values.get('service_type')}' isn't ambulatory or wheelchair."))
 
@@ -238,6 +241,22 @@ def match_passenger(data: dict) -> tuple[Passenger | None, dict | None]:
     return None, problem(f"New rider: approving creates a passenger record for {data['rider_name']}.", hard=False)
 
 
+def rejected_before(row, data: dict) -> str:
+    """Why a person should look twice: this sender's trip ID was rejected in an earlier import, or ''."""
+    from .models import ImportRow, RowStatus
+
+    if not data["trip_id"]:
+        return ""
+    earlier = (ImportRow.objects.filter(batch__source=row.batch.source, status=RowStatus.REJECTED,
+                                        data__trip_id=data["trip_id"])
+               .exclude(batch_id=row.batch_id).select_related("batch").order_by("-decided_at").first())
+    if earlier is None:
+        return ""
+    when = f" on {timezone.localtime(earlier.decided_at, _zone()):%b %d, %Y}" if earlier.decided_at else ""
+    return (f"Trip {data['trip_id']} was rejected in import {earlier.batch.reference}{when}: "
+            "reject it again, or approve only if it's been corrected.")
+
+
 def assess(row, earlier_ids: set):
     """Re-check a row from its values: details, problems, duplicate, passenger, status."""
     from .models import RowStatus
@@ -246,6 +265,8 @@ def assess(row, earlier_ids: set):
     duplicate = find_duplicate(row.batch, data, earlier_ids)
     if data["trip_id"]:
         earlier_ids.add(data["trip_id"])
+    if not duplicate and (why := rejected_before(row, data)):
+        problems.insert(0, problem(why, hard=False))
     row.passenger, soft = (None, None) if duplicate else match_passenger(data)
     if soft:
         problems.append(soft)

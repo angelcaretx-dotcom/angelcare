@@ -124,7 +124,7 @@ class BrokerCsvTests(IntakeTestCase):
         again = upload("mtm.csv", BROKER_CSV.encode(), user=self.user)
         map_broker(again)
         self.assertEqual(set(again.rows.values_list("status", flat=True)), {RowStatus.DUPLICATE})
-        self.assertEqual(services.create_ready(again, user=self.user), (0, []))
+        self.assertEqual(services.create_ready(again, user=self.user), (0, 0, []))
         self.assertEqual(Trip.objects.count(), 3)  # two rides + one ride back, still
 
     def test_saved_mapping_maps_the_senders_next_file(self):
@@ -140,8 +140,7 @@ class BrokerCsvTests(IntakeTestCase):
         batch = upload("mtm.csv", BROKER_CSV.encode(), user=self.user)
         map_broker(batch)
         self.assertEqual(batch.rows.get(number=2).status, RowStatus.READY)
-        made, failures = services.create_ready(batch, user=self.user)
-        self.assertEqual((made, failures), (1, []))
+        self.assertEqual(services.create_ready(batch, user=self.user), (1, 2, []))  # the ride and its ride back
         self.assertEqual(Passenger.objects.filter(legal_name="Morgan Lee").count(), 1)
 
 
@@ -192,6 +191,49 @@ class BadDataGoesToReviewTests(IntakeTestCase):
         row.refresh_from_db()
         self.assertEqual(row.status, RowStatus.REJECTED)
         self.assertEqual(Trip.objects.count(), 0)
+
+
+class ReportQuirkTests(IntakeTestCase):
+    """Owner's acceptance test, 2026-11-06 (Finding 3)."""
+
+    rows = BadDataGoesToReviewTests.rows
+
+    def test_no_state_column_means_texas(self):
+        batch = upload("parts.csv", ("Name,Phone,Date,Time,Street,City,Zip,To Street,To City,To Zip,Service\n"
+                                     f"Ann Ray,817-555-0101,{US},9:00,1 A St,Fort Worth,76104,2 B St,Fort Worth,76104,WC\n").encode(),
+                       user=self.user)
+        batch.field_map = {"rider_name": "Name", "rider_phone": "Phone", "pickup_date": "Date", "pickup_time": "Time",
+                           "pickup_street": "Street", "pickup_city": "City", "pickup_zip": "Zip",
+                           "dropoff_street": "To Street", "dropoff_city": "To City", "dropoff_zip": "To Zip",
+                           "service_type": "Service"}
+        batch.save()
+        services.apply_mapping(batch)
+        row = batch.rows.get()
+        self.assertEqual(row.hard_problems, [], row.problems)
+        self.assertEqual(row.data["pickup_address"], "1 A St, Fort Worth, TX 76104")
+
+    def test_a_title_row_above_the_header_is_skipped(self):
+        content = excel([
+            ["Baylor discharge manifest - week of Nov 9", None, None],
+            [None, None, None],
+            ["Patient", "Phone", "Pickup Address"],
+            ["Ann Ray", "8175550101", "1 A St\nFort Worth, TX 76104"],
+        ])
+        batch = upload("manifest.xlsx", content, source="facility", user=self.user)
+        self.assertEqual(batch.headers, ["Patient", "Phone", "Pickup Address"])
+        self.assertEqual(batch.rows.count(), 1)
+        values = batch.rows.get().raw
+        from .normalize import split_address
+
+        self.assertEqual(split_address(values["Pickup Address"])["city"], "Fort Worth")
+
+    def test_a_row_rejected_before_says_so_on_reimport(self):
+        line = f'T8,Ann Ray,817-555-0101,{US},9:00,"1 A St, Fort Worth, TX 76104","2 B St, Fort Worth, TX 76104",WC'
+        row = self.rows([line])[2]
+        services.reject(row, user=self.user)
+        again = self.rows([line])[2]
+        self.assertEqual(again.status, RowStatus.REVIEW)
+        self.assertIn("was rejected in import", again.problems[0]["message"])
 
 
 class FacilityExcelTests(IntakeTestCase):

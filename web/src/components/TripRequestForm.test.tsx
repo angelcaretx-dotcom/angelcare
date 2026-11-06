@@ -246,13 +246,13 @@ describe("TripRequestForm", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("Too many codes");
   });
 
-  it("offers exactly the four confirmed services", () => {
+  it("offers exactly the three confirmed services, never stretcher", () => {
     render(<TripRequestForm />);
     const values = Array.from(
       (screen.getByLabelText(/Service type/) as HTMLSelectElement).options,
     )
       .map((option) => option.value)
       .filter(Boolean);
-    expect(values).toEqual(["ambulatory", "wheelchair", "stretcher", "equipment_delivery"]);
+    expect(values).toEqual(["ambulatory", "wheelchair", "equipment_delivery"]);
   });
 });

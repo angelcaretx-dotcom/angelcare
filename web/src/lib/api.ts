@@ -11,7 +11,6 @@ const API_BASE_URL =
 export type ServiceType =
   | "ambulatory"
   | "wheelchair"
-  | "stretcher"
   | "equipment_delivery";
 
 /** Who made the booking (ADR 0031); facility bookings get no rider account. */

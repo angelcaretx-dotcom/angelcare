@@ -3,11 +3,18 @@ from rest_framework import serializers
 
 from verification.services import token_is_valid
 
-from .addresses import PARTS, validate_parts
+from .addresses import PARTS, compose, validate_parts
 from .models import ReturnRide, ServiceType, TripRequest
 
 SIDES = ("pickup", "dropoff")
 ADDRESS_PART_FIELDS = [f"{side}_{part}" for side in SIDES for part in PARTS]
+
+
+def _one_line(attrs, side: str) -> str:
+    if attrs.get(f"{side}_address"):
+        return attrs[f"{side}_address"]
+    return compose(*(attrs.get(f"{side}_{part}", "") for part in ("street", "unit", "city", "state")),
+                   attrs.get(f"{side}_zip", ""))
 
 
 class TripRequestCreateSerializer(serializers.ModelSerializer):
@@ -76,6 +83,9 @@ class TripRequestCreateSerializer(serializers.ModelSerializer):
                 attrs[f"{side}_address"] = line
             if not line and errors.get(f"{side}_street"):
                 errors[f"{side}_street"] = [f"{label} street address is required."]
+
+        if not errors and _one_line(attrs, "pickup").casefold() == _one_line(attrs, "dropoff").casefold():
+            errors["dropoff_street"] = ["The drop-off is the same as the pickup. Enter where the rider is going."]
 
         return_ride = attrs.get("return_ride", ReturnRide.NONE)
         if return_ride != ReturnRide.NONE and attrs.get("service_type") == ServiceType.EQUIPMENT_DELIVERY:

@@ -61,7 +61,7 @@ class DriverAdmin(DocumentUploaderAdminMixin, AngelCareModelAdmin):
             credential = current.get(kind)
             label = CredentialType(kind).label
             if kind == CredentialType.WHEELCHAIR_SECUREMENT:
-                label += " (wheelchair/stretcher trips)"
+                label += " (wheelchair trips)"
             if credential is None:
                 state, colour = "missing", "#b42318"
             elif not credential.is_valid_on(today):

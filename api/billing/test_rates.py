@@ -185,7 +185,7 @@ class AdminTests(RatesTestCase):
         self.login("Administrator")
         self.client.post(f"/admin/billing/ratecard/{self.card.pk}/change/", {
             "name": "MTM 2027", "payer": str(self.mtm.pk), "effective_from": "2027-01-01", "effective_to": "",
-            "base_ambulatory": "26.00", "base_wheelchair": "45.00", "base_stretcher": "", "base_equipment_delivery": "",
+            "base_ambulatory": "26.00", "base_wheelchair": "45.00", "base_equipment_delivery": "",
             "per_mile": "2.50", "included_miles": "5", "wait_free_minutes": "15", "wait_per_minute": "0",
             "no_show_fee": "15.00", "after_hours_fee": "10.00", "after_hours_start": "18:00", "after_hours_end": "06:00",
             "notes": "",
