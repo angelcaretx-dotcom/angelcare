@@ -13,6 +13,7 @@ from django.views.decorators.http import require_GET
 
 from compliance.expiry import send_reminders
 from facilities.services import send_follow_up_digest
+from trips import authorizations
 from trips import standing
 
 logger = logging.getLogger(__name__)
@@ -36,4 +37,9 @@ def daily(request):
     except Exception:  # noqa: BLE001 - same: one task failing mustn't undo the others
         logger.exception("Facility follow-up email failed.")
         result["facility_follow_ups"] = "failed"
+    try:
+        result["authorization_alerts"] = authorizations.send_alerts(standing.texas_today())
+    except Exception:  # noqa: BLE001 - same
+        logger.exception("Prior authorization alerts failed.")
+        result["authorization_alerts"] = "failed"
     return JsonResponse(result)

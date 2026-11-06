@@ -21,6 +21,7 @@ from audit.services import record_change
 from notifications.services import NotificationService
 from transportation.models import ReturnRide
 
+from . import authorizations
 from .models import StandingOrder, Trip, TripLeg, TripStatus
 from .returns import return_leg_for
 
@@ -125,6 +126,9 @@ def generate(order: StandingOrder, *, actor=None, today=None) -> list[Trip]:
             standing_order=order,
             standing_date=day,
         )
+        # Used up or out of dates (ADR 0043): stop here, like at the authorization's end date.
+        if authorizations.problem_for(outbound, return_too=order.return_ride != ReturnRide.NONE):
+            break
         _assign_regulars(outbound, order)
         outbound.save()
         _audit(outbound, order, actor)

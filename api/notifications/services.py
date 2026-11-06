@@ -231,6 +231,22 @@ class NotificationService:
             related=order,
         )
 
+    def notify_authorizations_low(self, rows) -> None:
+        """The morning digest (ADR 0043): (reference and payer, what's left). No number or rider: those are in the admin."""
+        context = {
+            "rows": rows,
+            "admin_url": f"{settings.SITE_URL}/admin/trips/priorauthorization/",
+            "website_url": settings.WEBSITE_URL,
+        }
+        self._send(
+            notification_type=NotificationType.AUTHORIZATIONS_LOW_STAFF,
+            to=settings.STAFF_NOTIFICATION_EMAIL,
+            subject=f"{len(rows)} prior authorization{'s' if len(rows) != 1 else ''} running low — AngelCare Transit",
+            body_text=render_to_string("notifications/staff_authorizations_low.txt", context),
+            body_html=render_to_string("notifications/staff_authorizations_low.html", context),
+            related=ExpiryDigest(),
+        )
+
     def notify_expiring_credentials(self, items) -> None:
         """The daily digest (ADR 0036): (who, what, expires, days left) rows. Staff and fleet only, no riders."""
         rows = []

@@ -375,6 +375,12 @@ UNFOLD = {
                         "link": reverse_lazy("admin:trips_standingorder_changelist"),
                     },
                     {
+                        "title": "Prior authorizations",
+                        "icon": "verified",
+                        "link": reverse_lazy("admin:trips_priorauthorization_changelist"),
+                        "permission": lambda request: request.user.has_perm("trips.view_priorauthorization"),
+                    },
+                    {
                         "title": "Trip imports",
                         "icon": "upload_file",
                         "link": reverse_lazy("admin:intake_importbatch_changelist"),

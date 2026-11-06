@@ -18,9 +18,10 @@ from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 from transportation.models import TripRequest, TripRequestStatus
 
-from . import standing
+from . import authorizations, standing
 from .models import (
     WEEKDAYS,
+    PriorAuthorization,
     StandingOrder,
     StandingOrderSkip,
     Trip,
@@ -105,7 +106,7 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
         "driver__legal_name",
     )
     autocomplete_fields = ("trip_request", "passenger", "payer", "facility", "driver", "vehicle", "outbound_trip")
-    readonly_fields = ("id", "standing_order_link", "import_link", "created_at", "updated_at")
+    readonly_fields = ("id", "standing_order_link", "import_link", "authorization_usage", "created_at", "updated_at")
     ordering = ("-scheduled_pickup_datetime",)
     inlines = [TripEventInline]
     fieldsets = (
@@ -135,6 +136,7 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
                     "facility",
                     "broker_trip_number",
                     "prior_authorization_number",
+                    "authorization_usage",
                     "billable_miles",
                 )
             },
@@ -308,6 +310,75 @@ class TripAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
 
 def _id(value):
     return str(value) if value else None
+
+
+@admin.display(description="Authorization")
+def _authorization_usage(trip):
+    auth = authorizations.find(trip) if trip and not trip._state.adding else None
+    if auth is None:
+        return "Not tracked (enter it under Prior authorizations to count trips against it)." if trip and             trip.prior_authorization_number else "—"
+    left = authorizations.remaining(auth)
+    text = f"{authorizations.used(auth)} of {auth.trips_authorized} used, {left} left, until {auth.valid_to:%b %d, %Y}"
+    url = reverse("admin:trips_priorauthorization_change", args=[auth.pk])
+    if left <= authorizations.LOW_TRIPS:
+        return format_html('<a class="underline" href="{}"><strong style="color:#b42318">{}</strong></a>', url, text)
+    return format_html('<a class="underline" href="{}">{}</a>', url, text)
+
+
+TripAdmin.authorization_usage = staticmethod(_authorization_usage)
+
+
+@admin.register(PriorAuthorization)
+class PriorAuthorizationAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
+    """Payers' prior authorizations (ADR 0043): trips used vs. remaining; none scheduled beyond it."""
+
+    list_display = ("number", "passenger", "payer", "valid_from", "valid_to", "usage")
+    list_filter = ("payer",)
+    search_fields = ("number", "passenger__legal_name")
+    autocomplete_fields = ("passenger", "payer")
+    readonly_fields = ("usage", "trips", "created_at", "updated_at")
+    fieldsets = (
+        (None, {"fields": ("number", "passenger", "payer")}),
+        ("What it covers", {"fields": ("valid_from", "valid_to", "trips_authorized", "counts", "usage"),
+                            "description": "Trips with this number, for this rider and payer, count against it "
+                                           "unless cancelled. Dates are Texas dates."}),
+        ("Notes", {"fields": ("notes",)}),
+        ("Trips", {"fields": ("trips",)}),
+        ("Record", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("passenger", "payer")
+
+    @admin.display(description="Used")
+    def usage(self, auth):
+        if not auth or auth._state.adding:
+            return "—"
+        left = authorizations.remaining(auth)
+        text = f"{authorizations.used(auth)} of {auth.trips_authorized} ({left} left)"
+        if left <= authorizations.LOW_TRIPS:
+            return format_html('<strong style="color:#b42318">{}</strong>', text)
+        return text
+
+    @admin.display(description="Trips counted")
+    def trips(self, auth):
+        if not auth or auth._state.adding:
+            return "—"
+        rows = authorizations.counted_trips(auth).order_by("scheduled_pickup_datetime")
+        if not rows:
+            return "None yet."
+        return format_html("<ol>{}</ol>", format_html_join("", '<li><a class="underline" href="{}">{}</a> ({})</li>', (
+            (reverse("admin:trips_trip_change", args=[t.pk]),
+             timezone.localtime(t.scheduled_pickup_datetime).strftime("%b %d, %Y %I:%M %p"), t.get_status_display())
+            for t in rows)))
+
+    def save_model(self, request, obj, form, change):
+        if change and {"trips_authorized", "valid_to"} & set(form.changed_data):
+            obj.alert_stage = 0  # extended or renewed: alert again when it runs low
+        super().save_model(request, obj, form, change)
+        record_change(actor=request.user, action="changed" if change else "created",
+                      resource_type="PriorAuthorization", resource_id=obj.pk,
+                      after={name: str(form.cleaned_data.get(name)) for name in form.changed_data}, source="admin")
 
 
 @admin.register(TurnDown)

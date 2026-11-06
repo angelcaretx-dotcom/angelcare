@@ -1,0 +1,7 @@
+These prior authorizations are running low, ran out or ended. No
+more trips can be scheduled under one that's used up or ended: ask the
+payer for a new authorization and enter it in the admin.
+
+{% for label, value in rows %}{{ label }}: {{ value }}
+{% endfor %}
+{{ admin_url|safe }}

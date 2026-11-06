@@ -1,0 +1,19 @@
+{% extends "notifications/email_base.html" %}
+
+{% block title %}Prior authorizations running low{% endblock %}
+
+{% block preheader %}Prior authorizations are running low or have run out.{% endblock %}
+
+{% block content %}
+<h1 style="margin:0 0 12px; font-size:19px; line-height:1.3; color:#1f2933;">Prior authorizations running low</h1>
+<p style="margin:0 0 8px; color:#3d4852;">
+  These are running low, ran out or ended. No more trips can be scheduled under one that's used up or
+  ended: ask the payer for a new authorization and enter it in the admin.
+</p>
+{% include "notifications/_detail_table.html" with rows=rows %}
+<div style="margin:28px 0 4px;">
+  {% include "notifications/_button.html" with href=admin_url label="Open authorizations" %}
+</div>
+{% endblock %}
+
+{% block footer_note %}This is an automated daily staff reminder from AngelCare Transit's admin.{% endblock %}

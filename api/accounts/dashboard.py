@@ -256,6 +256,10 @@ def build_dashboard(user, now: datetime | None = None) -> Dashboard:
             )
         )
 
+    low = _authorizations_low(user, today)
+    if low is not None:
+        dash.panels.append(low)
+
     follow_ups = _facility_follow_ups(user, today)
     if follow_ups is not None:
         dash.panels.append(follow_ups)
@@ -265,6 +269,32 @@ def build_dashboard(user, now: datetime | None = None) -> Dashboard:
         dash.panels.append(expiring)
 
     return dash
+
+
+def _authorizations_low(user, today: date) -> Panel | None:
+    """Prior authorizations with few trips left or ending soon (ADR 0043); the same list as the morning email."""
+    from trips import authorizations
+    from trips.models import PriorAuthorization
+
+    if not _can_view(user, PriorAuthorization):
+        return None
+    low = authorizations.running_low(today)
+    return Panel(
+        "Prior authorizations running low",
+        ["Authorization", "Rider", "Left", "Ends"],
+        [
+            Row(
+                [f"{a.number} ({a.payer.name})", a.passenger.legal_name, f"{left} of {a.trips_authorized}",
+                 a.valid_to.strftime("%b %d, %Y")],
+                _change(a),
+                alert=left == 0 or a.valid_to < today,
+            )
+            for a, left in low[:LIST_LIMIT]
+        ],
+        empty_text="None running low.",
+        more_url=_changelist(PriorAuthorization),
+        more_count=max(len(low) - LIST_LIMIT, 0),
+    )
 
 
 def _overdue_text(due: date, today: date) -> str:

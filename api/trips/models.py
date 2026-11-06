@@ -322,6 +322,15 @@ class Trip(models.Model):
 
         self._check_new_assignment(errors, today)
 
+        # Prior authorizations (ADR 0043): no trips beyond what's authorized.
+        if "prior_authorization_number" not in errors:
+            from .authorizations import needs_check, problem_for
+
+            if needs_check(self):
+                problem = problem_for(self)
+                if problem:
+                    errors["prior_authorization_number"] = problem
+
         if errors:
             raise ValidationError(errors)
 
@@ -603,3 +612,51 @@ class StandingOrderSkip(models.Model):
 
     def __str__(self) -> str:
         return f"{self.date:%b %d, %Y}"
+
+
+class AuthorizationUnit(models.TextChoices):
+    LEG = "leg", "Each one-way trip (there and back = 2)"
+    ROUND_TRIP = "round_trip", "Each round trip (there and back = 1)"
+
+
+class PriorAuthorization(models.Model):
+    """
+    A payer's prior authorization (ADR 0043): how many trips it covers,
+    for whom and between which dates. A trip carrying its number counts
+    against it; when it's used up or out of dates, no more trips can be
+    scheduled under it. Numbers not entered here aren't tracked.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    number = models.CharField(max_length=50, help_text="Exactly as the payer issued it; trips carry the same number.")
+    passenger = models.ForeignKey("passengers.Passenger", on_delete=models.PROTECT, related_name="authorizations")
+    payer = models.ForeignKey("payers.Payer", on_delete=models.PROTECT, related_name="authorizations")
+    valid_from = models.DateField()
+    valid_to = models.DateField(help_text="Last day it covers.")
+    trips_authorized = models.PositiveIntegerField()
+    counts = models.CharField(max_length=20, choices=AuthorizationUnit.choices, default=AuthorizationUnit.LEG,
+                              help_text="How the payer counts trips on this authorization.")
+    notes = models.TextField(blank=True)
+    # The office was emailed when it ran low (1) and when it ran out (2).
+    alert_stage = models.PositiveSmallIntegerField(default=0, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-valid_to"]
+        verbose_name = "prior authorization"
+        constraints = [
+            models.UniqueConstraint(fields=["payer", "number"], name="one_authorization_number_per_payer"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.number} ({self.payer})"
+
+    @property
+    def reference(self) -> str:
+        return f"PA-{str(self.id)[:8].upper()}"
+
+    def clean(self):
+        self.number = (self.number or "").strip()
+        if self.valid_from and self.valid_to and self.valid_to < self.valid_from:
+            raise ValidationError({"valid_to": "The last day is before the first day."})

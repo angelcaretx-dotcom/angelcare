@@ -75,6 +75,8 @@ def seed_roles(sender, **kwargs):
         # Repeating rides are scheduling too (ADR 0035).
         + list(_permissions("trips", "standingorder", ["view", "change", "add"]))
         + list(_permissions("trips", "standingorderskip", ["view", "change", "add", "delete"]))
+        # Entering a payer's authorization is part of booking (ADR 0043).
+        + list(_permissions("trips", "priorauthorization", ["view", "change", "add"]))
         # Importing order files is scheduling too (ADR 0038).
         + list(_permissions("intake", "importbatch", ["view", "change", "add"]))
         + list(_permissions("intake", "mappingtemplate", ["view", "change"]))
@@ -106,6 +108,7 @@ def seed_roles(sender, **kwargs):
         + list(_permissions("trips", "trip", ["view", "change", "add", "delete"]))
         + list(_permissions("trips", "standingorder", ["view", "change", "add", "delete"]))
         + list(_permissions("trips", "standingorderskip", ["view", "change", "add", "delete"]))
+        + list(_permissions("trips", "priorauthorization", ["view", "change", "add", "delete"]))
         + list(_permissions("intake", "importbatch", ["view", "change", "add"]))
         + list(_permissions("intake", "mappingtemplate", ["view", "change", "delete"]))
         + list(_permissions("trips", "turndown", ["view", "change", "add", "delete"]))
