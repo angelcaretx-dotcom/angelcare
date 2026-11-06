@@ -94,6 +94,7 @@ Owner review of the live form, 2026-11-04:
 - Prior-auth tracking: authorized trips used vs. remaining.
 
 ### Phase 30: Claims output + denials
+- **Decided 2026-11-05:** TexMedConnect directly (no clearinghouse): 837P per the TMHP EDI companion guide, submitted to TMHP; 277CA rejections, Remittance & Status report, denials/appeals; 95-day filing deadline tracked per claim.
 - Claim lines with HCPCS codes (T2003 and modifiers) per trip.
 - Export for TMHP / TexMedConnect (format depends on the submission route — see decisions).
 - Denial / appeal queue: denied claims with reason, due date, resubmission history (the claim history model already supports this).
