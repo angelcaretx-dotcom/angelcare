@@ -1,5 +1,6 @@
 import io
 import json
+import re
 import shutil
 import tempfile
 import zipfile
@@ -49,8 +50,14 @@ def snapshot(labels) -> dict:
                 "json", queryset, use_natural_foreign_keys=True, use_natural_primary_keys=True
             )
         )
-        result[label] = sorted(json.dumps(row, sort_keys=True) for row in rows)
+        result[label] = sorted(EXACT_SECOND.sub(r"\1", json.dumps(row, sort_keys=True)) for row in rows)
     return result
+
+
+# Backups keep times to the millisecond (Django's JSON format). A time
+# whose milliseconds are 000 comes back written without them
+# ("...:52.000Z" -> "...:52Z"): the same instant, so compare it as one.
+EXACT_SECOND = re.compile(r"\.000(Z|[+-]\d\d:\d\d)")
 
 
 def wipe_to_fresh_database(manifest):
