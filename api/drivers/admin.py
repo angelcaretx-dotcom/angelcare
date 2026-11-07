@@ -1,8 +1,10 @@
+import base64
 from datetime import date
 
 from django.conf import settings
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -13,7 +15,9 @@ from unfold.admin import TabularInline
 from accounts.admin_base import AngelCareModelAdmin
 from audit.services import record_change
 from documents.admin import DocumentInline, DocumentUploaderAdminMixin
+from intake.extract import ExtractError
 
+from . import bulk
 from .models import (
     REQUIRED_FOR_EVERY_TRIP,
     CredentialType,
@@ -30,6 +34,10 @@ class DriverCredentialInline(TabularInline):
     extra = 0
     fields = ("credential_type", "completed_on", "expires_on", "reference", "notes")
     verbose_name_plural = "Credentials (renewing? add a new row: the newest of each kind counts)"
+
+
+IMPORT_SESSION_KEY = "staff_import"
+IMPORT_MAX_BYTES = 2 * 1024 * 1024
 
 
 @admin.register(Driver)
@@ -117,13 +125,62 @@ class DriverAdmin(DocumentUploaderAdminMixin, AngelCareModelAdmin):
         return format_html('Not set up. <a href="{}" class="text-primary-600 underline">Create app login</a>', url)
 
     def get_urls(self):
+        view = lambda fn: self.admin_site.admin_view(never_cache(fn))  # noqa: E731
         return [
             path(
                 "<uuid:driver_id>/app-login/",
-                self.admin_site.admin_view(never_cache(self.app_login_view)),
+                view(self.app_login_view),
                 name="drivers_driver_app_login",
-            )
+            ),
+            path("import/", view(self.import_view), name="drivers_driver_import"),
+            path("import/template/<str:kind>/", view(self.import_template_view), name="drivers_driver_import_template"),
         ] + super().get_urls()
+
+    def _can_import(self, request, kind) -> bool:
+        if kind == bulk.DRIVERS:
+            return request.user.has_perm("drivers.add_driver") and request.user.has_perm("drivers.add_drivercredential")
+        return kind == bulk.VEHICLES and request.user.has_perm("vehicles.add_vehicle")
+
+    def import_template_view(self, request, kind):
+        if not self._can_import(request, kind):
+            raise PermissionDenied
+        response = HttpResponse(bulk.template_csv(kind), content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="angelcare-{kind}-template.csv"'
+        return response
+
+    def import_view(self, request):
+        """ADR 0045: check a filled-in template, show every row, save the good ones on confirm."""
+        kind = request.POST.get("kind") or request.GET.get("kind") or bulk.DRIVERS
+        if not self._can_import(request, kind):
+            raise PermissionDenied
+        rows, made, error, pending = None, None, "", request.session.get(IMPORT_SESSION_KEY)
+        if request.method == "POST" and request.POST.get("action") == "create" and pending and pending["kind"] == kind:
+            rows = bulk.check(kind, base64.b64decode(pending["content"]), pending["name"])
+            made = bulk.create(kind, rows, user=request.user)
+            del request.session[IMPORT_SESSION_KEY]
+            self.message_user(request, f"{len(made)} {kind} added.", messages.SUCCESS if made else messages.INFO)
+        elif request.method == "POST":
+            upload = request.FILES.get("file")
+            if upload is None:
+                error = "Choose a file."
+            elif upload.size > IMPORT_MAX_BYTES:
+                error = "That file is over 2 MB."
+            else:
+                content = upload.read()
+                try:
+                    rows = bulk.check(kind, content, upload.name)
+                except ExtractError as exc:
+                    error = str(exc)
+                else:
+                    request.session[IMPORT_SESSION_KEY] = {
+                        "kind": kind, "name": upload.name, "content": base64.b64encode(content).decode()}
+        return TemplateResponse(request, "admin/drivers/import.html", {
+            **self.admin_site.each_context(request), "opts": self.model._meta,
+            "title": "Import drivers and vehicles", "kind": kind, "rows": rows, "made": made, "error": error,
+            "ready": sum(r.ok for r in rows or []) if made is None else 0,
+            "kinds": [(bulk.DRIVERS, "Drivers"), (bulk.VEHICLES, "Vehicles")],
+            "columns": [label for _, label in bulk.COLUMNS[kind]],
+        })
 
     def app_login_view(self, request, driver_id):
         """ADR 0029: create or reset a driver's app login; handover shown once."""

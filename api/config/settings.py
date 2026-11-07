@@ -452,6 +452,13 @@ UNFOLD = {
                         "link": reverse_lazy("admin:vehicles_vehicle_changelist"),
                     },
                     {
+                        "title": "Import drivers and vehicles",
+                        "icon": "upload_file",
+                        "link": reverse_lazy("admin:drivers_driver_import"),
+                        "permission": lambda request: request.user.has_perm("drivers.add_driver")
+                        or request.user.has_perm("vehicles.add_vehicle"),
+                    },
+                    {
                         "title": "Daily vehicle checks",
                         "icon": "fact_check",
                         "link": reverse_lazy("admin:vehicles_vehiclecheck_changelist"),
@@ -565,6 +572,12 @@ UNFOLD = {
                         "title": "Organization",
                         "icon": "business",
                         "link": reverse_lazy("admin:organization_organization_changelist"),
+                    },
+                    {
+                        "title": "Launch checklist",
+                        "icon": "checklist",
+                        "link": reverse_lazy("admin:organization_launch_checklist"),
+                        "permission": _is_superuser,
                     },
                 ],
             },

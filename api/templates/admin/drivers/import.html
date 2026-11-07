@@ -1,0 +1,75 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Import drivers and vehicles from the spreadsheet template (ADR 0045). Only CSS classes present in
+Unfold's precompiled stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <div class="flex flex-wrap gap-4 text-sm">
+        {% for value, label in kinds %}
+        <a href="?kind={{ value }}" class="{% if value == kind %}font-semibold text-important{% else %}text-primary-600 underline{% endif %}">{{ label }}</a>
+        {% endfor %}
+    </div>
+    <p class="text-sm text-subtle">
+        <a href="{% url 'admin:drivers_driver_import_template' kind %}" class="text-primary-600 underline">Download the {{ kind }} template</a>
+        (CSV; open it in Excel, one row per {% if kind == "drivers" %}driver{% else %}vehicle{% endif %}, and save as CSV or .xlsx).
+        Every row is checked and shown below before anything is saved; only rows with no problems are added.
+        {% if kind == "drivers" %}
+        Employment type is <strong>employee</strong> or <strong>contractor</strong>. For each credential give the date it
+        was done and, if it expires, the expiry date. Leave both blank if the driver doesn't have it yet. A driver
+        whose license number is already on file is skipped, never changed.
+        {% else %}
+        Wheelchair accessible is <strong>yes</strong> or <strong>no</strong>. Leave Insurance expires blank unless
+        you've confirmed this vehicle is on the policy: a vehicle with no insurance date can't be assigned. A VIN
+        already on file is skipped, never changed.
+        {% endif %}
+    </p>
+    <form method="post" enctype="multipart/form-data" class="bg-white border border-base-200 flex flex-col gap-4 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        {% csrf_token %}
+        <input type="hidden" name="kind" value="{{ kind }}">
+        <input type="file" name="file" accept=".csv,.xlsx,text/csv" required class="text-sm">
+        {% if error %}<span class="font-medium text-red-600">{{ error }}</span>{% endif %}
+        <div><button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Check the file</button></div>
+    </form>
+
+    {% if rows is not None %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-import="rows">
+        <div class="flex flex-wrap gap-4 items-center justify-between">
+            <h2 class="font-semibold mb-2 text-important">{% if made is not None %}{{ made|length }} added{% else %}{{ ready }} of {{ rows|length }} ready to add{% endif %}</h2>
+            {% if made is None and ready %}
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="kind" value="{{ kind }}">
+                <input type="hidden" name="action" value="create">
+                <button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Add the {{ ready }} ready row{{ ready|pluralize }}</button>
+            </form>
+            {% endif %}
+        </div>
+        <table class="text-sm w-full">
+            <thead><tr>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Row</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">{% if kind == "drivers" %}Driver{% else %}Vehicle{% endif %}</th>
+                <th class="border-b border-base-200 font-semibold px-3 py-2 dark:border-base-800">Result</th>
+            </tr></thead>
+            <tbody>
+            {% for row in rows %}
+            <tr data-row="{{ row.number }}">
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ row.number }}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{% if row.record.pk and made is not None and row.ok %}<a href="{% if kind == 'drivers' %}{% url 'admin:drivers_driver_change' row.record.pk %}{% else %}{% url 'admin:vehicles_vehicle_change' row.record.pk %}{% endif %}" class="text-primary-600 underline">{{ row.label }}</a>{% else %}{{ row.label }}{% endif %}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">
+                    {% if row.skipped %}<span class="text-subtle">{{ row.skipped }}</span>
+                    {% elif row.problems %}{% for p in row.problems %}<div class="text-red-600">{{ p }}</div>{% endfor %}
+                    {% else %}<span style="color:#1f7a4d">{% if made is not None %}Added{% else %}Ready{% endif %}</span>{% if row.credentials %} <span class="text-subtle">· {{ row.credentials|length }} credential{{ row.credentials|length|pluralize }}</span>{% endif %}{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
