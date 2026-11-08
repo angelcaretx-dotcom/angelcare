@@ -171,6 +171,7 @@ class FacilityAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
     readonly_fields = ("activity_history", "recent_trips", "created_at", "updated_at")
     inlines = [FacilityContactInline, FacilityActivityInline, PortalUserInline]
     ordering = ("name",)
+    actions = ["clear_follow_up"]
     fieldsets = (
         (None, {"fields": ("name", "kind", "stage", "account_manager")}),
         ("Follow-up", {"fields": ("next_follow_up", "follow_up_note"),
@@ -184,6 +185,20 @@ class FacilityAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("account_manager").prefetch_related("portal_users")
+
+    @admin.action(description="Clear the follow-up date and note", permissions=["change"])
+    def clear_follow_up(self, request, queryset):
+        """Owner report, 2026-11-07: undo follow-up dates set across many facilities at once."""
+        cleared = 0
+        for facility in queryset.exclude(next_follow_up__isnull=True, follow_up_note=""):
+            record_change(actor=request.user, action="changed", resource_type="Facility", resource_id=facility.pk,
+                          before={"next_follow_up": str(facility.next_follow_up), "follow_up_note": facility.follow_up_note},
+                          after={"next_follow_up": None, "follow_up_note": ""}, source="admin")
+            facility.next_follow_up, facility.follow_up_note = None, ""
+            facility.save(update_fields=["next_follow_up", "follow_up_note", "updated_at"])
+            cleared += 1
+        self.message_user(request, f"Follow-up cleared on {cleared} facilit{'ies' if cleared != 1 else 'y'}.",
+                          messages.SUCCESS)
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "account_manager":

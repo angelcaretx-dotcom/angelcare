@@ -272,6 +272,14 @@ class AdminTests(PortalTestCase):
         self.assertEqual(self.client.get("/admin/facilities/facility/?follow_up=due").status_code, 200)
         self.assertEqual(admin_user.has_perm("facilities.add_facilityuser"), True)
 
+    def test_clearing_follow_ups_in_bulk(self):
+        self.login("Dispatcher")
+        Facility.objects.update(next_follow_up=date(2026, 11, 6), follow_up_note="Call")
+        response = self.client.post("/admin/facilities/facility/", {
+            "action": "clear_follow_up", "_selected_action": [str(f.pk) for f in Facility.objects.all()]}, follow=True)
+        self.assertContains(response, "Follow-up cleared on")
+        self.assertFalse(Facility.objects.filter(next_follow_up__isnull=False).exists())
+
     def test_dispatchers_see_facilities_but_dont_hand_out_logins(self):
         self.login("Dispatcher")
         self.assertEqual(self.client.get("/admin/facilities/facility/").status_code, 200)
