@@ -201,7 +201,12 @@ class AddressesView(RiderView):
 
 class AddressDetailView(RiderView):
     def delete(self, request, address_id):
-        self.account.addresses.filter(pk=address_id).delete()
+        from trash.models import DeletedFrom
+        from trash.services import send
+
+        address = self.account.addresses.filter(pk=address_id).first()
+        if address is not None:  # kept in the staff trash, gone from the rider's list (ADR 0046)
+            send(address, user=request.user, deleted_from=DeletedFrom.RIDER)
         return Response(_account_payload(self.account))
 
 

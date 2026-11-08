@@ -273,6 +273,10 @@ class MyTripsTests(TestCase):
         self.assertEqual((bad.status_code, list(bad.json())), (400, ["zip"]))
         me = self.client.write("delete", f"/api/v1/rider/addresses/{saved['id']}/").json()
         self.assertEqual(me["addresses"], [])
+        from trash.models import DeletedFrom, TrashEntry
+
+        trashed = TrashEntry.objects.get()  # gone for the rider, kept for the office (ADR 0046)
+        self.assertEqual((trashed.model_label, trashed.deleted_from), ("riders.savedaddress", DeletedFrom.RIDER))
         for i in range(10):
             self.client.write("post", "/api/v1/rider/addresses/", {**home, "street": f"{i} Main St"})
         self.assertEqual(self.client.write("post", "/api/v1/rider/addresses/", home).status_code, 400)

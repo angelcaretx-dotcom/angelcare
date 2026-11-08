@@ -54,6 +54,7 @@ is UNKNOWN and must not be assumed.
 | 2026-11-06 | Services offered (correction) | **No stretcher**, anywhere: ambulatory and wheelchair transport plus medical supply and equipment delivery only. No DSHS EMS license held or pursued. Removed from the website, booking forms, service lists, rate cards and vehicles; this supersedes the 2026-08-22 and 2026-08-24 rows (ADR 0044) | Owner, developer report |
 | 2026-11-06 | Claims identifiers | The TPI was retired in 2021 and the business has none: TPI is optional in Claims settings; the billing provider is identified by NPI 1184404279, taxonomy 343800000X (ADR 0044) | Owner, developer report |
 | 2026-11-06 | Trip imports, state | A file with no state column is Texas (the service area is Texas only) (ADR 0044) | Owner, developer report |
+| 2026-11-08 | Trash bin | Every delete is kept in a trash bin that only superusers and Administrators can see; restore or delete for good after checking; no automatic purge. Deleting a passenger, driver or vehicle takes their unbilled trips into the trash with them; anything billed (invoice or claim) stays blocked and is set Inactive instead (ADR 0046) | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)
 

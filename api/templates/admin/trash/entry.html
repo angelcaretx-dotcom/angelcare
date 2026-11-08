@@ -1,0 +1,52 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+One trash item (ADR 0046), read-only. Only CSS classes present in Unfold's precompiled
+stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <p class="text-sm text-subtle">
+        Deleted {{ entry.deleted_at|date:"M j, Y g:i A" }} by {{ entry.deleted_by_name|default:"someone no longer on file" }}
+        from the {{ entry.get_deleted_from_display|lower }}. This is the record exactly as it was. Nothing here can be
+        edited: restore it to change it.
+    </p>
+    <div class="flex flex-wrap gap-4 items-center">
+        <form method="post" action="{% url 'admin:trash_trashentry_restore' entry.pk %}">
+            {% csrf_token %}
+            <button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Restore</button>
+        </form>
+        <a href="{% url 'admin:trash_trashentry_purge' entry.pk %}" class="font-medium text-red-600 underline">Delete for good…</a>
+        <a href="{% url 'admin:trash_trashentry_changelist' %}" class="text-primary-600 underline">Back to the trash</a>
+    </div>
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-trash="record">
+        <h2 class="font-semibold mb-2 text-important">{{ entry.type_name }}</h2>
+        <table class="text-sm w-full">
+            <tbody>
+            {% for label, value in rows %}
+            <tr>
+                <td class="align-top border-b border-base-200 font-medium px-3 py-2 dark:border-base-800">{{ label }}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ value|linebreaksbr }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if others %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-trash="others">
+        <h2 class="font-semibold mb-2 text-important">Deleted with it ({{ others|length }})</h2>
+        <p class="text-sm text-subtle">Its own parts, and the unbilled trips and records that depended on it. Restore brings them all back.</p>
+        <ul class="text-sm">{% for type, pk, label in others %}<li>{{ type }}{% if label %}: {{ label }}{% endif %}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+    {% if still_pointing %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800">
+        <h2 class="font-semibold mb-2 text-important">Still linked to it</h2>
+        <ul class="text-sm">{% for line in still_pointing %}<li>{{ line }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

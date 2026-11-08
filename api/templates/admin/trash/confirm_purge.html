@@ -1,0 +1,37 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Confirm a permanent delete from the trash (ADR 0046). Only CSS classes present in Unfold's
+precompiled stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <p class="font-medium text-red-600 text-sm">
+        This can't be undone. Check each one is really junk (test data, a duplicate, a mistake). The admin history
+        will still show who deleted it and when.
+    </p>
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-trash="confirm">
+        <ul class="text-sm">
+        {% for entry, pointing in entries %}
+            <li class="mb-2"><strong>{{ entry.type_name }}: {{ entry.label }}</strong>
+                <span class="text-subtle">· deleted {{ entry.deleted_at|date:"M j, Y" }} by {{ entry.deleted_by_name|default:"—" }}{% if entry.contents %} · {% for name, n in entry.contents.items %}{{ n }} {{ name }}{% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}</span>
+                {% for line in pointing %}<div class="text-red-600">Still linked: {{ line }}</div>{% endfor %}
+            </li>
+        {% endfor %}
+        </ul>
+    </div>
+    <form method="post" class="flex flex-wrap gap-4 items-center">
+        {% csrf_token %}
+        {% if bulk %}
+            <input type="hidden" name="action" value="purge_selected">
+            {% for entry, pointing in entries %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ entry.pk }}">{% endfor %}
+        {% endif %}
+        <input type="hidden" name="confirm" value="yes">
+        <button type="submit" class="bg-red-600 cursor-pointer font-medium px-3 py-1 rounded-default text-white">Yes, delete {{ entries|length }} for good</button>
+        <a href="{% url 'admin:trash_trashentry_changelist' %}" class="text-primary-600 underline">Cancel</a>
+    </form>
+</div>
+{% endblock %}

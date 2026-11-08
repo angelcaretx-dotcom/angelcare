@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     "riders",
     "verification",
     "contact",
+    "trash",
     "intake",
     "facilities",
 ]
@@ -281,6 +282,12 @@ LOGIN_REDIRECT_URL = "/admin/"
 from django.templatetags.static import static  # noqa: E402
 from django.urls import reverse_lazy  # noqa: E402
 from django.utils.text import format_lazy  # noqa: E402
+
+
+def _can_use_trash(user):
+    from trash.services import can_use_trash
+
+    return can_use_trash(user)
 
 
 def _is_superuser(request):
@@ -600,6 +607,12 @@ UNFOLD = {
                         "icon": "manage_history",
                         "link": reverse_lazy("admin:admin_logentry_changelist"),
                         "permission": _is_superuser,
+                    },
+                    {
+                        "title": "Trash",
+                        "icon": "delete",
+                        "link": reverse_lazy("admin:trash_trashentry_changelist"),
+                        "permission": lambda request: _can_use_trash(request.user),
                     },
                     {
                         "title": "Staff Users",
