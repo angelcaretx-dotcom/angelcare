@@ -52,7 +52,7 @@ class ImportBatchAdmin(AngelCareModelAdmin):
     @admin.display(description="Rows")
     def summary(self, batch):
         c = batch.counts()
-        return f"{c['created']} created · {c['review']} to review · {c['ready']} ready · {c['duplicate']} duplicates"
+        return f"{c['trips']} trips from {c['created']} rows · {c['review']} to review · {c['ready']} ready · {c['duplicate']} duplicates"
 
     def has_delete_permission(self, request, obj=None):
         return False  # the original file is the record of what was received

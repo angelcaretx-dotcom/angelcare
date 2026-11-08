@@ -24,7 +24,7 @@ precompiled stylesheet may be used here -- accounts.test_dashboard.DashboardTemp
     <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-import-report>
         <h2 class="font-semibold mb-2 text-important">Report</h2>
         <p class="text-sm" data-report-line>
-            {{ counts.total }} rows read · <strong>{{ counts.created }}</strong> trips created · {{ counts.ready }} ready ·
+            {{ counts.total }} rows read · <strong>{{ counts.trips }}</strong> trip{{ counts.trips|pluralize }} created from {{ counts.created }} row{{ counts.created|pluralize }} (rides back count) · {{ counts.ready }} ready ·
             <span class="{% if counts.review %}font-medium text-red-600{% endif %}">{{ counts.review }} need review</span> ·
             {{ counts.duplicate }} duplicates skipped · {{ counts.failed }} failed · {{ counts.rejected }} rejected
         </p>

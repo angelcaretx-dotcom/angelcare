@@ -47,6 +47,8 @@ class ImportBatch(models.Model):
         for status in self.rows.values_list("status", flat=True):
             counts[status] += 1
         counts["total"] = sum(counts.values())
+        # Trips, not rows: a created row with a ride back made two.
+        counts["trips"] = counts["created"] + self.rows.filter(status=RowStatus.CREATED, return_trip__isnull=False).count()
         return counts
 
 

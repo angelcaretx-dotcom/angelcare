@@ -367,6 +367,10 @@ class AdminFlowTests(IntakeTestCase):
         self.assertTrue(AuditLog.objects.filter(action="viewed", resource_type="ImportRow").exists())
         original = self.client.get(f"/admin/intake/importbatch/{batch.pk}/file/")
         self.assertEqual(b"".join(original.streaming_content), BROKER_CSV.encode())
+        for row in batch.rows.all():  # MX-1001 has a ride back: 2 rows make 3 trips
+            services.create_trips(row, user=None)
+        report = self.client.get(f"/admin/intake/importbatch/{batch.pk}/change/").content.decode()
+        self.assertIn("<strong>3</strong> trips created from 2 rows", report)
 
     def test_payer_set_on_upload_goes_on_the_trips(self):
         payer = Payer.objects.create(name="MTM", payer_type="broker")
