@@ -82,13 +82,23 @@ class Plan:
 def plan(roots) -> Plan:
     result, seen, frontier = Plan(), {}, list(roots)
     while frontier:
-        collector = NestedObjects(using=DEFAULT_DB_ALIAS)
-        collector.collect(frontier)
-        for model_objs in collector.data.values():
-            for obj in model_objs:
-                seen.setdefault(_key(obj), obj)
+        # One collector per kind of record: Django's collector takes a single
+        # model per call, and a delete can be blocked by two kinds at once (a
+        # vehicle's trips and its daily checks, a facility's logins and bookings).
+        by_model = {}
+        for obj in frontier:
+            by_model.setdefault(type(obj), []).append(obj)
+        protected = {}
+        for objs in by_model.values():
+            collector = NestedObjects(using=DEFAULT_DB_ALIAS)
+            collector.collect(objs)
+            for model_objs in collector.data.values():
+                for obj in model_objs:
+                    seen.setdefault(_key(obj), obj)
+            for obj in collector.protected:
+                protected.setdefault(_key(obj), obj)
         frontier = []
-        for obj in collector.protected:
+        for obj in protected.values():
             if _key(obj) in seen:
                 continue
             if obj._meta.label_lower in BLOCKING:

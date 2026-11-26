@@ -1,6 +1,8 @@
 from datetime import timedelta
 
+from django.conf import settings
 from django.test import TestCase
+from django.urls import resolve
 from django.utils import timezone
 
 from transportation.models import ServiceType, TripRequest
@@ -192,6 +194,35 @@ class NotificationHtmlEmailTests(TestCase):
             staff_email["body_html"],
         )
         self.assertIn("Review in Admin", staff_email["body_html"])
+
+    def test_staff_email_has_a_button_to_check_and_send_the_price(self):
+        """ADR 0049: a link to the price page, never an amount. The page itself asks for a login."""
+        provider = RecordingEmailProvider()
+        trip_request = make_trip_request()
+
+        NotificationService(email_provider=provider).notify_new_trip_request(trip_request)
+
+        self.assertEqual(len(provider.sent), 2)  # still one staff email and one customer email
+        staff_email = next(m for m in provider.sent if m["to"] == "angelcaretransit@hotmail.com")
+        price_page = f"/admin/billing/quote/send/{trip_request.id}/"
+        self.assertEqual(resolve(price_page).url_name, "billing_quote_send")
+        for part in ("body_text", "body_html"):
+            self.assertIn(f"{settings.SITE_URL}{price_page}", staff_email[part])
+            self.assertIn("Check and send the price", staff_email[part])
+            # The link to the request itself stays.
+            self.assertIn(f"/admin/transportation/triprequest/{trip_request.id}/change/", staff_email[part])
+        html = staff_email["body_html"]
+        self.assertLess(html.index("Check and send the price"), html.index("Review in Admin"))
+        for part in ("subject", "body_text", "body_html"):
+            self.assertNotIn("$", staff_email[part], f"an amount in the staff alert's {part}")
+        # The customer is never sent a link into the admin.
+        customer_email = next(m for m in provider.sent if m["to"] == "alex@example.com")
+        for part in ("body_text", "body_html"):
+            self.assertNotIn("/admin/", customer_email[part])
+        # Someone who is not logged in gets the login page, not a price.
+        response = self.client.get(price_page)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response["Location"])
 
     def test_customer_html_contains_emergency_disclaimer(self):
         provider = RecordingEmailProvider()

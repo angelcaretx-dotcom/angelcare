@@ -91,8 +91,31 @@ Tracked honestly so nothing here is discovered by surprise later.
   rate card** (ADR 0048): administrators edit the booking fee, loading
   fee, per-mile rate and wait rate of the three existing services.
 - **A quoted price has to be accepted by phone or website message**
-  (ADR 0047): staff email the total from the admin, but there is no
-  "accept" link, and the miles are typed by staff (no maps provider).
+  (ADR 0047, 0049): staff email the price from the admin, but there is
+  no "accept" or "pay" link. Card payment and the refund rule are
+  decided (2026-11-26) and not built; the Terms page does not state
+  them yet.
+- **The miles on the price page are an estimate, not the driving
+  distance** (ADR 0049). They come from the centre points of the two
+  ZIP codes with one factor for every road, so they can be several
+  miles off (too high on a direct freeway route). Staff confirm the
+  miles on a map before sending; the system records that they said so
+  and cannot check it. No estimate for an address without a ZIP code, a
+  ZIP outside Texas or used only for PO boxes, or two addresses in the
+  same ZIP code. There is no maps provider: exact automatic miles need
+  one that signs a BAA.
+- **A wait-and-return price opens with no waiting time in it** (ADR
+  0049): a request doesn't say how long the wait will be, so staff type
+  the expected minutes before sending.
+- **A request not yet linked to a passenger has no known payer** (ADR
+  0049). The system refuses to email a price to a rider linked to a
+  Medicaid or broker payer; for an unlinked request, and for a facility
+  booking, the only guard is the administrator's "the customer pays"
+  confirmation.
+- **The price email's amounts can hint at the service level** (ADR
+  0049): rates are per service, so the fee lines differ between
+  services even though the email never names one. Accepted by the owner
+  (2026-11-26).
 - **No rate schedule or EDI.** Structural Payer (ADR 0017), Billing
   (ADR 0018), and Claims (ADR 0019) domains exist, but rate schedules,
   EDI/clearinghouse/billing-vendor integration, and payment processing

@@ -17,6 +17,7 @@ from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 from drivers.models import Driver
 from payers.models import Payer
+from transportation import distance
 from transportation.models import ReturnRide, TripRequest
 
 from . import pricing, quotes, reports
@@ -201,6 +202,13 @@ class RateCardAdmin(AuditedSaveMixin, AngelCareModelAdmin):
         ("Notes", {"fields": ("notes",)}),
     )
 
+    def get_changeform_initial_data(self, request):
+        # A new card starts with the owner's private-pay rules (ADR 0048): fees once
+        # for a round trip, 15 free minutes, then 15-minute wait blocks. A payer's
+        # contract card can say otherwise.
+        return {"fees_on_return": False, "wait_free_minutes": 15, "wait_block_minutes": 15,
+                **super().get_changeform_initial_data(request)}
+
     @admin.display(description="Payer")
     def payer_label(self, card):
         return card.payer or "Private pay"
@@ -230,6 +238,10 @@ def _service_summary(card, service) -> str:
 class QuoteForm(forms.Form):
     miles = forms.DecimalField(required=False, min_value=0, max_digits=7, decimal_places=2, label="One-way miles")
     wait_minutes = forms.IntegerField(required=False, min_value=0, max_value=1440, label="Expected wait (minutes)")
+    # The two confirmations a send needs (ADR 0049). Not required here, so that working
+    # the price out doesn't need them: the view and quotes.send refuse a send without both.
+    miles_checked = forms.BooleanField(required=False)
+    customer_pays = forms.BooleanField(required=False)
 
 
 @admin.register(Quote)
@@ -280,27 +292,45 @@ class QuoteAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
         ] + super().get_urls()
 
     def send_view(self, request, request_id):
-        """'Email the price' for one trip request (ADR 0047): work it out, check it, then send the total."""
+        """
+        'Email the price' for one trip request (ADR 0047, 0049). The page opens with the price
+        already worked out from the estimated miles; the administrator checks the miles on the
+        map, confirms who pays, and sends.
+        """
         if not can_send_quotes(request.user):
             raise PermissionDenied
-        trip_request = get_object_or_404(TripRequest.objects.select_related("passenger__payer"), pk=request_id)
+        trip_request = get_object_or_404(
+            TripRequest.objects.select_related("passenger__payer", "facility"), pk=request_id
+        )
         if request.method == "GET":
             # The page shows the rider's request (ADR 0027).
             record_change(actor=request.user, action="viewed", resource_type="TripRequest",
                           resource_id=trip_request.pk, source="admin")
+        estimate = distance.estimate(trip_request)
         last = trip_request.quotes.first()
-        form = QuoteForm(request.POST or None,
-                         initial={"miles": last.miles, "wait_minutes": last.wait_minutes} if last else None)
+        # The miles of the last price sent, else the estimate from the two ZIP codes.
+        initial = {"miles": last.miles if last and last.miles is not None else estimate.miles,
+                   "wait_minutes": last.wait_minutes if last else None}
+        form = QuoteForm(request.POST or None, initial=initial)
         priced = error = None
-        if request.method == "POST" and form.is_valid():
-            miles, wait = form.cleaned_data["miles"], form.cleaned_data["wait_minutes"] or 0
+        asked = None  # (miles, wait) to price: what was posted, or on a GET what the miles box starts with
+        if request.method == "POST":
+            if form.is_valid():
+                asked = form.cleaned_data["miles"], form.cleaned_data["wait_minutes"] or 0
+        elif initial["miles"] is not None:
+            asked = initial["miles"], initial["wait_minutes"] or 0
+        if asked is not None:
+            miles, wait = asked
             try:
                 card, lines, notes = pricing.quote(trip_request, miles=miles, wait_minutes=wait)
                 amount = pricing.total(lines)
-                sending = "send" in request.POST
+                sending = request.method == "POST" and "send" in request.POST
                 # Only the price staff just checked is ever sent: a rate card edited in between shows again first.
-                if sending and request.POST.get("checked_amount") == str(amount):
-                    quote = quotes.send(trip_request, miles=miles, wait_minutes=wait, user=request.user)
+                same_price = sending and request.POST.get("checked_amount") == str(amount)
+                confirmed = form.is_bound and form.cleaned_data["miles_checked"] and form.cleaned_data["customer_pays"]
+                if same_price and confirmed:
+                    quote = quotes.send(trip_request, miles=miles, wait_minutes=wait, user=request.user,
+                                        miles_checked=True, customer_pays=True)
                     if quote.delivered:
                         self.message_user(request, f"${quote.amount} emailed to {quote.sent_to}.", messages.SUCCESS)
                     else:
@@ -314,13 +344,23 @@ class QuoteAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
                         reverse("admin:transportation_triprequest_change", args=[trip_request.pk])
                     )
                 priced = {"card": card, "lines": lines, "notes": notes, "amount": amount, "miles": miles,
-                          "wait_minutes": wait, "changed": sending}
+                          "wait_minutes": wait, "changed": sending and not same_price,
+                          "unconfirmed": quotes.NOT_CONFIRMED if same_price else ""}
             except pricing.PricingError as exc:
                 error = str(exc)
+        try:
+            rules_card = pricing.quote_card(trip_request)
+            rules = pricing.explain(rules_card, trip_request)
+        except pricing.PricingError as exc:
+            # No card to explain, so no price either: say why as soon as the page opens.
+            rules_card, rules, error = None, [], error or str(exc)
         return TemplateResponse(request, "admin/billing/quote_send.html", {
             **self.admin_site.each_context(request), "opts": self.model._meta,
             "title": "Email the price", "trip_request": trip_request, "form": form, "priced": priced, "error": error,
             "waits": trip_request.return_ride == ReturnRide.WAIT,
+            "round_trip": trip_request.return_ride != ReturnRide.NONE,
+            "estimate": estimate, "map_url": distance.map_url(trip_request),
+            "miles_from_last": bool(last and last.miles is not None), "rules": rules, "rules_card": rules_card,
             "sent": trip_request.quotes.select_related("sent_by"), "input_class": INPUT,
             "request_url": reverse("admin:transportation_triprequest_change", args=[trip_request.pk]),
         })

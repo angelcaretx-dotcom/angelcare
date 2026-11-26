@@ -14,6 +14,32 @@ $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..\api")
 $repo = "angelcaretx-dotcom/angelcare"
 
+# Say which copy of the code this is before asking for anything. The
+# migrations that run are the ones in THIS folder: an older copy, or one on
+# another branch, reports "already up to date" while the new version's
+# migrations are still missing (2026-11-26: the site went down because code
+# was live before its migration). Uses only the local git folder, no
+# network, and never stops the script: without git it says "unknown".
+$codeFolder = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$codeBranch = "unknown"
+$codeCommit = "unknown"
+$ErrorActionPreference = "Continue"
+try {
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        $found = git -C $codeFolder rev-parse --abbrev-ref HEAD 2>$null
+        if ($LASTEXITCODE -eq 0 -and $found) { $codeBranch = "$found".Trim() }
+        $found = git -C $codeFolder rev-parse --short HEAD 2>$null
+        if ($LASTEXITCODE -eq 0 -and $found) { $codeCommit = "$found".Trim() }
+    }
+}
+catch { }
+finally { $ErrorActionPreference = "Stop" }
+Write-Host "`nThis will migrate PRODUCTION with the migrations in this copy of the code:" -ForegroundColor Cyan
+Write-Host "  Folder: $codeFolder"
+Write-Host "  Branch: $codeBranch"
+Write-Host "  Commit: $codeCommit"
+Write-Host "If this is not the version you are about to put live, press Ctrl+C now and run the script from the right folder.`n" -ForegroundColor Yellow
+
 $secure = Read-Host -AsSecureString "Supabase database password (paste with right-click)"
 $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 try { $pw = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
@@ -54,13 +80,27 @@ finally {
 # as fatal under "Stop" -- rely on exit codes from here on.
 $ErrorActionPreference = "Continue"
 Write-Host "`nSaving this password to the live API and the nightly backup..." -ForegroundColor Cyan
-vercel env add DATABASE_URL production --value $appUrl --force --sensitive --yes 2>$null | Out-Null
-$apiSaved = $LASTEXITCODE -eq 0
-gh secret set BACKUP_DATABASE_URL --repo $repo --body $sessionUrl 2>$null | Out-Null
-$backupSaved = $LASTEXITCODE -eq 0
+# A tool that isn't installed leaves the last exit code (the migration's 0)
+# untouched, which used to read as "saved" (2026-11-26: the admin went down
+# after a password reset because of it). Check the tool is there first.
+$apiSaved = $false
+if (Get-Command vercel -ErrorAction SilentlyContinue) {
+    vercel env add DATABASE_URL production --value $appUrl --force --sensitive --yes 2>$null | Out-Null
+    $apiSaved = $LASTEXITCODE -eq 0
+}
+$backupSaved = $false
+if (Get-Command gh -ErrorAction SilentlyContinue) {
+    gh secret set BACKUP_DATABASE_URL --repo $repo --body $sessionUrl 2>$null | Out-Null
+    $backupSaved = $LASTEXITCODE -eq 0
+}
 $appUrl = $null; $sessionUrl = $null
-if (-not $apiSaved) { Write-Host "  Couldn't save it to Vercel: run update-production-database-password.ps1." -ForegroundColor Yellow }
-if (-not $backupSaved) { Write-Host "  Couldn't save it to GitHub: run setup-nightly-backup.ps1." -ForegroundColor Yellow }
+if (-not $apiSaved) {
+    Write-Host "  NOT saved to Vercel (is the vercel tool installed and logged in?)." -ForegroundColor Yellow
+    Write-Host "  If the database password was changed, the live site and admin CANNOT reach the database" -ForegroundColor Yellow
+    Write-Host "  until it is saved: run update-production-database-password.ps1, or set DATABASE_URL in" -ForegroundColor Yellow
+    Write-Host "  the angelcare-api project on vercel.com and redeploy. If it wasn't changed, nothing to do." -ForegroundColor Yellow
+}
+if (-not $backupSaved) { Write-Host "  NOT saved to GitHub for the nightly backup: run setup-nightly-backup.ps1 if the password changed." -ForegroundColor Yellow }
 if ($apiSaved) {
     Write-Host "Redeploying the API so it uses it (about a minute)..." -ForegroundColor Cyan
     $latest = vercel ls angelcare-api --environment production 2>$null | Select-Object -First 1

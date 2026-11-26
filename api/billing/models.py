@@ -165,7 +165,8 @@ class RateCard(models.Model):
 
     def clean(self):
         errors = {}
-        if self.effective_to and self.effective_to < self.effective_from:
+        # A blank or unreadable start date is the form's error to report, not a crash here.
+        if self.effective_from and self.effective_to and self.effective_to < self.effective_from:
             errors["effective_to"] = "The end date is before the start date."
         if bool(self.after_hours_start) != bool(self.after_hours_end):
             errors["after_hours_end"] = "Set both the after-hours start and end, or neither."
@@ -272,5 +273,5 @@ class DriverPayPlan(models.Model):
         return f"{self.driver.legal_name} from {self.effective_from:%b %d, %Y}"
 
     def clean(self):
-        if self.effective_to and self.effective_to < self.effective_from:
+        if self.effective_from and self.effective_to and self.effective_to < self.effective_from:
             raise ValidationError({"effective_to": "The end date is before the start date."})

@@ -1,7 +1,9 @@
 {% extends 'admin/base.html' %}
 {% comment %}
-Email the price for one trip request (ADR 0047). Only CSS classes present in Unfold's precompiled
+Email the price for one trip request (ADR 0047, 0049). Only CSS classes present in Unfold's precompiled
 stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+The map button is a plain link the administrator opens in their own browser: this page itself
+sends the addresses nowhere, and "noreferrer" keeps this page's address from Google.
 {% endcomment %}
 {% load i18n l10n %}
 {% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
@@ -10,8 +12,9 @@ stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests ch
 <div class="flex flex-col gap-6">
     <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
     <p class="text-sm text-subtle">
-        Works the price out from the rate card, shows it to you to check, then emails the customer the total.
-        Nobody needs to phone them. The email carries the total and their reference number only.
+        Works the price out from the rate card and shows it to you. Check the miles on the map, confirm who pays,
+        then email the customer the price. Nobody needs to phone them. The email never repeats their name,
+        their addresses or the pickup time.
         <a href="{{ request_url }}" class="text-primary-600 underline">Back to the request</a>
     </p>
 
@@ -49,8 +52,32 @@ stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests ch
         </tbody></table>
     </div>
 
-    <form method="post" class="bg-white border border-base-200 flex flex-wrap gap-4 items-center p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-quote-form>
-        {% csrf_token %}
+    <div class="bg-white border border-base-200 flex flex-col gap-3 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-quote-miles>
+        <h2 class="font-semibold text-important">Miles</h2>
+        {% if estimate.miles is not None %}
+        <p class="text-sm" data-quote-estimate>
+            About {{ estimate.miles|unlocalize }} miles one way{% if round_trip %} ({{ estimate.round_trip_miles|unlocalize }} for the round trip){% endif %},
+            estimated from ZIP codes {{ estimate.pickup_zip }} and {{ estimate.dropoff_zip }}.
+            This is an estimate, not the driving distance.
+        </p>
+        {% else %}
+        <p class="text-sm" data-quote-no-estimate>No estimate of the miles: {{ estimate.reason }}</p>
+        {% endif %}
+        <p class="text-sm text-subtle">
+            {% if miles_from_last %}The miles box below starts with the miles of the last price sent for this request.
+            {% elif estimate.miles is not None %}The miles box below starts with this estimate.
+            {% endif %}Open the route on the map, read the driving miles one way, and type them in the box before you send.
+        </p>
+        <div>
+            <a href="{{ map_url }}" target="_blank" rel="noopener noreferrer" class="bg-primary-600 font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white" data-quote-map>Open the route in Google Maps</a>
+        </div>
+    </div>
+
+    {# One form for the miles box and the Email button, so the miles sent are always the miles on the screen. #}
+    {# "Work out the price" stays the first button: pressing Enter in a box works the price out, it never sends. #}
+    <form method="post" class="flex flex-col gap-6" data-quote-one-form>
+    {% csrf_token %}
+    <div class="bg-white border border-base-200 flex flex-wrap gap-4 items-center p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-quote-form>
         <label class="flex flex-col gap-2 text-sm">One-way miles
             <input type="number" name="miles" step="0.01" min="0" value="{{ form.miles.value|default_if_none:''|unlocalize }}" class="{{ input_class }}">
         </label>
@@ -59,16 +86,17 @@ stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests ch
             <input type="number" name="wait_minutes" step="1" min="0" value="{{ form.wait_minutes.value|default_if_none:''|unlocalize }}" class="{{ input_class }}">
         </label>
         {% endif %}
-        <button type="submit" name="preview" value="1" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Work out the price</button>
+        {# formnovalidate: working the price out must not ask for the two boxes a send needs. #}
+        <button type="submit" name="preview" value="1" formnovalidate class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Work out the price</button>
         {% for error in form.miles.errors %}<span class="font-medium text-red-600">Miles: {{ error }}</span>{% endfor %}
         {% for error in form.wait_minutes.errors %}<span class="font-medium text-red-600">Wait: {{ error }}</span>{% endfor %}
         {% if error %}<span class="font-medium text-red-600" data-quote-error>{{ error }}</span>{% endif %}
-    </form>
+    </div>
 
     {% if priced %}
     <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-quote-price>
         <h2 class="font-semibold mb-2 text-important">Total: ${{ priced.amount|unlocalize }}</h2>
-        <p class="text-sm text-subtle">From the rate card “{{ priced.card }}”. {% if priced.card.fees_on_return %}A round trip is priced as two rides.{% else %}On a round trip the booking and loading fees are charged once, and the miles both ways.{% endif %}</p>
+        <p class="text-sm text-subtle">From the rate card “{{ priced.card }}”{% if priced.miles is not None %}, for {{ priced.miles|unlocalize }} miles one way{% endif %}{% if waits %}, with a wait of {{ priced.wait_minutes|unlocalize }} minutes{% endif %}.</p>
         <table class="text-sm w-full"><tbody>
             {% for line in priced.lines %}<tr>
                 <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ line.label }}</td>
@@ -77,14 +105,42 @@ stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests ch
             </tr>{% endfor %}
         </tbody></table>
         {% for note in priced.notes %}<p class="text-sm text-subtle">{{ note }}</p>{% endfor %}
-        {% if priced.changed %}<p class="font-medium text-red-600">The price is not the one you checked (the rate card changed). Check it again, then send.</p>{% endif %}
-        <form method="post" class="flex flex-wrap gap-4 items-center">
-            {% csrf_token %}
-            <input type="hidden" name="miles" value="{{ priced.miles|default_if_none:''|unlocalize }}">
-            <input type="hidden" name="wait_minutes" value="{{ priced.wait_minutes|unlocalize }}">
+        {% if priced.changed %}<p class="font-medium text-red-600">The price is not the one you checked: the miles, the wait or the rate card changed. Nothing was sent. Check it again, then send.</p>{% endif %}
+        {% if priced.unconfirmed %}<p class="font-medium text-red-600" data-quote-unconfirmed>{{ priced.unconfirmed }}</p>{% endif %}
+        <div class="flex flex-col gap-3 mt-4" data-quote-send>
+            {# The miles and the wait are the boxes above, in this same form: no hidden copy that could differ from them. #}
             <input type="hidden" name="checked_amount" value="{{ priced.amount|unlocalize }}">
-            <button type="submit" name="send" value="1" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Email ${{ priced.amount|unlocalize }} to {{ trip_request.email }}</button>
-        </form>
+            {% if priced.miles is not None %}
+            <p class="text-sm text-subtle">This price uses {{ priced.miles|unlocalize }} miles one way. If the map shows a different distance, type it in the miles box above and press “Work out the price”. A price is only sent when it is the one shown here.</p>
+            {% endif %}
+            {% if trip_request.facility_id %}
+            <p class="font-medium text-sm" data-quote-facility>Booked through the facility portal by {{ trip_request.facility.name }}. If the facility is invoiced for this ride, do not email a price.</p>
+            {% endif %}
+            <label class="flex gap-2 items-center text-sm">
+                <input type="checkbox" name="miles_checked" value="1" required>
+                I checked the miles on the map.
+            </label>
+            <label class="flex gap-2 items-center text-sm">
+                <input type="checkbox" name="customer_pays" value="1" required>
+                The customer pays for this ride. It is not paid by Medicaid, a broker or a facility account.
+            </label>
+            <div>
+                <button type="submit" name="send" value="1" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Email ${{ priced.amount|unlocalize }} to {{ trip_request.email }}</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    </form>
+
+    {% if rules %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-quote-rules>
+        <h2 class="font-semibold mb-2 text-important">How this price is worked out</h2>
+        <p class="text-sm text-subtle">The rules of the rate card “{{ rules_card }}” for this request.</p>
+        <table class="text-sm w-full"><tbody>
+            {% for rule in rules %}<tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ rule }}</td>
+            </tr>{% endfor %}
+        </tbody></table>
     </div>
     {% endif %}
 

@@ -10,6 +10,12 @@
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..\api")
 
+# Without the vercel tool nothing below can save anything, and a missing
+# tool doesn't change the last exit code, so the steps would read as OK.
+if (-not (Get-Command vercel -ErrorAction SilentlyContinue)) {
+    throw "The vercel tool isn't installed here (npm install -g vercel, then vercel login). Nothing was changed. Or set DATABASE_URL in the angelcare-api project on vercel.com and redeploy."
+}
+
 $secure = Read-Host -AsSecureString "Supabase database password (paste with right-click)"
 $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 try { $pw = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }

@@ -1,6 +1,9 @@
 # ADR 0047: The price is emailed from the admin, not told by phone
 
-- Status: Accepted
+- Status: Accepted. Partly superseded by [ADR 0049](0049-local-mileage-and-itemised-quotes.md)
+  (same day): the email now lists each part of the price instead of the
+  total only, the miles start as an estimate made inside the system, and
+  a send needs two confirmations. Everything else below stands.
 - Date: 2026-11-26
 
 ## Context
@@ -59,7 +62,8 @@ Two things a price can't know in advance are said on the page:
 
 **The email** (`customer_quote`) carries the reference number, the
 **total price**, and what it covers ("One-way ride", "Round trip (there
-and back)", "Round trip, with the driver waiting for you", "Delivery").
+and back)", "Round trip, with the driver waiting for you", "One-way
+trip" for a delivery).
 Like the confirmation (ADR 0027) it repeats no name, address, date,
 time or service level. For a wait-and-return ride it also says how many
 minutes of waiting the price covers and the per-minute rate after that:
@@ -93,15 +97,25 @@ rider's "My trips" status no longer say "we'll call you".
 
 ## Consequences
 
-- Miles are typed by staff, from a map. There is still no maps provider
-  (roadmap decision 7), so the system can't measure the distance itself.
+- Miles are confirmed by staff, from a map. Since ADR 0049 the miles box
+  starts with an estimate made inside the system from the two ZIP codes,
+  and staff check it before sending. There is still no maps provider
+  (roadmap decision 7), so the system can't measure the driving distance
+  itself.
+- The email described above ("total only") was replaced by ADR 0049: it
+  now lists each fee, the miles and the wait. It still repeats no name,
+  address, date, time or service level, but the amounts can hint at the
+  service. The owner accepted that (2026-11-26).
 - The customer still has to call or write to accept: there is no
-  "accept this price" link. That is the natural next step, and the quote
-  record is where an acceptance would be kept.
+  "accept this price" link. A card payment link is decided but not built
+  (ADR 0049, "Decided, not built yet"), and the quote record is where an
+  acceptance would be kept.
 - The price is only as good as the private-pay rate card. With no card
   in effect on the ride's date, no price can be sent.
 - A quote for a facility's own contract isn't covered: a facility
-  booking is priced private-pay unless its passenger has a payer.
+  booking is priced private-pay unless its passenger has a payer. Since
+  ADR 0049 the office decides each time who pays, and a price is emailed
+  only when the person who booked pays.
 - Quotes go to the trash with their request and come back with it
   (ADR 0046).
 - **Release:** `billing.0004` creates the table and `notifications.0009`

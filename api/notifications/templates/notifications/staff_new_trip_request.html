@@ -14,8 +14,16 @@
 {% include "notifications/_detail_table.html" with rows=rows %}
 
 <div style="margin:28px 0 4px;">
-  {% include "notifications/_button.html" with href=admin_url label="Review in Admin" %}
+  {% include "notifications/_button.html" with href=quote_url label="Check and send the price" %}
 </div>
+<p style="margin:12px 0 0; font-size:13px; color:#5f6b7a;">
+  That page works the price out. An administrator checks the miles on the map,
+  confirms who pays, and sends it to the customer.
+</p>
+<p style="margin:20px 0 4px; color:#3d4852;">
+  To read the request first:
+  <a href="{{ admin_url }}" style="color:#2d6f91; font-weight:600;">Review in Admin</a>
+</p>
 {% endblock %}
 
 {% block footer_note %}This is an automated staff alert from AngelCare Transit's trip request system.{% endblock %}

@@ -1,6 +1,6 @@
 {% extends 'admin/base.html' %}
 {% comment %}
-Office guide (ADR 0048): how a request becomes a paid ride. Only CSS classes present in Unfold's
+Office guide (ADR 0048, 0049): how a request becomes a paid ride. Only CSS classes present in Unfold's
 precompiled stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
 {% endcomment %}
 {% load i18n %}
@@ -19,22 +19,66 @@ precompiled stylesheet may be used here -- accounts.test_dashboard.DashboardTemp
         <p class="text-sm mb-2">
             A customer books on the website, or a facility books in its portal. The office gets an email
             "New trip request &hellip; log in to view" and the request shows on the dashboard under
-            "New trip requests to review". The email never carries rider details: open it in
+            "New trip requests to review". The email never carries rider details or a price. It has two links:
+            <strong>Check and send the price</strong> opens the price page of step 2 (for Administrators), and
+            <strong>Review in Admin</strong> opens the request itself. Every request is also in
             <a href="{% url 'admin:transportation_triprequest_changelist' %}" class="text-primary-600 underline">Trip requests</a>.
         </p>
         <p class="text-sm mb-2">
             Read it, then link it to a passenger (choose an existing one or add a new one). A trip can't be
             scheduled until the request has a passenger. Set the status to Reviewed.
         </p>
+        <p class="text-sm mb-2">
+            If the rider is already a passenger, link them <strong>before</strong> a price is sent. The
+            passenger's payer is how the system knows a ride is paid by Medicaid or a broker, and refuses to
+            email a price for it.
+        </p>
     </div>
 
     <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-guide-step="price">
-        <h2 class="font-semibold mb-2 text-important">2. Email the price</h2>
+        <h2 class="font-semibold mb-2 text-important">2. Check and send the price</h2>
         <p class="text-sm mb-2">
-            Done by an Administrator. Open the request and press <strong>Email the price</strong>. Type the
-            one-way miles from a map, and for a wait-and-return ride the wait the customer expects. Press
-            <strong>Work out the price</strong>, check each line, then press the Email button. The customer
-            receives the total and their reference number, and the request becomes Contacted.
+            Done by an Administrator. Press <strong>Check and send the price</strong> in the office email, or
+            open the request and press <strong>Email the price</strong>: both open the same page. The price is
+            already worked out there, from an estimate of the miles. Nothing is sent until you press the Email
+            button.
+        </p>
+        <p class="text-sm mb-2">
+            <strong>Check the miles.</strong> The estimate is made inside the system from the two ZIP codes. It
+            is approximate, not the driving distance, and it can be several miles off. Press
+            <strong>Open the route in Google Maps</strong> (it opens in a new tab in your own browser), read
+            the driving miles one way, type them in the miles box and press <strong>Work out the price</strong>.
+            When a price was already sent for the request, the box starts with that price's miles instead. When
+            there is no estimate (an address without a ZIP code, a ZIP code outside the Texas table, or both
+            addresses in the same ZIP code) the page says why, and you take the miles from the map.
+        </p>
+        <p class="text-sm mb-2">
+            <strong>Wait-and-return rides.</strong> The first price shown has no waiting time in it. Type the
+            wait the customer expects, in minutes, and press <strong>Work out the price</strong>.
+        </p>
+        <p class="text-sm mb-2">
+            <strong>Check the price.</strong> Read each line. "How this price is worked out" lists the rules of
+            the rate card that apply to this request.
+        </p>
+        <p class="text-sm mb-2">
+            <strong>Confirm and send.</strong> Tick both boxes: "I checked the miles on the map." and "The
+            customer pays for this ride. It is not paid by Medicaid, a broker or a facility account." Then
+            press the Email button. Without both ticks nothing is sent and nothing is saved. Both ticks are
+            kept in the audit log with the price. The customer receives the total with each part listed (the
+            fees, the miles and any waiting time) and their reference number, and the request becomes
+            Contacted. The email never repeats their name, an address, the date or the time, and it does not
+            name the service.
+        </p>
+        <p class="text-sm mb-2">
+            <strong>Facility bookings.</strong> For a request booked in the facility portal the page says
+            "Booked through the facility portal by" and the facility's name. Decide each time who pays. Email
+            a price only when the person who booked pays for the ride. If the facility is invoiced, do not
+            email a price.
+        </p>
+        <p class="text-sm mb-2">
+            Riders whose trips are paid by Medicaid or a broker are never sent a price: they owe nothing. The
+            page refuses when the linked passenger has such a payer. For a request with no passenger linked
+            yet, the system cannot know, so check before you tick the second box.
         </p>
         <p class="text-sm mb-2">
             The price comes from the private-pay rate card in effect on the day of the ride: the booking fee,
@@ -45,9 +89,6 @@ precompiled stylesheet may be used here -- accounts.test_dashboard.DashboardTemp
             to change a price, add a new card with a later start date, so prices already sent stay as they were.
             Every price sent is listed in <a href="{% url 'admin:billing_quote_changelist' %}" class="text-primary-600 underline">Prices emailed</a>.
             {% endif %}
-        </p>
-        <p class="text-sm mb-2">
-            Riders whose trips are paid by Medicaid or a broker are not sent a price: they owe nothing.
         </p>
     </div>
 

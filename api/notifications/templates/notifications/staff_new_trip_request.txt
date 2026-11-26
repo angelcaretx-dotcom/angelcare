@@ -2,5 +2,11 @@ New transportation request received.
 
 {% for label, value in rows %}{{ label }}: {{ value }}
 {% endfor %}
-Rider details are only shown in the admin, not in email. Log in to review:
+Rider details are only shown in the admin, not in email.
+
+Check and send the price (an administrator checks the miles on the map,
+confirms who pays, and sends it):
+{{ quote_url }}
+
+Log in to review the request first:
 {{ admin_url }}

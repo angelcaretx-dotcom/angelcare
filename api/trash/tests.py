@@ -106,6 +106,45 @@ class PurgeTests(TrashTestCase):
         self.assertFalse(TrashEntry.objects.exists())
 
 
+class MixedDependentsTests(TrashTestCase):
+    """A record that two different kinds of record depend on used to crash the delete page."""
+
+    def test_a_vehicle_with_trips_and_daily_checks_goes_to_the_trash_and_comes_back(self):
+        from trips.tests import make_driver, make_vehicle
+        from vehicles.models import Vehicle, VehicleCheck
+
+        vehicle, driver = make_vehicle(), make_driver()
+        trip = Trip.objects.create(passenger=make_passenger(), service_type="wheelchair", pickup_address="1 Main St",
+                                   dropoff_address="2 Clinic Rd", scheduled_pickup_datetime=timezone.now(),
+                                   driver=driver, vehicle=vehicle)
+        TripEvent.objects.create(trip=trip, event_type="en_route")
+        VehicleCheck.objects.create(vehicle=vehicle, driver=driver, service_date=timezone.localdate(),
+                                    start_odometer=100, checked_at=timezone.now())
+
+        page = f"/admin/vehicles/vehicle/{vehicle.pk}/delete/"
+        self.assertEqual(self.client.get(page).status_code, 200)
+        self.client.post(page, {"post": "yes"})
+        self.assertFalse(Vehicle.objects.exists())
+        self.assertFalse(Trip.objects.exists())
+        self.assertFalse(VehicleCheck.objects.exists())
+
+        services.restore(TrashEntry.objects.get(), user=self.admin)
+        self.assertEqual(Trip.objects.get().vehicle, Vehicle.objects.get())
+        self.assertEqual(VehicleCheck.objects.get().vehicle, Vehicle.objects.get())
+
+    def test_a_refused_restore_goes_back_to_the_item_not_to_a_broken_address(self):
+        request = make_trip_request()
+        entry = services.send(request, user=self.admin)
+        TripRequest.objects.create(
+            id=request.pk, full_name="Someone Else", phone="817-555-0100", email="else@example.com",
+            pickup_address="3 Oak St", dropoff_address="4 Elm St", requested_datetime=timezone.now(),
+            service_type="ambulatory",
+        )
+        response = self.client.post(f"/admin/trash/trashentry/{entry.pk}/restore/")
+        self.assertRedirects(response, f"/admin/trash/trashentry/{entry.pk}/change/")
+        self.assertTrue(TrashEntry.objects.filter(pk=entry.pk).exists())
+
+
 class AccessTests(TrashTestCase):
     def test_dispatchers_never_see_the_trash(self):
         entry = services.send(make_passenger(), user=self.admin)
