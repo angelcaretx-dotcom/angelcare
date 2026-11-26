@@ -99,6 +99,58 @@ class PriceTests(RatesTestCase):
         self.assertEqual(lines[-1].label, "Wait time (40 min, first 15 free)")
         self.assertEqual(lines[-1].amount, Decimal("25.00"))
 
+    def test_a_return_leg_entered_on_its_own_pays_the_booking_and_loading_fees(self):
+        # "Fees once per round trip" is about a ride back linked to its ride there (ADR 0049).
+        RateCard.objects.filter(pk=self.card.pk).update(fees_on_return=False, loading_wheelchair=Decimal("20.00"))
+        miles = "Miles beyond 5.00 included"
+        outbound = self.trip(leg=TripLeg.OUTBOUND, billable_miles=Decimal("12.4"))
+        linked = self.trip(leg=TripLeg.RETURN, outbound_trip=outbound, pickup=at(11), billable_miles=Decimal("12.4"))
+        alone = self.trip(leg=TripLeg.RETURN, pickup=at(12), billable_miles=Decimal("12.4"))
+        self.assertEqual([l.label for l in pricing.price(outbound)[1]], ["Wheelchair trip", "Loading", miles])
+        self.assertEqual([l.label for l in pricing.price(linked)[1]], [miles])
+        self.assertEqual([(l.label, l.kind, l.leg) for l in pricing.price(alone)[1]],
+                         [("Wheelchair trip", "base", "back"), ("Loading", "loading", "back"), (miles, "miles", "back")])
+        # A card that charges the fees on each ride is unchanged: the linked ride back pays them too.
+        RateCard.objects.filter(pk=self.card.pk).update(fees_on_return=True)
+        self.assertEqual([l.label for l in pricing.price(Trip.objects.get(pk=linked.pk))[1]],
+                         ["Wheelchair trip", "Loading", miles])
+
+    def test_a_ride_back_that_was_never_quoted_still_pays_after_hours(self):
+        # ADR 0049 drops the fee only where an emailed price promised a ride back without it.
+        # A broker's or a contract payer's will-call and wait-and-return rides back keep it.
+        contract = Payer.objects.create(name="Example Rehab contract", payer_type="facility_contract")
+        RateCard.objects.create(
+            name="Example Rehab 2027", payer=contract, effective_from=date(2027, 1, 1),
+            base_wheelchair=Decimal("40.00"), after_hours_fee=Decimal("12.00"),
+            after_hours_start=time(18, 0), after_hours_end=time(6, 0),
+        )
+        for payer in (self.mtm, contract):
+            for choice in ("will_call", "driver_waits"):
+                outbound = self.trip(payer=payer, leg=TripLeg.OUTBOUND, pickup=at(17), billable_miles=Decimal("1"))
+                back = self.trip(payer=payer, leg=TripLeg.RETURN, outbound_trip=outbound, pickup=at(19),
+                                 billable_miles=Decimal("1"), **{choice: True})
+                self.assertIsNone(pricing.quoted_card(back))
+                self.assertEqual([l.label for l in pricing.price(back)[1]], ["Wheelchair trip", "After-hours"],
+                                 (payer.name, choice))
+
+    def test_a_standing_orders_will_call_ride_back_at_night_still_pays_after_hours(self):
+        from transportation.models import ReturnRide
+        from trips import standing
+        from trips.test_standing import TOMORROW, make_order
+
+        # Private pay, like the riders who are emailed a price, but this ride never had one.
+        RateCard.objects.create(
+            name="Private pay", effective_from=date(2020, 1, 1), base_wheelchair=Decimal("60.00"),
+            after_hours_fee=Decimal("10.00"), after_hours_start=time(18, 0), after_hours_end=time(6, 0),
+        )
+        order = make_order(return_ride=ReturnRide.WILL_CALL, weekdays=[TOMORROW.weekday()], pickup_time=time(17, 0))
+        back = next(t for t in standing.generate(order) if t.leg == TripLeg.RETURN)
+        back.status = TripStatus.COMPLETED
+        self.assertEqual((back.will_call, back.payer_id, pricing.local(back.scheduled_pickup_datetime).hour),
+                         (True, None, 19))
+        self.assertIsNone(pricing.quoted_card(back))
+        self.assertEqual([l.label for l in pricing.price(back)[1]], ["Wheelchair trip", "After-hours"])
+
     def test_service_without_a_rate_is_not_billed(self):
         with self.assertRaisesMessage(pricing.PricingError, "has no rate for medical supply"):
             pricing.price(self.trip(service_type="equipment_delivery"))

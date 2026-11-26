@@ -94,6 +94,7 @@ Owner review of the live form, 2026-11-04:
 - Prior-auth tracking: authorized trips used vs. remaining.
 - **Added 2026-11-26 (ADR 0047):** the price before the ride. Staff email a customer the total from the request page, worked out from the same rate card; the trip is then billed on the quoted miles.
 - **Added 2026-11-26 (ADR 0048):** each service has its own booking fee, loading fee, per-mile rate and wait rate on the rate card; wait time in blocks; booking and loading once per round trip. An Office guide in the admin and a "How It Works" page on the website.
+- **Added 2026-11-26 (ADR 0049):** the price page opens with the price already worked out, from miles estimated inside the system from the two ZIP codes (no map company); staff confirm the miles on a map and confirm that the customer pays before sending. The office email for a new request has a "Check and send the price" button. The price email lists each fee, the miles and the wait. A trip whose price was emailed is invoiced on the rate card that price used. No database change. **Decided, not built:** a Stripe payment link in the price email; a paid price is final except for extra waiting; full refund when cancelled at least 24 hours before pickup or when AngelCare cannot do the ride, none for a later cancellation or a no-show.
 
 ### Phase 30: Claims output + denials — ✅ 837P / 999 / 277CA / 835, denials queue, 95-day deadline built 2026-11-05 (ADR 0040); automated TMHP submission waits on EDI enrollment
 - **Decided 2026-11-05:** TexMedConnect directly (no clearinghouse): 837P per the TMHP EDI companion guide, submitted to TMHP; 277CA rejections, Remittance & Status report, denials/appeals; 95-day filing deadline tracked per claim.
@@ -143,4 +144,4 @@ Phases 27 and 28 can move earlier if a contract starts sooner than the driver ap
 | 4 | Each payer's rates (from the contracts) | Phase 29 |
 | 5 | HHSC claim route: TexMedConnect web entry, or a clearinghouse (837P file)? | Phase 30 |
 | 6 | Driver pay model (per trip / per mile / hourly) | Phase 32 |
-| 7 | Maps provider for mileage/route estimates (needs a BAA if it receives rider addresses) | Phase 29 |
+| 7 | Maps provider for mileage/route estimates (needs a BAA if it receives rider addresses). **Decided 2026-11-26 (ADR 0049):** none for now. Miles for a price are estimated inside the system from the two ZIP codes and confirmed by staff on a map in their own browser; no address is sent to a map company. The free service considered forbids personal data and signs no BAA. Still open: a provider with a BAA, if exact automatic miles or deadhead miles (Phase 32) are wanted later | Phase 29 |

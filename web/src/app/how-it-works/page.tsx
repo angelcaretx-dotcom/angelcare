@@ -10,10 +10,15 @@ export const metadata: Metadata = {
 
 /**
  * Every statement on this page describes how the service actually runs
- * (docs/decisions/0047 and 0048, plus the booking and driver-app
+ * (docs/decisions/0047, 0048 and 0049, plus the booking and driver-app
  * decisions before them). No prices, and nothing about how drivers and
  * vehicles are vetted: rates and internal rules are not published on the
  * website (owner, 2026-11-05 and 2026-11-26).
+ *
+ * The emailed price lists each part (0049), so this page says so. What a
+ * ride back without waiting means is stated as plain fact, as the price
+ * email does: it does not say which choice costs less or how long a wait
+ * would be.
  */
 const steps = [
   {
@@ -26,8 +31,8 @@ const steps = [
   {
     title: "We email your price",
     body: [
-      "Our office reviews your request and works out the total price for your trip. We send it to you by email with your reference number.",
-      "Every trip is priced on its own details, so prices are not listed on this website. For your privacy the email shows the total and your reference number only, not your trip details.",
+      "Our office reviews your request and works out the price for your trip. We send it to you by email with your reference number.",
+      "Every trip is priced on its own details, so prices are not listed on this website. The email shows the total price with each part of it listed. For your privacy it does not repeat your trip details: your name, your addresses and the date and time of your ride are left out.",
     ],
   },
   {
@@ -127,6 +132,11 @@ export default function HowItWorksPage() {
             </li>
           ))}
         </ul>
+        <p className="mt-6 max-w-2xl text-foreground/80">
+          Without waiting, your driver leaves after dropping you off, and the
+          ride back is a second, separate trip. If you call us when you are
+          ready, there can be a wait while a driver finishes another ride.
+        </p>
         <p className="mt-6 max-w-2xl text-sm text-foreground/70">
           To add it, choose &ldquo;Yes, the driver waits for me&rdquo; on the
           request form. Your emailed price will include it.

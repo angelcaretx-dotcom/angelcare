@@ -39,12 +39,15 @@ class NotificationService:
         # No rider details in the staff alert (ADR 0027): the email
         # passes through mail providers and inboxes we have no BAA
         # with. Staff open the request in the admin, which logs the view.
+        # The price button (ADR 0049) is a link to the price page, never an
+        # amount: that page asks for a login and is for Administrators.
         subject = f"New trip request {self._reference(trip_request)} — log in to view"
         rows = self._staff_rows(trip_request)
         context = {
             "trip_request": trip_request,
             "rows": rows,
             "admin_url": f"{settings.SITE_URL}/admin/transportation/triprequest/{trip_request.id}/change/",
+            "quote_url": f"{settings.SITE_URL}/admin/billing/quote/send/{trip_request.id}/",
             "website_url": settings.WEBSITE_URL,
         }
         self._send(
@@ -73,17 +76,26 @@ class NotificationService:
             related=trip_request,
         )
 
-    def send_quote(self, quote, *, covers: str, wait_note: str = "") -> bool:
+    def send_quote(self, quote, *, covers: str, rows=(), how_it_works: str = "", wait_note: str = "",
+                   no_wait_note: str = "") -> bool:
         """
-        The price for a requested ride (ADR 0047). The total and the
-        reference only: like the confirmation, it repeats no name,
-        address or pickup time (ADR 0027). True if the email went out.
+        The price for a requested ride (ADR 0047), with each part listed
+        (ADR 0049): `rows` is the breakdown, already worded for the
+        customer by billing. Like the confirmation, it repeats no name,
+        address, date or pickup time (ADR 0027), and it never names the
+        service level. The subject and the preview line carry no amount
+        and no miles. True if the email went out.
         """
         trip_request = quote.trip_request
         reference = self._reference(trip_request)
         context = {
-            "rows": [("Reference", reference), ("Total price", f"${quote.amount:,.2f}"), ("Covers", covers)],
+            "reference": reference,
+            "rows": list(rows),
+            "total": f"${quote.amount:,.2f}",
+            "covers": covers,
+            "how_it_works": how_it_works,
             "wait_note": wait_note,
+            "no_wait_note": no_wait_note,
             "contact_url": f"{settings.WEBSITE_URL}/contact",
             "website_url": settings.WEBSITE_URL,
         }

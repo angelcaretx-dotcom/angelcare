@@ -14,6 +14,32 @@ $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..\api")
 $repo = "angelcaretx-dotcom/angelcare"
 
+# Say which copy of the code this is before asking for anything. The
+# migrations that run are the ones in THIS folder: an older copy, or one on
+# another branch, reports "already up to date" while the new version's
+# migrations are still missing (2026-11-26: the site went down because code
+# was live before its migration). Uses only the local git folder, no
+# network, and never stops the script: without git it says "unknown".
+$codeFolder = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$codeBranch = "unknown"
+$codeCommit = "unknown"
+$ErrorActionPreference = "Continue"
+try {
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        $found = git -C $codeFolder rev-parse --abbrev-ref HEAD 2>$null
+        if ($LASTEXITCODE -eq 0 -and $found) { $codeBranch = "$found".Trim() }
+        $found = git -C $codeFolder rev-parse --short HEAD 2>$null
+        if ($LASTEXITCODE -eq 0 -and $found) { $codeCommit = "$found".Trim() }
+    }
+}
+catch { }
+finally { $ErrorActionPreference = "Stop" }
+Write-Host "`nThis will migrate PRODUCTION with the migrations in this copy of the code:" -ForegroundColor Cyan
+Write-Host "  Folder: $codeFolder"
+Write-Host "  Branch: $codeBranch"
+Write-Host "  Commit: $codeCommit"
+Write-Host "If this is not the version you are about to put live, press Ctrl+C now and run the script from the right folder.`n" -ForegroundColor Yellow
+
 $secure = Read-Host -AsSecureString "Supabase database password (paste with right-click)"
 $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 try { $pw = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
