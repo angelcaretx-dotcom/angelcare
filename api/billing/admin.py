@@ -201,6 +201,13 @@ class RateCardAdmin(AuditedSaveMixin, AngelCareModelAdmin):
         ("Notes", {"fields": ("notes",)}),
     )
 
+    def get_changeform_initial_data(self, request):
+        # A new card starts with the owner's private-pay rules (ADR 0048): fees once
+        # for a round trip, 15 free minutes, then 15-minute wait blocks. A payer's
+        # contract card can say otherwise.
+        return {"fees_on_return": False, "wait_free_minutes": 15, "wait_block_minutes": 15,
+                **super().get_changeform_initial_data(request)}
+
     @admin.display(description="Payer")
     def payer_label(self, card):
         return card.payer or "Private pay"

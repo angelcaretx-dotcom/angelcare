@@ -30,6 +30,8 @@ CENT = Decimal("0.01")
 BILLED_STATUSES = (TripStatus.COMPLETED, TripStatus.NO_SHOW)
 # Payers whose rates are set by the program or contract, never quoted to a rider (ADR 0047).
 PROGRAM_PAYER_TYPES = (PayerType.MEDICAID_MCO, PayerType.BROKER)
+# No real ride costs this much: a larger total means mistyped miles or minutes.
+MAX_QUOTE = Decimal("20000.00")
 
 
 class PricingError(Exception):
@@ -220,6 +222,8 @@ def quote(trip_request, *, miles=None, wait_minutes=0) -> tuple[RateCard, list[L
         notes.append("The invoice uses the wait the driver app records, so it can differ from this price.")
     if not total(lines):
         raise PricingError(f"Nothing to charge on “{card}”.")
+    if total(lines) > MAX_QUOTE:
+        raise PricingError(f"${total(lines):,.2f} is too much to be right: check the miles and the wait.")
     return card, lines, notes
 
 

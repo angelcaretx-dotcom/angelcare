@@ -225,6 +225,37 @@ class SendTests(QuoteTestCase):
         request.refresh_from_db()
         self.assertEqual(request.status, TripRequestStatus.SCHEDULED)
 
+    def test_a_cancelled_request_or_one_with_no_email_address_is_not_priced(self):
+        for extra, why in (({"status": TripRequestStatus.CANCELLED}, "cancelled"),
+                           ({"status": TripRequestStatus.DECLINED}, "declined"),
+                           ({"email": ""}, "no email address")):
+            with self.assertRaisesMessage(pricing.PricingError, why):
+                quotes.send(self.request(**extra), miles=Decimal("5"), wait_minutes=0, user=None)
+        self.assertEqual((Quote.objects.count(), len(mail.outbox)), (0, 0))
+
+    def test_a_double_click_sends_one_email_and_a_changed_price_sends_another(self):
+        request = self.request()
+        first = quotes.send(request, miles=Decimal("5"), wait_minutes=0, user=None)
+        again = quotes.send(request, miles=Decimal("5"), wait_minutes=0, user=None)
+        self.assertEqual(again.pk, first.pk)
+        self.assertEqual((Quote.objects.count(), len(mail.outbox)), (1, 1))
+        quotes.send(request, miles=Decimal("12.4"), wait_minutes=0, user=None)
+        self.assertEqual((Quote.objects.count(), len(mail.outbox)), (2, 2))
+
+    def test_a_total_too_large_to_be_right_is_refused(self):
+        with self.assertRaisesMessage(pricing.PricingError, "too much to be right"):
+            pricing.quote(self.request(), miles=Decimal("99999"))
+        self.assertEqual(self.priced(self.request(service_type="ambulatory"), miles=Decimal("5"))[1], Decimal("30.00"))
+
+    def test_a_delivery_is_not_named_in_the_email(self):
+        self.card.base_equipment_delivery = Decimal("20.00")
+        self.card.save()
+        quotes.send(self.request(service_type="equipment_delivery"), miles=Decimal("5"), wait_minutes=0, user=None)
+        message = mail.outbox[0]
+        self.assertIn("One-way trip", message.body)
+        for body in (message.body, message.alternatives[0][0]):
+            self.assertNotIn("elivery", body)
+
     def test_nothing_is_saved_or_sent_when_there_is_no_price(self):
         with self.assertRaises(pricing.PricingError):
             quotes.send(self.request(), miles=None, wait_minutes=0, user=None)
@@ -355,6 +386,12 @@ class AdminTests(QuoteTestCase):
         page = self.client.get(guide)
         self.assertContains(page, "/admin/billing/ratecard/")
         self.assertContains(page, "/admin/billing/invoice/create-batch/")
+
+    def test_a_new_rate_card_starts_with_fees_once_and_fifteen_minute_wait_blocks(self):
+        self.login("Administrator")
+        form = self.client.get("/admin/billing/ratecard/add/").context["adminform"].form
+        self.assertEqual((form["fees_on_return"].value(), form["wait_block_minutes"].value(),
+                          form["wait_free_minutes"].value()), (False, 15, 15))
 
     def test_administrator_sets_each_services_rates_on_the_card(self):
         self.login("Administrator")

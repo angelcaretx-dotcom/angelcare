@@ -6,6 +6,10 @@ saves what was sent as a Quote, emails the total, and moves the request
 on to Contacted. Nobody phones the customer to tell them a price.
 """
 
+from datetime import timedelta
+
+from django.utils import timezone
+
 from audit.services import record_change
 from notifications.services import NotificationService
 from transportation.models import ReturnRide, ServiceType, TripRequestStatus
@@ -15,12 +19,16 @@ from .models import Quote
 
 # A request that hasn't been answered yet becomes Contacted once its price is emailed.
 UNANSWERED = (TripRequestStatus.NEW, TripRequestStatus.REVIEWED)
+# A ride that isn't happening isn't priced.
+CLOSED = (TripRequestStatus.CANCELLED, TripRequestStatus.DECLINED)
+# The same price sent again this soon is a double click, not a second email.
+DOUBLE_CLICK = timedelta(minutes=2)
 
 
 def covers(trip_request) -> str:
     """What the price is for, in the customer's words. No addresses, times or health details (ADR 0027)."""
     if trip_request.service_type == ServiceType.EQUIPMENT_DELIVERY:
-        return "Delivery"
+        return "One-way trip"  # not "Delivery": the email never names the service
     if trip_request.return_ride == ReturnRide.NONE:
         return "One-way ride"
     if trip_request.return_ride == ReturnRide.WAIT:
@@ -47,8 +55,18 @@ def send(trip_request, *, miles, wait_minutes, user, notifier: NotificationServi
     not delivered, and leaves the request's status alone.
     """
     wait_minutes = wait_minutes or 0
+    if trip_request.status in CLOSED:
+        raise pricing.PricingError(f"This request is {trip_request.get_status_display().lower()}: there is no price to email.")
+    if not (trip_request.email or "").strip():
+        raise pricing.PricingError("This request has no email address: add one before emailing the price.")
     card, lines, _ = pricing.quote(trip_request, miles=miles, wait_minutes=wait_minutes)
     amount = pricing.total(lines)
+    just_sent = trip_request.quotes.filter(
+        delivered=True, amount=amount, miles=miles, wait_minutes=wait_minutes, sent_to=trip_request.email,
+        created_at__gte=timezone.now() - DOUBLE_CLICK,
+    ).first()
+    if just_sent is not None:
+        return just_sent
     quote = Quote.objects.create(
         trip_request=trip_request, rate_card=card, miles=miles, wait_minutes=wait_minutes,
         lines=[line.as_dict() for line in lines], amount=amount, sent_to=trip_request.email, sent_by=user,
