@@ -129,7 +129,8 @@ class TrashAdmin(AngelCareModelAdmin):
             services.restore(entry, user=request.user)
         except services.TrashError as exc:
             self.message_user(request, str(exc), messages.ERROR)
-            return redirect("admin:trash_trashentry_change", entry.pk)
+            # The id from the address: a refused restore can leave `entry` without one.
+            return redirect("admin:trash_trashentry_change", pk)
         self.message_user(request, f"Restored: {entry.label}.", messages.SUCCESS)
         return redirect("admin:trash_trashentry_changelist")
 

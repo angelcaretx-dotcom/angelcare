@@ -210,6 +210,20 @@ class AdminTests(RatesTestCase):
         self.assertEqual(csv["Content-Type"], "text/csv")
         self.assertIn(b"Total,,,12.00", csv.content)
 
+    def test_a_blank_start_date_is_a_form_error_not_a_crash(self):
+        self.login("Administrator")
+        response = self.client.post("/admin/billing/ratecard/add/", {
+            "name": "No start date", "payer": "", "effective_from": "", "effective_to": "2027-12-31",
+            "per_mile": "0", "included_miles": "0", "wait_free_minutes": "15", "wait_block_minutes": "1",
+            "wait_per_minute": "0", "no_show_fee": "0", "after_hours_fee": "0", "notes": "",
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "This field is required")
+        self.assertFalse(RateCard.objects.filter(name="No start date").exists())
+        with self.assertRaises(Exception) as caught:
+            DriverPayPlan(driver=make_driver(), effective_to=date(2027, 12, 31)).full_clean()
+        self.assertNotIsInstance(caught.exception, TypeError)
+
     def test_one_card_per_payer_per_start_date(self):
         from django.core.exceptions import ValidationError
 
