@@ -1,0 +1,143 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Office guide (ADR 0048): how a request becomes a paid ride. Only CSS classes present in Unfold's
+precompiled stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <p class="text-sm text-subtle">
+        Every ride follows the same seven steps: request, price, confirmation, schedule, assign, drive, bill.
+        Each step below says who does it and where to click.
+    </p>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-guide-step="request">
+        <h2 class="font-semibold mb-2 text-important">1. A request arrives</h2>
+        <p class="text-sm mb-2">
+            A customer books on the website, or a facility books in its portal. The office gets an email
+            "New trip request &hellip; log in to view" and the request shows on the dashboard under
+            "New trip requests to review". The email never carries rider details: open it in
+            <a href="{% url 'admin:transportation_triprequest_changelist' %}" class="text-primary-600 underline">Trip requests</a>.
+        </p>
+        <p class="text-sm mb-2">
+            Read it, then link it to a passenger (choose an existing one or add a new one). A trip can't be
+            scheduled until the request has a passenger. Set the status to Reviewed.
+        </p>
+    </div>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-guide-step="price">
+        <h2 class="font-semibold mb-2 text-important">2. Email the price</h2>
+        <p class="text-sm mb-2">
+            Done by an Administrator. Open the request and press <strong>Email the price</strong>. Type the
+            one-way miles from a map, and for a wait-and-return ride the wait the customer expects. Press
+            <strong>Work out the price</strong>, check each line, then press the Email button. The customer
+            receives the total and their reference number, and the request becomes Contacted.
+        </p>
+        <p class="text-sm mb-2">
+            The price comes from the private-pay rate card in effect on the day of the ride: the booking fee,
+            the loading fee, the miles and any wait time for that service. Nobody types a price by hand.
+            Rates are never shown on the website.
+            {% if can_quote %}
+            Rates are kept in <a href="{% url 'admin:billing_ratecard_changelist' %}" class="text-primary-600 underline">Rate cards</a>;
+            to change a price, add a new card with a later start date, so prices already sent stay as they were.
+            Every price sent is listed in <a href="{% url 'admin:billing_quote_changelist' %}" class="text-primary-600 underline">Prices emailed</a>.
+            {% endif %}
+        </p>
+        <p class="text-sm mb-2">
+            Riders whose trips are paid by Medicaid or a broker are not sent a price: they owe nothing.
+        </p>
+    </div>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-guide-step="confirm">
+        <h2 class="font-semibold mb-2 text-important">3. The customer confirms</h2>
+        <p class="text-sm mb-2">
+            The email tells the customer the ride is not booked yet. They confirm by calling or by sending a
+            website message with their reference number. Nothing is scheduled until they do.
+        </p>
+    </div>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-guide-step="schedule">
+        <h2 class="font-semibold mb-2 text-important">4. Schedule the trip</h2>
+        <p class="text-sm mb-2">
+            Go to <a href="{% url 'admin:trips_trip_add' %}" class="text-primary-600 underline">Add trip</a> and choose the
+            request under "Trip request". The passenger, service, addresses and pickup time fill in. Save.
+        </p>
+        <p class="text-sm mb-2">
+            The request becomes Scheduled and the customer sees "Confirmed" in My trips. For a round trip the
+            ride back is created at the same time: at the time they asked for, or at an estimated time if
+            they will call or the driver waits. The miles from the emailed price are copied to the trip, so
+            the invoice charges what the customer was told.
+        </p>
+    </div>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-guide-step="assign">
+        <h2 class="font-semibold mb-2 text-important">5. Assign a driver and a vehicle</h2>
+        <p class="text-sm mb-2">
+            Open the <a href="{% url 'admin:trips_trip_board' %}" class="text-primary-600 underline">Day board</a> for the day of
+            the ride. Trips without a driver are at the top under "Needs a driver". Choose a driver and a
+            vehicle and press Assign. You can also choose them on the trip's own page, under Assignment.
+        </p>
+        <p class="text-sm mb-2">
+            The system refuses an assignment that isn't safe to make, and says why: a driver who isn't Active,
+            whose license has expired or who is missing a required credential; a vehicle that is out of
+            service, or whose registration, inspection or insurance has expired.
+        </p>
+        <p class="text-sm mb-2">
+            On a wait-and-return ride the driver who takes the rider there also brings them back.
+        </p>
+    </div>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-guide-step="drive">
+        <h2 class="font-semibold mb-2 text-important">6. The driver completes the ride</h2>
+        <p class="text-sm mb-2">
+            Drivers use the driver app on their own phone, at
+            <a href="{% url 'driver_app:home' %}" class="text-primary-600 underline">{% url 'driver_app:home' %}</a>
+            on this site. They sign in with their email or phone number and a password. An Administrator
+            creates the login on the driver's page ("Create app login") and hands over the printed sheet.
+        </p>
+        <p class="text-sm mb-2">
+            <strong>Start of day:</strong> the driver checks the vehicle against the checklist and types the
+            odometer. No trip can start before that. A failed item takes the vehicle out of service and
+            emails the office.
+        </p>
+        <p class="text-sm mb-2">
+            <strong>Each trip:</strong> the app shows today's trips in order with the rider, the addresses,
+            directions and a call button. The driver taps one step at a time: En route, Arrived at pickup,
+            Rider picked up (the rider signs on the phone, or the driver gives the reason they couldn't),
+            Rider dropped off. If the rider isn't there, the driver records a No-show or a cancellation at
+            the door, with a reason.
+        </p>
+        <p class="text-sm mb-2">
+            Every tap saves the time and the phone's location. The trip turns In progress on the first step
+            and Completed on drop-off by itself: nobody in the office changes the status. The Day board
+            shows each trip's latest step when you refresh it.
+        </p>
+        <p class="text-sm mb-2">
+            <strong>End of day:</strong> the driver types the odometer again.
+        </p>
+    </div>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-guide-step="bill">
+        <h2 class="font-semibold mb-2 text-important">7. Proof and payment</h2>
+        <p class="text-sm mb-2">
+            The trip's page keeps the timeline, the signature and a <strong>Proof sheet (PDF)</strong> you can
+            download at any time.
+        </p>
+        <p class="text-sm mb-2">
+            {% if can_bill %}
+            In <a href="{% url 'admin:billing_invoice_batch' %}" class="text-primary-600 underline">Create invoices</a>, choose
+            Private pay and the dates. Each completed ride gets a Draft invoice priced from the same rate card
+            as the emailed price. Check it, mark it Sent, and mark it Paid when the money arrives.
+            {% else %}
+            An Administrator creates the invoices: each completed ride is priced from the same rate card as
+            the emailed price.
+            {% endif %}
+            A wait-and-return ride is invoiced on the wait the driver app recorded, so it can differ from the
+            wait the customer expected.
+        </p>
+    </div>
+</div>
+{% endblock %}

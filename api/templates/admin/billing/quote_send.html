@@ -1,0 +1,104 @@
+{% extends 'admin/base.html' %}
+{% comment %}
+Email the price for one trip request (ADR 0047). Only CSS classes present in Unfold's precompiled
+stylesheet may be used here -- accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+{% load i18n l10n %}
+{% block title %}{{ title }} | {{ site_title|default:_('Django site admin') }}{% endblock %}
+{% block branding %}{% include "unfold/helpers/site_branding.html" %}{% endblock %}
+{% block content %}
+<div class="flex flex-col gap-6">
+    <h1 class="font-semibold text-2xl text-important">{{ title }}</h1>
+    <p class="text-sm text-subtle">
+        Works the price out from the rate card, shows it to you to check, then emails the customer the total.
+        Nobody needs to phone them. The email carries the total and their reference number only.
+        <a href="{{ request_url }}" class="text-primary-600 underline">Back to the request</a>
+    </p>
+
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-quote-request>
+        <h2 class="font-semibold mb-2 text-important">The request</h2>
+        <table class="text-sm w-full"><tbody>
+            <tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">For</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ trip_request.full_name }}</td>
+            </tr>
+            <tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">Service</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ trip_request.get_service_type_display }}</td>
+            </tr>
+            <tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">From</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ trip_request.pickup_address }}</td>
+            </tr>
+            <tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">To</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ trip_request.dropoff_address }}</td>
+            </tr>
+            <tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">Pickup</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ trip_request.requested_datetime|date:"D, M j, Y, g:i A" }}</td>
+            </tr>
+            <tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">Ride back</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ trip_request.get_return_ride_display }}{% if trip_request.return_datetime %} ({{ trip_request.return_datetime|date:"D, M j, Y, g:i A" }}){% endif %}</td>
+            </tr>
+            <tr>
+                <td class="align-top px-3 py-2">Email the price to</td>
+                <td class="align-top px-3 py-2">{{ trip_request.email }}</td>
+            </tr>
+        </tbody></table>
+    </div>
+
+    <form method="post" class="bg-white border border-base-200 flex flex-wrap gap-4 items-center p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-quote-form>
+        {% csrf_token %}
+        <label class="flex flex-col gap-2 text-sm">One-way miles
+            <input type="number" name="miles" step="0.01" min="0" value="{{ form.miles.value|default_if_none:''|unlocalize }}" class="{{ input_class }}">
+        </label>
+        {% if waits %}
+        <label class="flex flex-col gap-2 text-sm">Expected wait (minutes)
+            <input type="number" name="wait_minutes" step="1" min="0" value="{{ form.wait_minutes.value|default_if_none:''|unlocalize }}" class="{{ input_class }}">
+        </label>
+        {% endif %}
+        <button type="submit" name="preview" value="1" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Work out the price</button>
+        {% for error in form.miles.errors %}<span class="font-medium text-red-600">Miles: {{ error }}</span>{% endfor %}
+        {% for error in form.wait_minutes.errors %}<span class="font-medium text-red-600">Wait: {{ error }}</span>{% endfor %}
+        {% if error %}<span class="font-medium text-red-600" data-quote-error>{{ error }}</span>{% endif %}
+    </form>
+
+    {% if priced %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-quote-price>
+        <h2 class="font-semibold mb-2 text-important">Total: ${{ priced.amount|unlocalize }}</h2>
+        <p class="text-sm text-subtle">From the rate card “{{ priced.card }}”. {% if priced.card.fees_on_return %}A round trip is priced as two rides.{% else %}On a round trip the booking and loading fees are charged once, and the miles both ways.{% endif %}</p>
+        <table class="text-sm w-full"><tbody>
+            {% for line in priced.lines %}<tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ line.label }}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ line.quantity|unlocalize }} × ${{ line.unit|unlocalize }}</td>
+                <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">${{ line.amount|unlocalize }}</td>
+            </tr>{% endfor %}
+        </tbody></table>
+        {% for note in priced.notes %}<p class="text-sm text-subtle">{{ note }}</p>{% endfor %}
+        {% if priced.changed %}<p class="font-medium text-red-600">The price is not the one you checked (the rate card changed). Check it again, then send.</p>{% endif %}
+        <form method="post" class="flex flex-wrap gap-4 items-center">
+            {% csrf_token %}
+            <input type="hidden" name="miles" value="{{ priced.miles|default_if_none:''|unlocalize }}">
+            <input type="hidden" name="wait_minutes" value="{{ priced.wait_minutes|unlocalize }}">
+            <input type="hidden" name="checked_amount" value="{{ priced.amount|unlocalize }}">
+            <button type="submit" name="send" value="1" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Email ${{ priced.amount|unlocalize }} to {{ trip_request.email }}</button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if sent %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-quote-sent>
+        <h2 class="font-semibold mb-2 text-important">Prices already emailed for this request</h2>
+        <table class="text-sm w-full"><tbody>
+            {% for quote in sent %}<tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ quote.created_at|date:"M j, Y, g:i A" }}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{% if quote.delivered %}Emailed to {{ quote.sent_to }}{% else %}<span class="font-medium text-red-600">Not sent: the email failed</span>{% endif %}{% if quote.sent_by %} by {{ quote.sent_by.get_full_name|default:quote.sent_by.username }}{% endif %}</td>
+                <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">${{ quote.amount|unlocalize }}</td>
+            </tr>{% endfor %}
+        </tbody></table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

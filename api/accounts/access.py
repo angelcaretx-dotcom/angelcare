@@ -66,8 +66,8 @@ AREAS = [
     Area("payers", "Payers", (("payers", "payer"),)),
     Area(
         "billing",
-        "Billing (invoices, rate cards, driver pay)",
-        (("billing", "invoice"), ("billing", "ratecard"), ("billing", "driverpayplan")),
+        "Billing (invoices, rate cards, driver pay, emailed prices)",
+        (("billing", "invoice"), ("billing", "ratecard"), ("billing", "driverpayplan"), ("billing", "quote")),
     ),
     Area(
         "claims",

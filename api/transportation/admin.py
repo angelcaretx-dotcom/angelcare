@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils import timezone
 
 from accounts.admin_base import AngelCareModelAdmin
 from audit.admin_mixins import AccessLoggedAdminMixin
@@ -20,7 +21,7 @@ class TripRequestAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
     )
     list_filter = ("status", "service_type", "booked_for", "return_ride", "source")
     search_fields = ("full_name", "phone", "email", "pickup_address", "dropoff_address")
-    readonly_fields = ("id", "created_at", "updated_at", "source", "facility", "facility_user")
+    readonly_fields = ("id", "created_at", "updated_at", "source", "facility", "facility_user", "price_emailed")
     autocomplete_fields = ("passenger",)
     ordering = ("-created_at",)
     fieldsets = (
@@ -47,6 +48,21 @@ class TripRequestAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
         ("Service", {"fields": ("service_type", "mobility_notes", "additional_notes")}),
         ("Record", {"fields": ("id", "created_at", "updated_at"), "classes": ("collapse",)}),
     )
+
+    def get_fieldsets(self, request, obj=None):
+        fieldsets = super().get_fieldsets(request, obj)
+        # The price is a billing figure (ADR 0047): shown only to staff who may see quotes.
+        if obj is not None and request.user.has_perm("billing.view_quote"):
+            fieldsets = (*fieldsets[:1], ("Price", {"fields": ("price_emailed",)}), *fieldsets[1:])
+        return fieldsets
+
+    @admin.display(description="Price emailed")
+    def price_emailed(self, trip_request):
+        quote = trip_request.quotes.filter(delivered=True).first()
+        if quote is None:
+            return "Not yet. Use “Email the price” at the top of this page."
+        when = timezone.localtime(quote.created_at)
+        return f"${quote.amount} to {quote.sent_to} on {when:%b %d, %Y at %I:%M %p}"
 
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))

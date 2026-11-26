@@ -1,0 +1,20 @@
+Hello,
+
+Thank you for your transportation request to AngelCare Transit. Here is
+the total price for the trip you asked for.
+
+{% for label, value in rows %}{{ label }}: {{ value }}
+{% endfor %}{% if wait_note %}
+{{ wait_note }}
+{% endif %}
+This price is for the trip as you requested it. If the addresses, the
+date or the time change, the price may change too.
+
+Your ride is not booked yet. To book it at this price, call 817-766-9228
+or send us a message at {{ contact_url }}, and give us your reference
+number.
+
+For your privacy, this email doesn't repeat your trip details.
+
+— The AngelCare Transit Team
+angelcaretransit.com

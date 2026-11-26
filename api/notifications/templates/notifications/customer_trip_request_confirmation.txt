@@ -3,8 +3,7 @@ Hello,
 Thank you for submitting a transportation request to AngelCare Transit.
 
 This is a request only — not a confirmed booking. Our team will review
-it and call you at the number you gave us to confirm the details and
-availability.
+it and email you to confirm the details, availability and price.
 
 {% for label, value in rows %}{{ label }}: {{ value }}
 {% endfor %}

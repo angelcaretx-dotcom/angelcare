@@ -19,13 +19,17 @@ from django.db import transaction
 from django.utils import timezone
 
 from audit.services import record_change
-from trips.models import Trip, TripEventType, TripStatus
+from payers.models import PayerType
+from transportation.models import ReturnRide
+from trips.models import Trip, TripEventType, TripLeg, TripStatus
 from vehicles.models import VehicleCheck
 
 from .models import DriverPayPlan, Invoice, InvoiceStatus, RateCard
 
 CENT = Decimal("0.01")
 BILLED_STATUSES = (TripStatus.COMPLETED, TripStatus.NO_SHOW)
+# Payers whose rates are set by the program or contract, never quoted to a rider (ADR 0047).
+PROGRAM_PAYER_TYPES = (PayerType.MEDICAID_MCO, PayerType.BROKER)
 
 
 class PricingError(Exception):
@@ -58,14 +62,18 @@ class Line:
         return {"label": self.label, "quantity": str(self.quantity), "unit": str(self.unit), "amount": str(self.amount)}
 
 
-def card_for(trip: Trip) -> RateCard:
-    day = local(trip.scheduled_pickup_datetime).date()
-    cards = RateCard.objects.filter(payer_id=trip.payer_id, effective_from__lte=day).order_by("-effective_from")
-    for card in cards:
+def card_on(payer, day) -> RateCard:
+    """The payer's rate card (None = private pay) in effect on a Texas date."""
+    cards = RateCard.objects.filter(payer_id=payer.pk if payer else None, effective_from__lte=day)
+    for card in cards.order_by("-effective_from"):
         if card.effective_to is None or card.effective_to >= day:
             return card
-    who = trip.payer.name if trip.payer_id else "private pay"
+    who = payer.name if payer else "private pay"
     raise PricingError(f"No rate card for {who} on {day:%b %d, %Y}.")
+
+
+def card_for(trip: Trip) -> RateCard:
+    return card_on(trip.payer if trip.payer_id else None, local(trip.scheduled_pickup_datetime).date())
 
 
 def is_after_hours(card: RateCard, when) -> bool:
@@ -102,32 +110,124 @@ def price(trip: Trip) -> tuple[RateCard, list[Line]]:
     if trip.status == TripStatus.NO_SHOW:
         return card, [Line("No-show fee", Decimal(1), card.no_show_fee)]
 
-    base = card.base_for(trip.service_type)
-    if base is None:
+    service = trip.service_type
+    if card.base_for(service) is None:
         raise PricingError(f"“{card}” has no rate for {trip.get_service_type_display().lower()} trips.")
-    lines = [Line(f"{trip.get_service_type_display()} trip", Decimal(1), base)]
-    if card.per_mile:
+    lines = []
+    # A card can charge the booking and loading fees once for a round trip (ADR 0048):
+    # the ride back then pays its miles, after-hours and wait only.
+    if card.fees_on_return or trip.leg != TripLeg.RETURN:
+        lines += fee_lines(card, service, trip.get_service_type_display())
+    per_mile = card.per_mile_for(service)
+    if per_mile:
         if trip.billable_miles is None:
             raise PricingError("Add the trip's billable miles (this card charges per mile).")
         extra = max(Decimal(0), trip.billable_miles - card.included_miles)
         if extra:
-            label = "Miles" if not card.included_miles else f"Miles beyond {card.included_miles} included"
-            lines.append(Line(label, extra, card.per_mile))
+            lines.append(Line(miles_label(card), extra, per_mile))
     if card.after_hours_fee and is_after_hours(card, trip.scheduled_pickup_datetime):
         lines.append(Line("After-hours", Decimal(1), card.after_hours_fee))
-    if card.wait_per_minute and trip.driver_waits:
+    wait_rate = card.wait_rate_for(service)
+    if wait_rate and trip.driver_waits:
         minutes = wait_minutes(trip)
         if minutes is None:
             raise PricingError("The wait can't be measured: the drop-off or pickup step is missing in the driver app.")
-        chargeable = max(0, minutes - card.wait_free_minutes)
-        if chargeable:
-            lines.append(Line(f"Wait time ({minutes} min, first {card.wait_free_minutes} free)",
-                              Decimal(chargeable), card.wait_per_minute))
+        blocks = card.wait_blocks(minutes)
+        if blocks:
+            lines.append(Line(card.wait_label(minutes), Decimal(blocks), wait_rate))
     return card, lines
+
+
+def fee_lines(card: RateCard, service: str, service_name: str) -> list[Line]:
+    """The booking fee (base rate) and, where the card has one, the loading fee for one ride."""
+    lines = [Line(f"{service_name} trip", Decimal(1), card.base_for(service))]
+    loading = card.loading_for(service)
+    if loading:
+        lines.append(Line("Loading", Decimal(1), loading))
+    return lines
+
+
+def miles_label(card: RateCard) -> str:
+    return "Miles" if not card.included_miles else f"Miles beyond {card.included_miles} included"
 
 
 def total(lines: list[Line]) -> Decimal:
     return _money(sum((line.amount for line in lines), Decimal(0)))
+
+
+# --- Quotes: the price before the ride (ADR 0047) ---------------------------
+
+def quote_payer(trip_request):
+    """Who a trip made from this request is billed to: the linked passenger's payer, else private pay (None)."""
+    passenger = trip_request.passenger
+    return passenger.payer if passenger is not None and passenger.payer_id else None
+
+
+def quote(trip_request, *, miles=None, wait_minutes=0) -> tuple[RateCard, list[Line], list[str]]:
+    """
+    The rate card, charge lines and notes for staff for a ride that hasn't
+    happened yet. Priced the way its trips will be invoiced: each leg is a
+    trip (base + miles + after-hours), and a wait-and-return ride adds the
+    wait. `miles` is one way; the ride back is the same route reversed.
+    """
+    payer = quote_payer(trip_request)
+    if payer is not None and payer.payer_type in PROGRAM_PAYER_TYPES:
+        # Medicaid and broker rides are paid at the program's rates: the rider owes nothing.
+        raise PricingError(f"This rider's trips are paid by {payer.name}: there is no price to email.")
+    card = card_on(payer, local(trip_request.requested_datetime).date())
+    service, service_name = trip_request.service_type, trip_request.get_service_type_display()
+    if card.base_for(service) is None:
+        raise PricingError(f"“{card}” has no rate for {service_name.lower()} trips.")
+    per_mile = card.per_mile_for(service)
+    extra_miles = Decimal(0)
+    if per_mile:
+        if miles is None:
+            raise PricingError("Enter the one-way miles (this card charges per mile).")
+        extra_miles = max(Decimal(0), miles - card.included_miles)
+
+    round_trip = trip_request.return_ride != ReturnRide.NONE
+    legs = [("Ride there" if round_trip else "", trip_request.requested_datetime)]
+    if round_trip:
+        timed = trip_request.return_ride == ReturnRide.SCHEDULED and trip_request.return_datetime
+        legs.append(("Ride back", trip_request.return_datetime if timed else None))
+
+    def label(leg, text):
+        return f"{leg}: {text[0].lower()}{text[1:]}" if leg else text
+
+    lines, notes = [], []
+    has_after_hours = bool(card.after_hours_fee) and bool(card.weekends_after_hours or card.after_hours_start)
+    for index, (leg, when) in enumerate(legs):
+        if card.fees_on_return:
+            lines += [Line(label(leg, fee.label), fee.quantity, fee.unit)
+                      for fee in fee_lines(card, service, service_name)]
+        elif index == 0:
+            # Charged once for the whole booking, so not named after either ride.
+            lines += fee_lines(card, service, service_name)
+        if extra_miles:
+            lines.append(Line(label(leg, miles_label(card)), extra_miles, per_mile))
+        if not has_after_hours:
+            continue
+        if when is None:
+            notes.append("The ride back has no set time, so no after-hours fee is included for it.")
+        elif is_after_hours(card, when):
+            lines.append(Line(label(leg, "After-hours"), Decimal(1), card.after_hours_fee))
+
+    wait_rate = card.wait_rate_for(service)
+    if trip_request.return_ride == ReturnRide.WAIT and wait_rate:
+        blocks = card.wait_blocks(wait_minutes)
+        if blocks:
+            lines.append(Line(card.wait_label(wait_minutes), Decimal(blocks), wait_rate))
+        notes.append("The invoice uses the wait the driver app records, so it can differ from this price.")
+    if not total(lines):
+        raise PricingError(f"Nothing to charge on “{card}”.")
+    return card, lines, notes
+
+
+def covered_wait_minutes(trip_request, card: RateCard, wait_minutes: int) -> int | None:
+    """Minutes of waiting a quote's price covers, or None when the wait isn't charged."""
+    if trip_request.return_ride != ReturnRide.WAIT or not card.wait_rate_for(trip_request.service_type):
+        return None
+    return card.wait_free_minutes + card.wait_blocks(wait_minutes) * max(1, card.wait_block_minutes)
 
 
 def trips_to_invoice(payer, start, end):

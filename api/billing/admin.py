@@ -4,9 +4,10 @@ from datetime import timedelta
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseRedirect
+from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
-from django.urls import path
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 from django.views.decorators.cache import never_cache
@@ -16,12 +17,27 @@ from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
 from drivers.models import Driver
 from payers.models import Payer
+from transportation.models import ReturnRide, TripRequest
 
-from . import pricing, reports
-from .models import DriverPayPlan, Invoice, RateCard
+from . import pricing, quotes, reports
+from .models import DriverPayPlan, Invoice, Quote, RateCard
 
 INPUT = "border border-base-200 px-2 py-1 rounded-default text-sm dark:bg-base-900 dark:border-base-800"
 PRIVATE = "private"
+
+
+def _lines_html(lines):
+    """How an amount was worked out, line by line (invoices and quotes)."""
+    return format_html(
+        "<ul>{}</ul>",
+        format_html_join("", "<li>{}: {} × ${} = <strong>${}</strong></li>",
+                         ((l["label"], l["quantity"], l["unit"], l["amount"]) for l in lines)),
+    )
+
+
+def can_send_quotes(user) -> bool:
+    """Emailing a price shows rates and a rider's request: both permissions are needed (ADR 0047)."""
+    return user.has_perm("billing.add_quote") and user.has_perm("transportation.view_triprequest")
 
 
 def _last_week():
@@ -75,11 +91,7 @@ class InvoiceAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
     def calculation(self, invoice):
         if not invoice.lines:
             return "Entered by hand."
-        return format_html(
-            "<ul>{}</ul>",
-            format_html_join("", "<li>{}: {} × ${} = <strong>${}</strong></li>",
-                             ((l["label"], l["quantity"], l["unit"], l["amount"]) for l in invoice.lines)),
-        )
+        return _lines_html(invoice.lines)
 
     def get_urls(self):
         return [
@@ -165,18 +177,25 @@ class RateCardAdmin(AuditedSaveMixin, AngelCareModelAdmin):
     """What each payer is charged (ADR 0039). A price change: add a new card with a later start date."""
 
     audit_name = "RateCard"
-    list_display = ("name", "payer_label", "effective_from", "effective_to", "base_ambulatory", "base_wheelchair",
-                    "per_mile")
+    list_display = ("name", "payer_label", "effective_from", "effective_to", "ambulatory", "wheelchair")
     list_filter = ("payer",)
     search_fields = ("name", "payer__name")
     autocomplete_fields = ("payer",)
     fieldsets = (
         (None, {"fields": ("name", "payer", "effective_from", "effective_to"),
-                "description": "Times are Texas (Central) time. A blank base rate means that service isn't billed "
-                               "on this card. Invoices already made keep the card they used."}),
-        ("Base rate per trip", {"fields": ("base_ambulatory", "base_wheelchair", "base_equipment_delivery")}),
-        ("Mileage", {"fields": ("per_mile", "included_miles")}),
-        ("Wait time (wait-and-return rides)", {"fields": ("wait_free_minutes", "wait_per_minute")}),
+                "description": "Times are Texas (Central) time. A blank booking fee means that service isn't billed "
+                               "on this card. Invoices and emailed prices already made keep the rates they used: "
+                               "for a price change, add a new card with a later start date."}),
+        ("Ambulatory", {"fields": ("base_ambulatory", "loading_ambulatory", "per_mile_ambulatory",
+                                   "wait_rate_ambulatory")}),
+        ("Wheelchair", {"fields": ("base_wheelchair", "loading_wheelchair", "per_mile_wheelchair",
+                                   "wait_rate_wheelchair")}),
+        ("Medical supply & equipment delivery", {"fields": ("base_equipment_delivery", "loading_equipment_delivery",
+                                                            "per_mile_equipment_delivery")}),
+        ("Round trips", {"fields": ("fees_on_return",)}),
+        ("Mileage (any service with no per-mile rate of its own)", {"fields": ("per_mile", "included_miles")}),
+        ("Wait time (wait-and-return rides)", {"fields": ("wait_free_minutes", "wait_block_minutes",
+                                                          "wait_per_minute")}),
         ("No-shows and after-hours", {"fields": ("no_show_fee", "after_hours_fee", "after_hours_start",
                                                  "after_hours_end", "weekends_after_hours")}),
         ("Notes", {"fields": ("notes",)}),
@@ -185,6 +204,126 @@ class RateCardAdmin(AuditedSaveMixin, AngelCareModelAdmin):
     @admin.display(description="Payer")
     def payer_label(self, card):
         return card.payer or "Private pay"
+
+    @admin.display(description="Ambulatory")
+    def ambulatory(self, card):
+        return _service_summary(card, "ambulatory")
+
+    @admin.display(description="Wheelchair")
+    def wheelchair(self, card):
+        return _service_summary(card, "wheelchair")
+
+
+def _service_summary(card, service) -> str:
+    """One service's rates on the list page, e.g. '$40.00 + $55.00 loading + $3.00/mi'."""
+    base = card.base_for(service)
+    if base is None:
+        return "Not billed"
+    parts = [f"${base}"]
+    if card.loading_for(service):
+        parts.append(f"${card.loading_for(service)} loading")
+    if card.per_mile_for(service):
+        parts.append(f"${card.per_mile_for(service)}/mi")
+    return " + ".join(parts)
+
+
+class QuoteForm(forms.Form):
+    miles = forms.DecimalField(required=False, min_value=0, max_digits=7, decimal_places=2, label="One-way miles")
+    wait_minutes = forms.IntegerField(required=False, min_value=0, max_value=1440, label="Expected wait (minutes)")
+
+
+@admin.register(Quote)
+class QuoteAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
+    """
+    Prices emailed to customers (ADR 0047). A record of what each customer
+    was told: never added, edited or deleted here. A price is sent from the
+    trip request's page ("Email the price"); a new price is a new quote.
+    """
+
+    list_display = ("created_at", "reference", "amount", "rate_card", "sent_to", "sent_by", "delivered")
+    list_filter = ("delivered", "rate_card")
+    search_fields = ("sent_to", "trip_request__full_name")
+    list_select_related = ("rate_card", "sent_by")
+    fields = ("request_link", "amount", "calculation", "miles", "wait_minutes", "rate_card", "sent_to", "sent_by",
+              "delivered", "created_at")
+    readonly_fields = fields
+    ordering = ("-created_at",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description="Request")
+    def reference(self, quote):
+        return f"#{str(quote.trip_request_id)[:8].upper()}"
+
+    @admin.display(description="Trip request")
+    def request_link(self, quote):
+        return format_html(
+            '<a href="{}" class="text-primary-600 underline">{}</a>',
+            reverse("admin:transportation_triprequest_change", args=[quote.trip_request_id]), self.reference(quote),
+        )
+
+    @admin.display(description="How it was calculated")
+    def calculation(self, quote):
+        return _lines_html(quote.lines)
+
+    def get_urls(self):
+        return [
+            path("send/<uuid:request_id>/", self.admin_site.admin_view(never_cache(self.send_view)),
+                 name="billing_quote_send"),
+        ] + super().get_urls()
+
+    def send_view(self, request, request_id):
+        """'Email the price' for one trip request (ADR 0047): work it out, check it, then send the total."""
+        if not can_send_quotes(request.user):
+            raise PermissionDenied
+        trip_request = get_object_or_404(TripRequest.objects.select_related("passenger__payer"), pk=request_id)
+        if request.method == "GET":
+            # The page shows the rider's request (ADR 0027).
+            record_change(actor=request.user, action="viewed", resource_type="TripRequest",
+                          resource_id=trip_request.pk, source="admin")
+        last = trip_request.quotes.first()
+        form = QuoteForm(request.POST or None,
+                         initial={"miles": last.miles, "wait_minutes": last.wait_minutes} if last else None)
+        priced = error = None
+        if request.method == "POST" and form.is_valid():
+            miles, wait = form.cleaned_data["miles"], form.cleaned_data["wait_minutes"] or 0
+            try:
+                card, lines, notes = pricing.quote(trip_request, miles=miles, wait_minutes=wait)
+                amount = pricing.total(lines)
+                sending = "send" in request.POST
+                # Only the price staff just checked is ever sent: a rate card edited in between shows again first.
+                if sending and request.POST.get("checked_amount") == str(amount):
+                    quote = quotes.send(trip_request, miles=miles, wait_minutes=wait, user=request.user)
+                    if quote.delivered:
+                        self.message_user(request, f"${quote.amount} emailed to {quote.sent_to}.", messages.SUCCESS)
+                    else:
+                        self.message_user(
+                            request,
+                            f"The email to {quote.sent_to} couldn't be sent, so the customer has NOT received "
+                            "this price. Check the email log, then send it again.",
+                            messages.ERROR,
+                        )
+                    return HttpResponseRedirect(
+                        reverse("admin:transportation_triprequest_change", args=[trip_request.pk])
+                    )
+                priced = {"card": card, "lines": lines, "notes": notes, "amount": amount, "miles": miles,
+                          "wait_minutes": wait, "changed": sending}
+            except pricing.PricingError as exc:
+                error = str(exc)
+        return TemplateResponse(request, "admin/billing/quote_send.html", {
+            **self.admin_site.each_context(request), "opts": self.model._meta,
+            "title": "Email the price", "trip_request": trip_request, "form": form, "priced": priced, "error": error,
+            "waits": trip_request.return_ride == ReturnRide.WAIT,
+            "sent": trip_request.quotes.select_related("sent_by"), "input_class": INPUT,
+            "request_url": reverse("admin:transportation_triprequest_change", args=[trip_request.pk]),
+        })
 
 
 class ProfitForm(forms.Form):

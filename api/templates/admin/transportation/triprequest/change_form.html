@@ -1,0 +1,12 @@
+{% extends "admin/change_form.html" %}
+{% comment %}
+Trip request page: "Email the price" (ADR 0047), for staff who may send quotes.
+{% endcomment %}
+
+{% block object-tools-items %}
+{% if not add and perms.billing.add_quote %}
+{% url 'admin:billing_quote_send' original.pk as quote_url %}
+{% include "unfold/helpers/tab_action.html" with title="Email the price" link=quote_url icon="request_quote" %}
+{% endif %}
+{{ block.super }}
+{% endblock %}
