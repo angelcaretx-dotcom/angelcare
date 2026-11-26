@@ -153,6 +153,11 @@ class RoleSeedingTests(TestCase):
                 "change_driverpayplan",
                 "add_driverpayplan",
                 "delete_driverpayplan",
+                # Emailed prices (ADR 0047).
+                "view_quote",
+                "change_quote",
+                "add_quote",
+                "delete_quote",
                 "view_claim",
                 "change_claim",
                 "add_claim",
