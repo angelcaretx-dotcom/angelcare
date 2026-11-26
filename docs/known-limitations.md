@@ -87,6 +87,12 @@ Tracked honestly so nothing here is discovered by surprise later.
   labeled "pending legal review" on the pages themselves. They describe
   actual data handling but are not attorney-reviewed and contain no
   pricing/cancellation/service-level terms (none have been defined).
+- **A new kind of service or a named extra fee can't be added from the
+  rate card** (ADR 0048): administrators edit the booking fee, loading
+  fee, per-mile rate and wait rate of the three existing services.
+- **A quoted price has to be accepted by phone or website message**
+  (ADR 0047): staff email the total from the admin, but there is no
+  "accept" link, and the miles are typed by staff (no maps provider).
 - **No rate schedule or EDI.** Structural Payer (ADR 0017), Billing
   (ADR 0018), and Claims (ADR 0019) domains exist, but rate schedules,
   EDI/clearinghouse/billing-vendor integration, and payment processing

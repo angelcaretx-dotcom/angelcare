@@ -124,6 +124,9 @@ def seed_roles(sender, **kwargs):
         # Rates and pay are money: Administrator only (ADR 0039).
         + list(_permissions("billing", "ratecard", ["view", "change", "add", "delete"]))
         + list(_permissions("billing", "driverpayplan", ["view", "change", "add", "delete"]))
+        # Emailing a customer their price (ADR 0047). The admin itself keeps a
+        # sent quote read-only: it is a record of what the customer was told.
+        + list(_permissions("billing", "quote", ["view", "change", "add", "delete"]))
         + list(_permissions("claims", "claim", ["view", "change", "add", "delete"]))
         # TMHP electronic claims (ADR 0040): files and responses are records, never edited.
         + list(_permissions("claims", "claimsettings", ["view", "change"]))

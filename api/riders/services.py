@@ -185,8 +185,8 @@ def rider_status(trip_request) -> tuple[str, str]:
             TripStatus.CANCELLED: ("cancelled", "Cancelled"),
         }[trip.status]
     return {
-        TripRequestStatus.NEW: ("received", "Received — we'll call you to confirm"),
-        TripRequestStatus.REVIEWED: ("received", "Received — we'll call you to confirm"),
+        TripRequestStatus.NEW: ("received", "Received — we'll email you to confirm"),
+        TripRequestStatus.REVIEWED: ("received", "Received — we'll email you to confirm"),
         TripRequestStatus.CONTACTED: ("contacted", "We've been in touch — awaiting confirmation"),
         TripRequestStatus.SCHEDULED: ("confirmed", "Confirmed"),
         TripRequestStatus.DECLINED: ("declined", "We couldn't take this ride"),

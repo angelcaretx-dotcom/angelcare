@@ -32,7 +32,7 @@ the public website pages themselves.
 - **Staff logins require MFA** (password + authenticator code) — ADR 0014, 0024.
 - **Role-based access**: dispatchers see only what their role allows — ADR 0005.
 - **Audit trail** of every change, and (ADR 0027) of every view of a rider's record, list search or dashboard. Admin → Audit logs, filter action = "viewed".
-- **No PHI in any automatic email** (staff alerts and rider confirmations carry a reference number only) — ADR 0027.
+- **No PHI in any automatic email** (staff alerts and rider confirmations carry a reference number only) — ADR 0027. The price email staff send from the admin (ADR 0047) carries the reference number, the total and whether it is one way or a round trip: no name, address, date, time or service level.
 - **Encrypted in transit** (HTTPS everywhere, TLS email).
 - **Encrypted backups**, private bucket, 30-day retention — ADR 0026. The passphrase is only in the owner's password manager and GitHub secrets.
 - **MFA secrets and backup codes are excluded from backups** — ADR 0021.

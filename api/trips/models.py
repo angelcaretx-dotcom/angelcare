@@ -233,6 +233,12 @@ class Trip(models.Model):
             self.service_type = request.service_type
         if not self.facility_id and request.facility_id:
             self.facility_id = request.facility_id
+        if self.billable_miles is None:
+            # The miles the customer's emailed price was worked out from (ADR 0047),
+            # so the invoice charges what they were told.
+            quote = request.quotes.filter(delivered=True, miles__isnull=False).first()
+            if quote is not None:
+                self.billable_miles = quote.miles
 
     def fill_payer_from_passenger(self) -> None:
         if not self.payer_id and self.passenger_id and self.passenger.payer_id:

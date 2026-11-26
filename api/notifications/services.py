@@ -73,6 +73,29 @@ class NotificationService:
             related=trip_request,
         )
 
+    def send_quote(self, quote, *, covers: str, wait_note: str = "") -> bool:
+        """
+        The price for a requested ride (ADR 0047). The total and the
+        reference only: like the confirmation, it repeats no name,
+        address or pickup time (ADR 0027). True if the email went out.
+        """
+        trip_request = quote.trip_request
+        reference = self._reference(trip_request)
+        context = {
+            "rows": [("Reference", reference), ("Total price", f"${quote.amount:,.2f}"), ("Covers", covers)],
+            "wait_note": wait_note,
+            "contact_url": f"{settings.WEBSITE_URL}/contact",
+            "website_url": settings.WEBSITE_URL,
+        }
+        return self._send(
+            notification_type=NotificationType.CUSTOMER_QUOTE,
+            to=quote.sent_to,
+            subject=f"Your price for ride {reference} — AngelCare Transit",
+            body_text=render_to_string("notifications/customer_quote.txt", context),
+            body_html=render_to_string("notifications/customer_quote.html", context),
+            related=trip_request,
+        )
+
     @staticmethod
     def _reference(trip_request) -> str:
         return f"#{str(trip_request.id)[:8].upper()}"
@@ -301,7 +324,8 @@ class NotificationService:
         body_text: str,
         body_html: str | None,
         related,
-    ) -> None:
+    ) -> bool:
+        """True if the provider took the email; a failure is logged and never raised."""
         try:
             self.email_provider.send(to=to, subject=subject, body_text=body_text, body_html=body_html)
         except Exception as exc:  # noqa: BLE001 - deliberately broad: any
@@ -321,7 +345,7 @@ class NotificationService:
                 related_object_type=type(related).__name__,
                 related_object_id=str(related.pk),
             )
-            return
+            return False
 
         NotificationLog.objects.create(
             notification_type=notification_type,
@@ -330,6 +354,7 @@ class NotificationService:
             related_object_type=type(related).__name__,
             related_object_id=str(related.pk),
         )
+        return True
 
 
 class ExpiryDigest:

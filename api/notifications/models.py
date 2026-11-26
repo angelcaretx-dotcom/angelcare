@@ -21,6 +21,7 @@ class NotificationType(models.TextChoices):
     FACILITY_PASSWORD_RESET = "facility_password_reset", "Facility portal: password reset link"
     FACILITY_FOLLOW_UPS_STAFF = "facility_follow_ups_staff", "Facility follow-ups due (staff)"
     AUTHORIZATIONS_LOW_STAFF = "authorizations_low_staff", "Prior authorizations running low (staff)"
+    CUSTOMER_QUOTE = "customer_quote", "Price for a requested ride (customer)"
 
 
 class NotificationStatus(models.TextChoices):

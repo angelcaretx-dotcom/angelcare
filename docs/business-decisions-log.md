@@ -55,11 +55,17 @@ is UNKNOWN and must not be assumed.
 | 2026-11-06 | Claims identifiers | The TPI was retired in 2021 and the business has none: TPI is optional in Claims settings; the billing provider is identified by NPI 1184404279, taxonomy 343800000X (ADR 0044) | Owner, developer report |
 | 2026-11-06 | Trip imports, state | A file with no state column is Texas (the service area is Texas only) (ADR 0044) | Owner, developer report |
 | 2026-11-08 | Trash bin | Every delete is kept in a trash bin that only superusers and Administrators can see; restore or delete for good after checking; no automatic purge. Deleting a passenger, driver or vehicle takes their unbilled trips into the trash with them; anything billed (invoice or claim) stays blocked and is set Inactive instead (ADR 0046) | Owner, chat |
+| 2026-11-26 | Telling a customer the price | By email from the admin, not by phone: staff enter the miles on the request, check the price worked out from the rate card, and email the customer the total. Still no prices on the website (ADR 0047) | Owner, chat |
+| 2026-11-26 | Private-pay rates | Set by the owner per service (ambulatory, wheelchair): a booking fee, a loading fee, a per-mile rate and a wait rate per 15-minute block. **The amounts are not public**: they are entered in the admin rate card (Billing → Rate cards) and deliberately not written here, in the code or on the website. Administrators add and edit every rate by hand (ADR 0048) | Owner, chat |
+| 2026-11-26 | Round trips | The booking fee and the loading fee are charged once for a round trip; miles are charged both ways (ADR 0048) | Owner, chat |
+| 2026-11-26 | Wait time (supersedes the 2026-11-04 row) | Optional, chosen by the customer when booking. First 15 minutes free, then each started 15-minute block is charged in full, at the service's wait rate. Private-pay and facility riders only, as before (ADR 0048) | Owner, chat |
+| 2026-11-26 | Stretcher (confirmed again) | Still not offered: the stretcher rates the owner listed were left out, and the 2026-11-06 decision stands (ADR 0044, 0048) | Owner, chat |
+| 2026-11-26 | Guides | A "How It Works" page on the website for customers, and an Office guide in the admin for staff. The website page shows no prices and nothing about driver credentials or vehicle checks: those stay private (ADR 0048) | Owner, chat |
 
 ## Explicitly UNKNOWN (do not invent)
 
 - Payer / broker relationships (Medicaid MCOs, brokers, private pay terms, facility contracts)
-- Pricing / rate schedules (except wait time: $1/minute, see the table above)
+- Payer contract rates (Medicaid, brokers, facilities). Private-pay rates are set (2026-11-26) but not public: they live in the admin rate card only
 - Fleet size, vehicle details
 - Driver employment classification (employee vs. contractor)
 - Business hours

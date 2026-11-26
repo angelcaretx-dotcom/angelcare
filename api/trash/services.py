@@ -43,7 +43,7 @@ BLOCKING = {"billing.invoice", "claims.claim", "claims.claimfile", "claims.respo
 # that go to the trash with their parent: no delete permission needed.
 TAKEN_ALONG = {
     "trips.tripevent", "vehicles.vehiclecheck", "trips.standingorderskip", "intake.importrow",
-    "facilities.facilityactivity", "riders.savedaddress",
+    "facilities.facilityactivity", "riders.savedaddress", "billing.quote",
 }
 
 

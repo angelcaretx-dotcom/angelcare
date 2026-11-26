@@ -40,7 +40,10 @@ def estimated_return_pickup(outbound: Trip):
 def build_return_leg(outbound: Trip) -> Trip:
     """The unsaved return leg for an outbound trip made from a round-trip request."""
     request = outbound.trip_request
-    return return_leg_for(outbound, request.return_ride, request.return_datetime)
+    trip = return_leg_for(outbound, request.return_ride, request.return_datetime)
+    # Same route reversed: the ride back is billed on the outbound miles (ADR 0047).
+    trip.billable_miles = outbound.billable_miles
+    return trip
 
 
 def return_leg_for(outbound: Trip, choice: str, return_at=None) -> Trip:

@@ -27,8 +27,20 @@ class OrganizationAdmin(AngelCareModelAdmin):
         return False
 
     def get_urls(self):
-        return [path("launch/", self.admin_site.admin_view(never_cache(self.launch_view)),
-                     name="organization_launch_checklist")] + super().get_urls()
+        return [
+            path("launch/", self.admin_site.admin_view(never_cache(self.launch_view)),
+                 name="organization_launch_checklist"),
+            path("guide/", self.admin_site.admin_view(self.guide_view), name="organization_guide"),
+        ] + super().get_urls()
+
+    def guide_view(self, request):
+        """The office guide (ADR 0048): how a request becomes a paid ride. Any staff member can read it."""
+        return TemplateResponse(request, "admin/organization/guide.html", {
+            **self.admin_site.each_context(request), "opts": self.model._meta,
+            "title": "Office guide: from a new request to a paid ride",
+            "can_quote": request.user.has_perm("billing.add_quote"),
+            "can_bill": request.user.has_perm("billing.add_invoice"),
+        })
 
     def launch_view(self, request):
         """The launch checklist (ADR 0045): superusers, since it spans every area."""

@@ -1,0 +1,35 @@
+{% extends "notifications/email_base.html" %}
+
+{% block title %}Your price — AngelCare Transit{% endblock %}
+
+{% block preheader %}Here is the total price for the transportation you requested.{% endblock %}
+
+{% block content %}
+<h1 style="margin:0 0 16px; font-size:19px; line-height:1.3; color:#1f2933;">Your Price</h1>
+<p style="margin:0 0 16px; color:#3d4852;">Hello,</p>
+<p style="margin:0 0 16px; color:#3d4852;">
+  Thank you for your transportation request to AngelCare Transit. Here is
+  the total price for the trip you asked for.
+</p>
+
+{% include "notifications/_detail_table.html" with rows=rows %}
+
+{% if wait_note %}
+<p style="margin:0 0 16px; color:#3d4852;">{{ wait_note }}</p>
+{% endif %}
+<p style="margin:0 0 16px; color:#3d4852;">
+  This price is for the trip as you requested it. If the addresses, the
+  date or the time change, the price may change too.
+</p>
+<p style="margin:0 0 16px; color:#3d4852;">
+  <strong>Your ride is not booked yet.</strong> To book it at this price,
+  call <a href="tel:8177669228" style="color:#2d6f91; text-decoration:none;">817-766-9228</a>
+  or <a href="{{ contact_url }}" style="color:#2d6f91; text-decoration:none;">send us a message</a>,
+  and give us your reference number.
+</p>
+<p style="margin:12px 0 0; font-size:13px; color:#5f6b7a;">
+  For your privacy, this email doesn't repeat your trip details.
+</p>
+
+<p style="margin:24px 0 0; color:#3d4852;">&mdash; The AngelCare Transit Team</p>
+{% endblock %}

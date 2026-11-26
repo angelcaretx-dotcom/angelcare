@@ -318,6 +318,10 @@ def _can_create_invoices(request):
     return request.user.has_perm("billing.add_invoice")
 
 
+def _can_view_quotes(request):
+    return request.user.has_perm("billing.view_quote")
+
+
 def _can_view_claims(request):
     return request.user.has_perm("claims.view_claim")
 
@@ -356,6 +360,12 @@ UNFOLD = {
                 "title": "Operations",
                 "separator": True,
                 "items": [
+                    {
+                        # How a request becomes a paid ride (ADR 0048).
+                        "title": "Office guide",
+                        "icon": "menu_book",
+                        "link": reverse_lazy("admin:organization_guide"),
+                    },
                     {
                         "title": "Trip Requests",
                         "icon": "inbox",
@@ -492,6 +502,12 @@ UNFOLD = {
                         "icon": "request_quote",
                         "link": reverse_lazy("admin:billing_invoice_batch"),
                         "permission": _can_create_invoices,
+                    },
+                    {
+                        "title": "Prices emailed",
+                        "icon": "outgoing_mail",
+                        "link": reverse_lazy("admin:billing_quote_changelist"),
+                        "permission": _can_view_quotes,
                     },
                     {
                         "title": "Rate cards",

@@ -92,6 +92,8 @@ Owner review of the live form, 2026-11-04:
 - Invoice amount calculated from the trip's proof (miles, wait) instead of typed.
 - Batch: "invoice all completed MTM trips for last week", in that payer's format.
 - Prior-auth tracking: authorized trips used vs. remaining.
+- **Added 2026-11-26 (ADR 0047):** the price before the ride. Staff email a customer the total from the request page, worked out from the same rate card; the trip is then billed on the quoted miles.
+- **Added 2026-11-26 (ADR 0048):** each service has its own booking fee, loading fee, per-mile rate and wait rate on the rate card; wait time in blocks; booking and loading once per round trip. An Office guide in the admin and a "How It Works" page on the website.
 
 ### Phase 30: Claims output + denials — ✅ 837P / 999 / 277CA / 835, denials queue, 95-day deadline built 2026-11-05 (ADR 0040); automated TMHP submission waits on EDI enrollment
 - **Decided 2026-11-05:** TexMedConnect directly (no clearinghouse): 837P per the TMHP EDI companion guide, submitted to TMHP; 277CA rejections, Remittance & Status report, denials/appeals; 95-day filing deadline tracked per claim.
