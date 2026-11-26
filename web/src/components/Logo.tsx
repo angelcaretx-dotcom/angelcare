@@ -12,11 +12,11 @@ export function Logo() {
   return (
     <Link
       href="/"
-      className="flex items-center gap-2"
+      className="flex shrink-0 items-center gap-2 whitespace-nowrap"
       aria-label={`${siteConfig.name} home`}
     >
       <Image src="/logo.svg" alt="" width={36} height={34} priority />
-      <span className="text-lg font-bold tracking-tight text-foreground">
+      <span className="text-base font-bold tracking-tight text-foreground sm:text-lg">
         {siteConfig.name}
       </span>
     </Link>
