@@ -148,6 +148,16 @@ email and one customer email per booking, as before.
 
 ### The customer's price email
 
+> **Changed by [ADR 0051](0051-discounts.md)** (2026-11-26, the owner's
+> corrections after reading a real email). A round trip now has one
+> miles row ("Miles, round trip: … x $…") instead of "Miles there" and
+> "Miles back", unless the two rides differ. A card with included miles
+> says the real distance first ("12.4 miles, first 5 included: 7.4 x
+> $…") instead of "(after the first N miles)". "Covers" comes directly
+> under the reference, before the amounts. "Your ride back" is shorter.
+> A discount, when there is one, is a last row before the total. The
+> list below is the email as first built.
+
 It now carries:
 
 - the reference number;

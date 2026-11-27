@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import Q
 
 
 class InvoiceStatus(models.TextChoices):
@@ -275,3 +276,180 @@ class DriverPayPlan(models.Model):
     def clean(self):
         if self.effective_from and self.effective_to and self.effective_to < self.effective_from:
             raise ValidationError({"effective_to": "The end date is before the start date."})
+
+
+class PaymentStatus(models.TextChoices):
+    """Where one attempt to pay a price stands. A lifecycle, never a delete flag."""
+
+    OPEN = "open", "Open (not paid yet)"
+    PAID = "paid", "Paid"
+    EXPIRED = "expired", "Expired (not paid)"
+    FAILED = "failed", "Failed (not paid)"
+    # Real money arrived that the system could not accept as it stands (wrong amount, a price
+    # that was replaced, a cancelled request, a second payment): a person has to look at it.
+    NEEDS_ATTENTION = "needs_attention", "Needs attention"
+
+
+class Payment(models.Model):
+    """
+    One attempt to pay an emailed price by card through Stripe Checkout
+    (ADR 0050): one row per Checkout Session this system opened. A price
+    that is paid on the second try has two rows, numbered by `attempt`.
+
+    Only ids, amounts, dates and a status are kept. Card details are typed
+    on Stripe's page and never reach this system, and nothing about the
+    rider is stored here. Money is in integer cents, converted exactly from
+    `Quote.amount`.
+
+    A quote "is paid" when one of its payments has status Paid. The row is
+    a record of money: `quote` is PROTECT and the trash refuses to delete
+    anything that has a payment.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    quote = models.ForeignKey("billing.Quote", on_delete=models.PROTECT, related_name="payments")
+    status = models.CharField(max_length=20, choices=PaymentStatus.choices, default=PaymentStatus.OPEN)
+    attempt = models.PositiveIntegerField(default=1, help_text="1 for the first try at paying this price, then 2, 3...")
+
+    # Stripe's ids. NULL (not "") means "none yet", so that the rows that have none never
+    # collide on the unique index.
+    session_id = models.CharField(
+        "Stripe Checkout Session", max_length=255, null=True, blank=True, unique=True,
+    )
+    session_url = models.TextField(blank=True, help_text="Stripe's payment page for this attempt, while it is open.")
+    expires_at = models.DateTimeField(null=True, blank=True, help_text="When Stripe closes this attempt if unpaid.")
+    payment_intent_id = models.CharField(
+        "Stripe PaymentIntent", max_length=255, null=True, blank=True, unique=True,
+        help_text="Refunds and disputes are matched to the payment by this id.",
+    )
+
+    amount_cents = models.PositiveIntegerField(help_text="What was asked for, in cents.")
+    paid_cents = models.PositiveIntegerField(null=True, blank=True, help_text="What Stripe says was paid, in cents.")
+    currency = models.CharField(max_length=3, default="usd")
+    livemode = models.BooleanField(
+        null=True, blank=True, help_text="Yes for a real payment, No for a Stripe test payment. Blank until known."
+    )
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    refunded_cents = models.PositiveIntegerField(default=0, help_text="Refunded in Stripe so far, in cents.")
+    refunded_at = models.DateTimeField(null=True, blank=True)
+    disputed_at = models.DateTimeField(null=True, blank=True, help_text="When the cardholder disputed the charge.")
+    attention_reason = models.TextField(blank=True, help_text="Why a person has to look at this payment.")
+
+    # Stamped when each email went out, so a repeat delivery sends only what is still missing.
+    office_notified_at = models.DateTimeField(null=True, blank=True)
+    customer_notified_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "payment"
+        constraints = [
+            models.UniqueConstraint(fields=["quote", "attempt"], name="billing_payment_quote_attempt_uniq"),
+            # A stored id is never the empty string: "none yet" is NULL (see above).
+            models.CheckConstraint(
+                condition=~Q(session_id="") & ~Q(payment_intent_id=""), name="billing_payment_ids_not_blank",
+            ),
+        ]
+        indexes = [models.Index(fields=["status", "created_at"], name="billing_payment_status_idx")]
+
+    def __str__(self) -> str:
+        return f"{self.get_status_display()} online payment of ${self.amount}"
+
+    @staticmethod
+    def _dollars(cents):
+        return None if cents is None else (Decimal(cents) / 100).quantize(Decimal("0.01"))
+
+    @property
+    def amount(self):
+        """What was asked for, in dollars."""
+        return self._dollars(self.amount_cents)
+
+    @property
+    def paid(self):
+        """What Stripe says was paid, in dollars; None until paid."""
+        return self._dollars(self.paid_cents)
+
+    @property
+    def refunded(self):
+        return self._dollars(self.refunded_cents)
+
+    @property
+    def is_paid(self) -> bool:
+        return self.status == PaymentStatus.PAID
+
+
+class PaymentEvent(models.Model):
+    """
+    A webhook event from Stripe that was already handled (ADR 0050). Stripe
+    can deliver the same event more than once: a second delivery finds its
+    id here and does nothing. Only the id and the type are kept, never the
+    event's contents.
+    """
+
+    event_id = models.CharField(max_length=255, unique=True)
+    event_type = models.CharField(max_length=100)
+    received_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-received_at"]
+        verbose_name = "payment event"
+
+    def __str__(self) -> str:
+        return f"{self.event_type} ({self.event_id})"
+
+
+# The owner's rules (2026-11-26), in the words the customer reads. An Administrator can
+# reword them in Billing > Payment settings; these are what a new system starts with.
+DEFAULT_REFUND_POLICY = (
+    "If you cancel at least 24 hours before your pickup time, we refund your payment in full. "
+    "If we cannot do the ride, we refund your payment in full. "
+    "There is no refund if you cancel less than 24 hours before your pickup time, "
+    "or if you are not there when the driver arrives."
+)
+DEFAULT_WHAT_PAYING_MEANS = (
+    "Paying means you accept this price. After we receive your payment, our office schedules your ride "
+    "and emails you to confirm it. Your ride is confirmed when you get that email, not at the moment you pay."
+)
+
+
+class PaymentTerms(models.Model):
+    """
+    The administrator's settings for online payment (ADR 0050): the switch
+    that offers it, and the two texts the customer reads before paying. A
+    single row (`load()`; the admin never offers a second one or a delete).
+
+    Code never reads this table directly: `billing.payments.terms()`
+    answers with these values, or with the safe defaults (switched off) when
+    the row, or the table itself, isn't there yet.
+    """
+
+    enabled = models.BooleanField(
+        "offer online payment in price emails", default=False,
+        help_text="While this is off, a price email has no payment link: the customer calls or sends a message to "
+                  "book, as before. It also stays off until Stripe is set up on the server.",
+    )
+    refund_policy = models.TextField(
+        default=DEFAULT_REFUND_POLICY,
+        help_text="Shown to the customer in the price email, on the page before payment and in the email that "
+                  "confirms a payment. Plain words; no names, addresses or times.",
+    )
+    what_paying_means = models.TextField(
+        default=DEFAULT_WHAT_PAYING_MEANS,
+        help_text="Shown to the customer in the same three places: what happens after they pay.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "payment settings"
+        verbose_name_plural = "payment settings"
+
+    def __str__(self) -> str:
+        return "Online payment settings"
+
+    @classmethod
+    def load(cls) -> "PaymentTerms":
+        """The one settings row, made on first use."""
+        return cls.objects.order_by("pk").first() or cls.objects.create()

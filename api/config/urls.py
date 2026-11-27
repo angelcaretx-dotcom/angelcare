@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.urls import include, path
 from django.views.generic import RedirectView
 
+from billing import pay_views
 from config import cron
 
 
@@ -28,6 +29,12 @@ urlpatterns = [
     path("api/v1/contact/", include("contact.urls")),
     # Vercel Cron, daily: standing orders and expiry reminders (ADR 0035, 0036).
     path("api/v1/cron/daily/", cron.daily, name="cron-daily"),
+    # Paying an emailed price online (ADR 0050). The website sends /pay/<token> here. "return"
+    # comes first: it is where Stripe sends the payer back, not a token.
+    path("pay/return/", pay_views.pay_return, name="pay-return"),
+    path("pay/<str:token>/", pay_views.pay, name="pay"),
+    # Stripe's reports. Registered in Stripe with exactly this address, trailing slash included.
+    path("api/v1/payments/stripe/webhook/", pay_views.stripe_webhook, name="stripe-webhook"),
 ]
 
 if settings.DEBUG:

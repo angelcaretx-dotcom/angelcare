@@ -127,6 +127,12 @@ def seed_roles(sender, **kwargs):
         # Emailing a customer their price (ADR 0047). The admin itself keeps a
         # sent quote read-only: it is a record of what the customer was told.
         + list(_permissions("billing", "quote", ["view", "change", "add", "delete"]))
+        # Online payment (ADR 0050). Payments and Stripe's events are records of
+        # money: seen, never added, edited or deleted. The settings are one row
+        # (the on/off switch and the refund wording): seen and changed only.
+        + list(_permissions("billing", "payment", ["view"]))
+        + list(_permissions("billing", "paymentevent", ["view"]))
+        + list(_permissions("billing", "paymentterms", ["view", "change"]))
         + list(_permissions("claims", "claim", ["view", "change", "add", "delete"]))
         # TMHP electronic claims (ADR 0040): files and responses are records, never edited.
         + list(_permissions("claims", "claimsettings", ["view", "change"]))

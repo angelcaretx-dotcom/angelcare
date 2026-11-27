@@ -8,6 +8,7 @@ dev, staging, and production.
 """
 
 import os
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -322,6 +323,14 @@ def _can_view_quotes(request):
     return request.user.has_perm("billing.view_quote")
 
 
+def _can_view_payments(request):
+    return request.user.has_perm("billing.view_payment")
+
+
+def _can_view_payment_settings(request):
+    return request.user.has_perm("billing.view_paymentterms")
+
+
 def _can_view_claims(request):
     return request.user.has_perm("claims.view_claim")
 
@@ -508,6 +517,20 @@ UNFOLD = {
                         "icon": "outgoing_mail",
                         "link": reverse_lazy("admin:billing_quote_changelist"),
                         "permission": _can_view_quotes,
+                    },
+                    {
+                        # What customers paid online (ADR 0050): a record, never edited here.
+                        "title": "Payments",
+                        "icon": "credit_card",
+                        "link": reverse_lazy("admin:billing_payment_changelist"),
+                        "permission": _can_view_payments,
+                    },
+                    {
+                        # The on/off switch and the refund wording customers read.
+                        "title": "Payment settings",
+                        "icon": "tune",
+                        "link": reverse_lazy("admin:billing_paymentterms_changelist"),
+                        "permission": _can_view_payment_settings,
                     },
                     {
                         "title": "Rate cards",
@@ -780,3 +803,35 @@ TURNSTILE_SECRET_KEY = os.environ.get("DJANGO_TURNSTILE_SECRET_KEY", "")
 # Vercel Cron sends "Authorization: Bearer $CRON_SECRET" (ADR 0035);
 # the daily job refuses to run without it.
 CRON_SECRET = os.environ.get("CRON_SECRET", "")
+
+
+# --- Online payment: Stripe Checkout (ADR 0050) ---
+# Off unless everything is in place: a missing or unusable value never
+# raises here, it just leaves payments off and the price email as it was.
+# The names carry no DJANGO_ prefix because the Vercel project already
+# holds STRIPE_SECRET_KEY under that name.
+
+from billing import stripe_keys  # noqa: E402 - pure functions, no Django import
+
+# The automated tests never hold a real key and never call Stripe: under
+# `manage.py test` the values are dropped before anything can read them,
+# and the payment tests run on the in-memory provider (billing/payments.py).
+if len(sys.argv) > 1 and sys.argv[1] == "test":
+    for _name in ("STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "STRIPE_ALLOW_TEST"):
+        os.environ.pop(_name, None)
+
+# A secret key (sk_...) or, better, a restricted key (rk_...) limited to
+# Checkout Sessions: write.
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+# The webhook endpoint's signing secret (whsec_...). May hold two,
+# separated by a comma, while a secret is being rolled.
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
+# A test-mode key (sk_test_/rk_test_) is refused when DEBUG is off unless
+# this is on; while it is on the admin's payment pages say "Stripe TEST MODE".
+STRIPE_ALLOW_TEST = env_bool("STRIPE_ALLOW_TEST", False)
+# True only when the key AND the webhook secret are set and the key may be
+# used here. Online payment also needs the administrator's switch
+# (Billing > Payment settings), which starts off.
+PAYMENTS_CONFIGURED = stripe_keys.configured(
+    STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, debug=DEBUG, allow_test=STRIPE_ALLOW_TEST
+)

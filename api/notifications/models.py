@@ -22,6 +22,12 @@ class NotificationType(models.TextChoices):
     FACILITY_FOLLOW_UPS_STAFF = "facility_follow_ups_staff", "Facility follow-ups due (staff)"
     AUTHORIZATIONS_LOW_STAFF = "authorizations_low_staff", "Prior authorizations running low (staff)"
     CUSTOMER_QUOTE = "customer_quote", "Price for a requested ride (customer)"
+    # Online payment (ADR 0050).
+    PAYMENT_RECEIVED_STAFF = "payment_received_staff", "Price paid online (staff)"
+    PAYMENT_RECEIVED_CUSTOMER = "payment_received_customer", "Payment received (customer)"
+    PAYMENT_ATTENTION_STAFF = "payment_attention_staff", "Online payment needs attention (staff)"
+    PAYMENT_REFUNDED_STAFF = "payment_refunded_staff", "Online payment refunded (staff)"
+    PAYMENT_DISPUTED_STAFF = "payment_disputed_staff", "Online payment disputed (staff)"
 
 
 class NotificationStatus(models.TextChoices):

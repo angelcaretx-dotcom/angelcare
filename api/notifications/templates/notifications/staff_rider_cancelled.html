@@ -11,7 +11,8 @@
   scheduled, it has been cancelled too. Rider details are only shown in the admin, not in email.
 </p>
 {% include "notifications/_detail_table.html" with rows=rows %}
-<div style="margin:28px 0 4px;">
+{% if paid_online %}<p style="margin:0 0 8px; color:#3d4852;"><strong>This ride was paid online: a refund may be due.</strong></p>
+{% endif %}<div style="margin:28px 0 4px;">
   {% include "notifications/_button.html" with href=admin_url label="Review in Admin" %}
 </div>
 {% endblock %}

@@ -221,6 +221,12 @@ def build_dashboard(user, now: datetime | None = None) -> Dashboard:
             )
         )
 
+    # Online payment (ADR 0050). Both lists appear only while online payment is
+    # offered or there is something to list, so the dashboard is unchanged until then.
+    for payment_panel in (_paid_waiting(user), _payments_needing_attention(user)):
+        if payment_panel is not None:
+            dash.panels.append(payment_panel)
+
     if _can_view(user, Trip):
         upcoming = (
             Trip.objects.filter(
@@ -269,6 +275,107 @@ def build_dashboard(user, now: datetime | None = None) -> Dashboard:
         dash.panels.append(expiring)
 
     return dash
+
+
+def _paid_waiting(user) -> Panel | None:
+    """
+    Requests whose price was paid online and that have no trip yet (ADR
+    0050): paying accepts the price, the office then schedules the ride.
+    For everyone who schedules, so it shows no amount.
+    """
+    from billing import payments
+    from billing.models import Payment
+
+    if not _can_view(user, TripRequest):
+        return None
+
+    def read():
+        paid = payments.holding(Payment.objects.all()).values("quote__trip_request_id")
+        waiting = (
+            TripRequest.objects.filter(pk__in=paid, trip__isnull=True)
+            .exclude(status__in=[TripRequestStatus.CANCELLED, TripRequestStatus.DECLINED])
+            .order_by("requested_datetime")
+        )
+        return waiting.count(), list(waiting[:LIST_LIMIT])
+
+    # A missing payment table (the database update not run yet) reads as "nothing paid".
+    total, rows = payments.safe_read(read, (0, []))
+    if not rows and not payments.payments_on():
+        return None
+    return Panel(
+        "Paid, waiting to be scheduled",
+        ["Name", "Service", "Requested pickup"],
+        [Row([r.full_name, r.get_service_type_display(), _local(r.requested_datetime)], _change(r)) for r in rows],
+        empty_text="No paid ride is waiting to be scheduled.",
+        more_url=_changelist(TripRequest),
+        more_count=max(total - LIST_LIMIT, 0),
+    )
+
+
+def _payments_needing_attention(user) -> Panel | None:
+    """
+    Online payments a person has to look at (ADR 0050): money that arrived
+    but couldn't be accepted, a paid ride that was then cancelled or
+    declined, and disputed charges. Each stays listed until it is refunded
+    in full in Stripe. Shows amounts, so only for staff who may see payments.
+    """
+    from django.db.models import F, Q
+
+    from billing import payments
+    from billing.models import Payment, PaymentStatus
+
+    if not _can_view(user, Payment):
+        return None
+    closed = [TripRequestStatus.CANCELLED, TripRequestStatus.DECLINED]
+
+    def read():
+        listed = (
+            Payment.objects.filter(
+                Q(status=PaymentStatus.NEEDS_ATTENTION)
+                | Q(status=PaymentStatus.PAID, quote__trip_request__status__in=closed)
+                | Q(status=PaymentStatus.PAID, disputed_at__isnull=False)
+            )
+            .exclude(paid_cents__isnull=False, refunded_cents__gte=F("paid_cents"))
+            .select_related("quote__trip_request")
+            .order_by("paid_at", "created_at")
+        )
+        return listed.count(), list(listed[:LIST_LIMIT])
+
+    total, rows = payments.safe_read(read, (0, []))
+    if not rows and not payments.payments_on():
+        return None
+
+    def why(payment) -> str:
+        if payment.status == PaymentStatus.NEEDS_ATTENTION:
+            return payment.attention_reason or "Needs attention."
+        reasons = []
+        if payment.quote.trip_request.status in closed:
+            status = payment.quote.trip_request.get_status_display().lower()
+            reasons.append(f"Paid, and the request is {status}: a refund may be due.")
+        if payment.disputed_at:
+            reasons.append("The cardholder disputed the charge.")
+        return " ".join(reasons)
+
+    def amount(payment) -> str:
+        paid = payment.paid if payment.paid is not None else payment.amount
+        text = f"${paid:,.2f}"
+        return f"{text} (${payment.refunded:,.2f} refunded)" if payment.refunded_cents else text
+
+    return Panel(
+        "Payments needing attention",
+        ["Reference", "Why", "Paid", "When"],
+        [
+            Row(
+                [payments.reference(p.quote.trip_request_id), why(p), amount(p), _local(p.paid_at or p.created_at)],
+                _change(p),
+                alert=True,
+            )
+            for p in rows
+        ],
+        empty_text="No payment needs attention.",
+        more_url=_changelist(Payment, status__exact=PaymentStatus.NEEDS_ATTENTION),
+        more_count=max(total - LIST_LIMIT, 0),
+    )
 
 
 def _authorizations_low(user, today: date) -> Panel | None:

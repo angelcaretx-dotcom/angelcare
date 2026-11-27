@@ -11,6 +11,7 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 
+from billing import checkout
 from compliance.expiry import send_reminders
 from facilities.services import send_follow_up_digest
 from trips import authorizations
@@ -42,4 +43,10 @@ def daily(request):
     except Exception:  # noqa: BLE001 - same
         logger.exception("Prior authorization alerts failed.")
         result["authorization_alerts"] = "failed"
+    try:
+        # Online payments whose report from Stripe never arrived (ADR 0050). "off" until Stripe is set up.
+        result["payment_checks"] = checkout.daily_check()
+    except Exception as exc:  # noqa: BLE001 - same; and only the kind of error is logged, never its text
+        logger.error("Payment check failed: error=%s", type(exc).__name__)
+        result["payment_checks"] = "failed"
     return JsonResponse(result)

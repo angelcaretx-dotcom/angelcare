@@ -1,7 +1,9 @@
 The {{ by }} cancelled this transportation request online.
 
 {% for label, value in rows %}{{ label }}: {{ value }}
-{% endfor %}
+{% endfor %}{% if paid_online %}
+This ride was paid online: a refund may be due.
+{% endif %}
 If a trip was scheduled, it has been cancelled too. Rider details are
 only shown in the admin, not in email:
 {{ admin_url|safe }}

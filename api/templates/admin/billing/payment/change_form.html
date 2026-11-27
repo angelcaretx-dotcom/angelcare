@@ -1,0 +1,18 @@
+{% extends "admin/change_form.html" %}
+{% comment %}
+A payment's page (ADR 0050): the record is read-only; the one thing staff can do is ask Stripe
+where the payment stands. A POST with a CSRF token, never a link: opening a page must change nothing.
+Only CSS classes present in Unfold's precompiled stylesheet may be used here --
+accounts.test_dashboard.DashboardTemplateTests checks.
+{% endcomment %}
+
+{% block form_before %}
+{{ block.super }}
+{% if can_check %}
+<form method="post" action="{% url 'admin:billing_payment_check' original.pk %}" class="flex flex-wrap gap-4 items-center mb-4" data-payment-check>
+    {% csrf_token %}
+    <button type="submit" class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Check with Stripe</button>
+    <span class="text-sm text-subtle">Asks Stripe where this payment stands and records the answer. Refunds are made in Stripe, not here.</span>
+</form>
+{% endif %}
+{% endblock %}

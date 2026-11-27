@@ -38,7 +38,12 @@ TRASHABLE_APPS = {
 }
 # A delete that would reach any of these is refused: money has moved, or
 # a claim was filed, so the record must stay (set it Inactive instead).
-BLOCKING = {"billing.invoice", "claims.claim", "claims.claimfile", "claims.responsefile", "claims.claimsettings"}
+# An online payment (ADR 0050) is money too: a request or an emailed price
+# that has one, paid or not, can't be deleted.
+BLOCKING = {
+    "billing.invoice", "billing.payment", "claims.claim", "claims.claimfile", "claims.responsefile",
+    "claims.claimsettings",
+}
 # Records nobody deletes on their own (a driver's proof, a log line) but
 # that go to the trash with their parent: no delete permission needed.
 TAKEN_ALONG = {

@@ -1,0 +1,23 @@
+{% extends "notifications/email_base.html" %}
+{% comment %}
+Office alerts about an online payment (ADR 0050): paid, needs attention, refunded, disputed.
+A reference and a link only: no amount and nothing about the rider. Both are behind the login.
+{% endcomment %}
+
+{% block title %}{{ heading }}{% endblock %}
+
+{% block preheader %}{{ heading }}: log in to see it.{% endblock %}
+
+{% block content %}
+<h1 style="margin:0 0 12px; font-size:19px; line-height:1.3; color:#1f2933;">{{ heading }}</h1>
+<p style="margin:0 0 8px; color:#3d4852;">
+  {{ message }}
+  Amounts and rider details are only shown in the admin, not in email.
+</p>
+{% include "notifications/_detail_table.html" with rows=rows %}
+<div style="margin:28px 0 4px;">
+  {% include "notifications/_button.html" with href=admin_url label=button %}
+</div>
+{% endblock %}
+
+{% block footer_note %}This is an automated staff alert from AngelCare Transit's trip request system.{% endblock %}

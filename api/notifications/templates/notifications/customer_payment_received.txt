@@ -1,0 +1,22 @@
+Hello,
+
+Thank you. We received your payment for the transportation you requested.
+
+Reference: {{ reference }}
+Amount paid: {{ amount }}
+
+What happens next
+{{ what_paying_means|safe }}
+{% if waiting %}
+{{ waiting|safe }}
+{% endif %}
+Cancellations and refunds
+{{ refund_policy|safe }}
+
+Questions? Call 817-766-9228 and give us your reference number.
+
+For your privacy, this email leaves out your name, your addresses and
+the date and time of your ride.
+
+— The AngelCare Transit Team
+angelcaretransit.com

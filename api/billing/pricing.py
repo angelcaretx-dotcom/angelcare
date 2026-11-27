@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from audit.services import record_change
@@ -24,7 +25,8 @@ from transportation.models import ReturnRide
 from trips.models import Trip, TripEventType, TripLeg, TripStatus
 from vehicles.models import VehicleCheck
 
-from .models import DriverPayPlan, Invoice, InvoiceStatus, Quote, RateCard
+from . import payments
+from .models import DriverPayPlan, Invoice, InvoiceStatus, Payment, Quote, RateCard
 
 CENT = Decimal("0.01")
 BILLED_STATUSES = (TripStatus.COMPLETED, TripStatus.NO_SHOW)
@@ -34,6 +36,10 @@ PROGRAM_PAYER_TYPES = (PayerType.MEDICAID_MCO, PayerType.BROKER)
 MAX_QUOTE = Decimal("20000.00")
 # A charge line's `leg` for each ride of a round trip (ADR 0049); a one-way trip has none.
 LEG_KEYS = {TripLeg.OUTBOUND: "there", TripLeg.RETURN: "back"}
+# A discount (ADR 0051) is typed in dollars or as a percentage of the whole price.
+DISCOUNT_DOLLARS, DISCOUNT_PERCENT = "$", "%"
+DISCOUNT_KINDS = (DISCOUNT_DOLLARS, DISCOUNT_PERCENT)
+MAX_DISCOUNT_REASON = 200
 
 
 class PricingError(Exception):
@@ -60,21 +66,132 @@ class Line:
     line is without words, so the customer's email is written from them and
     never from the label. Both are blank on driver pay lines and the no-show
     fee, and missing from rows saved before them.
+
+    `extra` holds further keys saved with the line. Only a discount line has
+    any (ADR 0051): `percent` and `reason`.
     """
 
     label: str
     quantity: Decimal
     unit: Decimal
     amount: Decimal = field(init=False)
-    kind: str = ""  # "base", "loading", "miles", "after_hours" or "wait"
+    kind: str = ""  # "base", "loading", "miles", "after_hours", "wait", "extra_wait" or "discount"
     leg: str = ""  # "there" or "back": the ride of a round trip the line belongs to
+    extra: dict = field(default_factory=dict)
 
     def __post_init__(self):
         self.amount = _money(self.quantity * self.unit)
 
     def as_dict(self) -> dict:
         return {"label": self.label, "quantity": str(self.quantity), "unit": str(self.unit),
-                "amount": str(self.amount), "kind": self.kind, "leg": self.leg}
+                "amount": str(self.amount), "kind": self.kind, "leg": self.leg, **self.extra}
+
+
+@dataclass(frozen=True)
+class Discount:
+    """
+    Money taken off a price while it is checked (ADR 0051): `value` dollars,
+    or `value` percent of the whole price before the discount. The reason
+    is for staff: it is kept with the price and in the audit log, and is
+    never put in an email.
+    """
+
+    kind: str  # DISCOUNT_DOLLARS or DISCOUNT_PERCENT
+    value: Decimal
+    reason: str = ""
+
+
+def discount_line(discount: Discount, before: Decimal) -> Line:
+    """
+    The "Discount" line for a price of `before` dollars: one negative
+    amount, with the percentage (if it was one) and the reason kept beside
+    it. Raises PricingError, in words for the person typing, when the
+    discount can't be given. Every rule is here, so the price page and
+    `quotes.send` refuse the same things.
+    """
+    if not isinstance(discount, Discount) or discount.kind not in DISCOUNT_KINDS:
+        raise PricingError("Choose $ or % for the discount.")
+    value = discount.value
+    if isinstance(value, bool) or not isinstance(value, (Decimal, int)):
+        raise PricingError("The discount must be a number.")
+    value = Decimal(value)
+    if not value.is_finite() or value <= 0:
+        raise PricingError("The discount must be greater than 0.")
+    percent = discount.kind == DISCOUNT_PERCENT
+    if percent and value > 100:
+        raise PricingError("A percentage discount can be at most 100.")
+    if not percent and value > before:
+        raise PricingError(f"The discount (${value:,.2f}) is more than the price before the discount (${before:,.2f}).")
+    if value != value.quantize(CENT):
+        raise PricingError("A percentage discount can have at most 2 decimal places." if percent
+                           else "A dollar discount can have at most 2 decimal places.")
+    reason = " ".join(str(discount.reason or "").split())
+    if not reason:
+        raise PricingError("Give the reason for the discount.")
+    if len(reason) > MAX_DISCOUNT_REASON:
+        raise PricingError(f"The reason for the discount can be at most {MAX_DISCOUNT_REASON} characters.")
+    # A percentage is of the whole price before the discount, rounded to cents half-up.
+    off = _money(before * value / 100) if percent else _money(value)
+    if not off:
+        raise PricingError("This discount comes to $0.00, so nothing would be taken off.")
+    return Line("Discount", Decimal(1), -off, kind="discount",
+                extra={"percent": f"{value.normalize():f}" if percent else "", "reason": reason})
+
+
+# --- What a saved price says (the entries of `Quote.lines`) -------------------
+
+def _stored_amount(entry) -> Decimal:
+    return Decimal(str(entry.get("amount") or 0))
+
+
+def says_what_lines_are(stored) -> bool:
+    """Do these saved lines carry `kind` and `leg` (ADR 0049)? Prices saved before them don't."""
+    return bool(stored) and all(isinstance(entry, dict) and "kind" in entry and "leg" in entry for entry in stored)
+
+
+def discount_entry(stored) -> dict | None:
+    """The discount entry of a saved price (ADR 0051), or None. Prices saved before discounts have none."""
+    for entry in stored or []:
+        if isinstance(entry, dict) and entry.get("kind") == "discount":
+            return entry
+    return None
+
+
+def discount_split(stored) -> tuple[Decimal, Decimal]:
+    """
+    How a saved price's discount is shared between the invoices of its
+    booking: (the one-way or outbound trip's share, the ride back's share),
+    in dollars taken off. (0, 0) when the price has no discount.
+
+    Decided from the saved lines only, so it never depends on which invoice
+    is made first (ADR 0051): the first trip takes as much of the discount
+    as its own part of the price, and the ride back takes the rest. The
+    first trip's part is the lines with no ride named or named "there". The
+    wait line names no ride, but it is charged on the ride back, so it
+    counts on that side.
+    """
+    stored = [entry for entry in stored or [] if isinstance(entry, dict)]
+    off = -sum((_stored_amount(entry) for entry in stored if entry.get("kind") == "discount"), Decimal(0))
+    if off <= 0:
+        return Decimal(0), Decimal(0)
+    first_part = sum((_stored_amount(entry) for entry in stored
+                      if entry.get("kind") not in ("discount", "wait") and entry.get("leg", "") in ("", "there")),
+                     Decimal(0))
+    first = max(Decimal(0), min(off, first_part))
+    return _money(first), _money(off - first)
+
+
+def _less_discount(lines: list[Line], share: Decimal) -> list[Line]:
+    """
+    These charge lines with their share of the emailed price's discount as
+    a last "Discount" line. The share is a dollar amount fixed when the
+    price was emailed; it is never more than the lines themselves, so a ride
+    that turned out shorter than quoted can't make an invoice negative.
+    """
+    share = min(share, total(lines))
+    if share > 0:
+        return [*lines, Line("Discount", Decimal(1), -share, kind="discount")]
+    return lines
 
 
 def card_on(payer, day) -> RateCard:
@@ -117,6 +234,49 @@ def wait_minutes(trip: Trip) -> int | None:
     return max(0, math.ceil((picked - dropped).total_seconds() / 60))
 
 
+def booking_request_id(trip: Trip):
+    """The request a trip's booking came from. A ride back has none of its own: it is found through its outbound trip."""
+    if trip.trip_request_id:
+        return trip.trip_request_id
+    return trip.outbound_trip.trip_request_id if trip.outbound_trip_id else None
+
+
+def prepayment(trip: Trip) -> Payment | None:
+    """
+    The online payment that paid for this trip's booking (ADR 0050), or
+    None. A payment refunded in full no longer counts. With the payment
+    tables missing the answer is None, so pricing works before the
+    database update.
+    """
+    request_id = booking_request_id(trip)
+    if not request_id:
+        return None
+    return payments.safe_read(
+        lambda: payments.holding(Payment.objects.filter(quote__trip_request_id=request_id))
+        .select_related("quote__rate_card", "quote__trip_request").order_by("paid_at", "created_at").first(),
+        None,
+    )
+
+
+def _governing(trip: Trip) -> tuple[Quote | None, Payment | None]:
+    """The emailed price a trip is invoiced by (see `emailed_quote`), and the payment that paid it online, if any."""
+    if trip.payer_id and trip.payer.payer_type in PROGRAM_PAYER_TYPES:
+        return None, None
+    request_id = booking_request_id(trip)
+    if not request_id:
+        return None, None
+    payment = prepayment(trip)
+    if payment is not None:
+        # The price that was paid is the price (ADR 0050), whatever was emailed around it.
+        quote = payment.quote
+    else:
+        quote = (Quote.objects.filter(trip_request_id=request_id, delivered=True)
+                 .select_related("rate_card", "trip_request").order_by("-created_at").first())
+    if quote is None or quote.rate_card is None or quote.rate_card.payer_id != trip.payer_id:
+        return None, None
+    return quote, payment
+
+
 def emailed_quote(trip: Trip) -> Quote | None:
     """
     The price emailed for this trip's request, when the trip is to be
@@ -124,23 +284,13 @@ def emailed_quote(trip: Trip) -> Quote | None:
     which is priced exactly as before.
 
     A ride back has no request of its own: it is found through its outbound
-    trip. Only the newest delivered price counts. It is set aside when its
-    card has been deleted, when the trip is billed to someone other than
-    that card is for, and for a Medicaid or broker payer, whose rates are
-    the program's and never a price told to a rider.
+    trip. Only the newest delivered price counts, or the one that was paid
+    online (ADR 0050). It is set aside when its card has been deleted, when
+    the trip is billed to someone other than that card is for, and for a
+    Medicaid or broker payer, whose rates are the program's and never a
+    price told to a rider.
     """
-    if trip.payer_id and trip.payer.payer_type in PROGRAM_PAYER_TYPES:
-        return None
-    request_id = trip.trip_request_id
-    if not request_id and trip.outbound_trip_id:
-        request_id = trip.outbound_trip.trip_request_id
-    if not request_id:
-        return None
-    quote = (Quote.objects.filter(trip_request_id=request_id, delivered=True)
-             .select_related("rate_card", "trip_request").order_by("-created_at").first())
-    if quote is None or quote.rate_card is None or quote.rate_card.payer_id != trip.payer_id:
-        return None
-    return quote
+    return _governing(trip)[0]
 
 
 def quoted_card(trip: Trip) -> RateCard | None:
@@ -168,10 +318,19 @@ def price(trip: Trip) -> tuple[RateCard, list[Line]]:
     # A trip whose price was emailed keeps the card that price used, even when a newer
     # card has started since (ADR 0049). Decided here, so the invoice, the profit report
     # and percent-of-charge driver pay all agree.
-    quoted = emailed_quote(trip)
+    quoted, paid = _governing(trip)
     card = quoted.rate_card if quoted else card_for(trip)
     if trip.status == TripStatus.NO_SHOW:
+        # A no-show is charged the no-show fee and nothing else: no discount (ADR 0051), and a
+        # ride that was paid online is settled by the office by hand (ADR 0050).
         return card, [Line("No-show fee", Decimal(1), card.no_show_fee)]
+    # The ride back of a booking has no request of its own (see `booking_request_id`).
+    ride_back = not trip.trip_request_id
+    if quoted is not None and paid is not None and says_what_lines_are(quoted.lines) \
+            and not (ride_back and not _prices_a_ride_back(quoted)):
+        # Paid online: the paid price is final (ADR 0050). The invoice repeats what was paid,
+        # line for line, and adds only waiting beyond what was paid for.
+        return card, _paid_lines(trip, quoted, card, ride_back)
 
     service = trip.service_type
     if card.base_for(service) is None:
@@ -210,7 +369,89 @@ def price(trip: Trip) -> tuple[RateCard, list[Line]]:
         blocks = card.wait_blocks(minutes)
         if blocks:
             lines.append(Line(card.wait_label(minutes), Decimal(blocks), wait_rate, kind="wait"))
+    if quoted is not None:
+        # The emailed price had a discount (ADR 0051): this trip's share of it, in the dollars
+        # the customer was shown. A ride that differs from the price is charged in full on top.
+        first, rest = discount_split(quoted.lines)
+        lines = _less_discount(lines, rest if ride_back else first)
     return card, lines
+
+
+def _prices_a_ride_back(quote: Quote) -> bool:
+    """Was a ride back part of this saved price? Its lines name a ride, or charge for waiting."""
+    return any(entry.get("leg") in ("there", "back") or entry.get("kind") == "wait" for entry in quote.lines)
+
+
+def _stored_line(entry: dict) -> Line:
+    """A saved line of a price as a charge line, with exactly the amount the customer was shown."""
+    line = Line(entry["label"], Decimal(str(entry["quantity"])), Decimal(str(entry["unit"])),
+                kind=entry.get("kind", ""), leg=entry.get("leg", ""))
+    line.amount = _stored_amount(entry)
+    return line
+
+
+def _paid_lines(trip: Trip, quote: Quote, card: RateCard, ride_back: bool) -> list[Line]:
+    """
+    The invoice lines of a trip whose price was paid online (ADR 0050):
+    that price's own saved lines, never a fresh calculation, so the miles
+    on the trip, the hour it ran and a rate card changed since make no
+    difference.
+
+    The one-way or outbound trip gets the lines with no ride named or named
+    "there" (that is every fee line when the fees are charged once). The
+    ride back gets the lines named "back" and the wait line. Each gets its
+    share of the discount (`discount_split`).
+
+    Waiting is the one thing billed after the ride: when the driver app
+    recorded a longer wait than was paid for, the ride back's invoice adds
+    the extra blocks at the wait rate. A shorter wait changes nothing, and
+    a wait that wasn't measured counts as the wait that was paid for.
+    """
+    charges = [entry for entry in quote.lines if entry.get("kind") != "discount"]
+    waits = [entry for entry in charges if entry.get("kind") == "wait"]
+    first, rest = discount_split(quote.lines)
+    if not ride_back:
+        mine = [entry for entry in charges if entry.get("kind") != "wait" and entry.get("leg", "") in ("", "there")]
+        return _less_discount([_stored_line(entry) for entry in mine], first)
+
+    mine = [entry for entry in charges if entry.get("kind") != "wait" and entry.get("leg") == "back"]
+    lines = _less_discount([_stored_line(entry) for entry in mine + waits], rest)
+    measured = wait_minutes(trip)
+    # The rate that was paid, when the price had a wait line; otherwise the card's.
+    rate = Decimal(str(waits[0]["unit"])) if waits else card.wait_rate_for(trip.service_type)
+    if measured is not None and rate:
+        bought = int(sum((Decimal(str(entry["quantity"])) for entry in waits), Decimal(0)))
+        extra = card.wait_blocks(measured) - bought
+        if extra > 0:
+            covered = card.wait_free_minutes + bought * max(1, card.wait_block_minutes)
+            lines.append(Line(f"Extra waiting time ({measured - covered} min beyond the {covered} paid for)",
+                              Decimal(extra), rate, kind="extra_wait"))
+    return lines
+
+
+def prepayment_note(trip: Trip) -> str:
+    """
+    What an invoice's notes say when its booking was paid online (ADR 0050):
+    "Paid online $X on <date> (reference #...)". On the first invoice of
+    the booking only, so the payment isn't counted twice; a no-show's
+    invoice always says it, because the office settles that one by hand.
+    Empty for every other invoice.
+    """
+    payment = prepayment(trip)
+    if payment is None or payment.paid_at is None:
+        return ""
+    request_id = booking_request_id(trip)
+    paid = payment.paid if payment.paid is not None else payment.amount
+    note = (f"Paid online ${paid:,.2f} on {local(payment.paid_at):%b %d, %Y} "
+            f"(reference {payments.reference(request_id)}).")
+    if payment.refunded_cents:
+        note += f" ${payment.refunded:,.2f} of it has been refunded."
+    if trip.status == TripStatus.NO_SHOW:
+        return note + " This ride was a no-show: settle the payment by hand."
+    others = Invoice.objects.exclude(status=InvoiceStatus.VOID).filter(
+        Q(trip__trip_request_id=request_id) | Q(trip__outbound_trip__trip_request_id=request_id)
+    ).exclude(trip_id=trip.pk)
+    return "" if others.exists() else note
 
 
 def fee_lines(card: RateCard, service: str, service_name: str, leg: str = "") -> list[Line]:
@@ -315,12 +556,16 @@ def explain(card: RateCard, trip_request) -> list[str]:
     return rules
 
 
-def quote(trip_request, *, miles=None, wait_minutes=0) -> tuple[RateCard, list[Line], list[str]]:
+def quote(trip_request, *, miles=None, wait_minutes=0, discount: Discount | None = None,
+          ) -> tuple[RateCard, list[Line], list[str]]:
     """
     The rate card, charge lines and notes for staff for a ride that hasn't
     happened yet. Priced the way its trips will be invoiced: each leg is a
     trip (base + miles + after-hours), and a wait-and-return ride adds the
     wait. `miles` is one way; the ride back is the same route reversed.
+
+    A `discount` (ADR 0051) is one more line, last and negative: the total
+    of the lines is then the price after the discount, which may be $0.00.
     """
     card = quote_card(trip_request)
     service, service_name = trip_request.service_type, trip_request.get_service_type_display()
@@ -371,6 +616,9 @@ def quote(trip_request, *, miles=None, wait_minutes=0) -> tuple[RateCard, list[L
         notes.append("The invoice uses the wait the driver app records, so it can differ from this price.")
     if not total(lines):
         raise PricingError(f"Nothing to charge on “{card}”.")
+    if discount is not None:
+        lines.append(discount_line(discount, total(lines)))
+    # The limit is on what the customer is asked to pay: the total after any discount.
     if total(lines) > MAX_QUOTE:
         raise PricingError(f"${total(lines):,.2f} is too much to be right: check the miles and the wait.")
     return card, lines, notes
@@ -411,11 +659,15 @@ def create_invoices(payer, start, end, *, user) -> tuple[list[Invoice], list[tup
             continue
         amount = total(lines)
         if not amount:
-            skipped.append((trip, f"Nothing to bill on “{card}”."))
+            if any(line.kind == "discount" for line in lines):
+                skipped.append((trip, "Nothing to bill: the discount on the emailed price covers this ride."))
+            else:
+                skipped.append((trip, f"Nothing to bill on “{card}”."))
             continue
+        # Still a Draft, and never marked Paid here: a ride paid online says so in its notes (ADR 0050).
         invoice = Invoice.objects.create(
             trip=trip, payer=trip.payer, amount=amount, status=InvoiceStatus.DRAFT,
-            rate_card=card, lines=[line.as_dict() for line in lines],
+            rate_card=card, lines=[line.as_dict() for line in lines], notes=prepayment_note(trip),
         )
         record_change(actor=user, action="created", resource_type="Invoice", resource_id=invoice.pk,
                       after={"trip": str(trip.pk), "amount": str(amount), "rate_card": str(card.pk)}, source="admin")

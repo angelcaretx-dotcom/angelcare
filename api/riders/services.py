@@ -17,6 +17,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from audit.services import record_change
+from billing import checkout, payments
 from notifications.services import NotificationService
 from transportation.models import BookedFor, TripRequest, TripRequestStatus
 from trips.models import Trip, TripStatus
@@ -228,4 +229,10 @@ def cancel_request(account, trip_request: TripRequest, *, by: str = "rider", sou
             after={"status": TripStatus.CANCELLED, "by": by},
             source=source,
         )
-    transaction.on_commit(lambda: NotificationService().notify_rider_cancelled(trip_request, by=by))
+    # Online payment (ADR 0050): a payment page still open for this ride is closed. A ride already
+    # paid is not refunded here: the office is told a refund may be due and decides in Stripe.
+    checkout.expire_open(trip_request)
+    paid_online = payments.request_paid(trip_request)
+    # The extra argument is only passed for a paid ride, so the alert is otherwise sent exactly as before.
+    extra = {"paid_online": True} if paid_online else {}
+    transaction.on_commit(lambda: NotificationService().notify_rider_cancelled(trip_request, by=by, **extra))

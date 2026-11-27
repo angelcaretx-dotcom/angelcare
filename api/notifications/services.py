@@ -77,7 +77,7 @@ class NotificationService:
         )
 
     def send_quote(self, quote, *, covers: str, rows=(), how_it_works: str = "", wait_note: str = "",
-                   no_wait_note: str = "") -> bool:
+                   no_wait_note: str = "", pay: dict | None = None) -> bool:
         """
         The price for a requested ride (ADR 0047), with each part listed
         (ADR 0049): `rows` is the breakdown, already worded for the
@@ -85,12 +85,19 @@ class NotificationService:
         address, date or pickup time (ADR 0027), and it never names the
         service level. The subject and the preview line carry no amount
         and no miles. True if the email went out.
+
+        `pay` (ADR 0050) is given only while online payment is on: the
+        pay link and the office's texts about paying and refunds. Without
+        it the email is exactly what it was before online payment existed.
         """
         trip_request = quote.trip_request
         reference = self._reference(trip_request)
+        rows = list(rows)
         context = {
             "reference": reference,
-            "rows": list(rows),
+            "rows": rows,
+            # The same rows for the HTML email, with a real multiplication sign: "24.8 × $2.00".
+            "rows_html": [(label.replace(" x ", " × "), value) for label, value in rows],
             "total": f"${quote.amount:,.2f}",
             "covers": covers,
             "how_it_works": how_it_works,
@@ -99,6 +106,8 @@ class NotificationService:
             "contact_url": f"{settings.WEBSITE_URL}/contact",
             "website_url": settings.WEBSITE_URL,
         }
+        if pay:
+            context["pay"] = pay
         return self._send(
             notification_type=NotificationType.CUSTOMER_QUOTE,
             to=quote.sent_to,
@@ -111,6 +120,103 @@ class NotificationService:
     @staticmethod
     def _reference(trip_request) -> str:
         return f"#{str(trip_request.id)[:8].upper()}"
+
+    # --- Online payment (ADR 0050). Office emails: a reference and a link, never an
+    # amount or anything about the rider. The customer's email: the reference, the
+    # amount they paid and the office's texts. ---
+
+    def _payment_alert(self, notification_type, trip_request, *, subject, heading, message, admin_url,
+                       button) -> bool:
+        context = {
+            "heading": heading,
+            "message": message,
+            "rows": [("Reference", self._reference(trip_request))],
+            "admin_url": admin_url,
+            "button": button,
+            "website_url": settings.WEBSITE_URL,
+        }
+        return self._send(
+            notification_type=notification_type,
+            to=settings.STAFF_NOTIFICATION_EMAIL,
+            subject=subject,
+            body_text=render_to_string("notifications/staff_payment_alert.txt", context),
+            body_html=render_to_string("notifications/staff_payment_alert.html", context),
+            related=trip_request,
+        )
+
+    @staticmethod
+    def _request_admin_url(trip_request) -> str:
+        return f"{settings.SITE_URL}/admin/transportation/triprequest/{trip_request.id}/change/"
+
+    @staticmethod
+    def _payment_admin_url(payment) -> str:
+        return f"{settings.SITE_URL}/admin/billing/payment/{payment.id}/change/"
+
+    def notify_payment_received(self, trip_request) -> bool:
+        reference = self._reference(trip_request)
+        return self._payment_alert(
+            NotificationType.PAYMENT_RECEIVED_STAFF, trip_request,
+            subject=f"Price {reference} has been paid: schedule the ride",
+            heading="A price was paid online",
+            message="The customer paid this price online. Schedule the ride, then confirm it with the customer. "
+                    "Paying did not assign a driver.",
+            admin_url=self._request_admin_url(trip_request), button="Open the request",
+        )
+
+    def notify_payment_attention(self, trip_request, payment) -> bool:
+        reference = self._reference(trip_request)
+        return self._payment_alert(
+            NotificationType.PAYMENT_ATTENTION_STAFF, trip_request,
+            subject=f"A payment for {reference} needs attention",
+            heading="A payment needs attention",
+            message="A customer's online payment arrived, but it could not be accepted as it stands. It is real "
+                    "money and probably has to be refunded in Stripe. The payment's page in the admin says why.",
+            admin_url=self._payment_admin_url(payment), button="Open the payment",
+        )
+
+    def notify_payment_refunded(self, trip_request, payment) -> bool:
+        reference = self._reference(trip_request)
+        return self._payment_alert(
+            NotificationType.PAYMENT_REFUNDED_STAFF, trip_request,
+            subject=f"A refund was recorded for {reference}",
+            heading="A refund was recorded",
+            message="Stripe reports that money was refunded on this online payment. The payment's page in the "
+                    "admin shows how much.",
+            admin_url=self._payment_admin_url(payment), button="Open the payment",
+        )
+
+    def notify_payment_disputed(self, trip_request, payment) -> bool:
+        reference = self._reference(trip_request)
+        return self._payment_alert(
+            NotificationType.PAYMENT_DISPUTED_STAFF, trip_request,
+            subject=f"The payment for {reference} was disputed",
+            heading="A payment was disputed",
+            message="Stripe reports that the cardholder disputed this online payment with their bank. Answer the "
+                    "dispute in Stripe before its deadline.",
+            admin_url=self._payment_admin_url(payment), button="Open the payment",
+        )
+
+    def send_payment_received(self, quote, *, amount: str, what_paying_means: str, refund_policy: str,
+                              waiting: str = "") -> bool:
+        """The customer's "We received your payment". No name, address, date, time or service level (ADR 0027)."""
+        trip_request = quote.trip_request
+        reference = self._reference(trip_request)
+        context = {
+            "reference": reference,
+            "amount": amount,
+            "what_paying_means": what_paying_means,
+            "refund_policy": refund_policy,
+            "waiting": waiting,
+            "website_url": settings.WEBSITE_URL,
+        }
+        return self._send(
+            notification_type=NotificationType.PAYMENT_RECEIVED_CUSTOMER,
+            to=quote.sent_to,
+            subject=f"We received your payment for ride {reference} — AngelCare Transit",
+            body_text=render_to_string("notifications/customer_payment_received.txt", context),
+            body_html=render_to_string("notifications/customer_payment_received.html", context),
+            related=trip_request,
+        )
 
     # --- Rider accounts (ADR 0031). No PHI: just a link, as ever. ---
 
@@ -179,12 +285,14 @@ class NotificationService:
             related=ExpiryDigest(),
         )
 
-    def notify_rider_cancelled(self, trip_request, by: str = "rider") -> None:
+    def notify_rider_cancelled(self, trip_request, by: str = "rider", paid_online: bool = False) -> None:
         reference = self._reference(trip_request)
         context = {
             "rows": [("Reference", reference), ("Requested pickup", trip_request.requested_datetime)],
             "admin_url": f"{settings.SITE_URL}/admin/transportation/triprequest/{trip_request.id}/change/",
             "by": by,
+            # One line, no amount (ADR 0050): the ride was paid online, so a refund may be due.
+            "paid_online": paid_online,
             "website_url": settings.WEBSITE_URL,
         }
         self._send(

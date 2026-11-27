@@ -5,7 +5,11 @@ from django.contrib.auth.models import Group, User
 from django.test import TestCase
 from django.utils import timezone
 
+from decimal import Decimal
+
 from accounts.otp_test_utils import login_with_otp
+from billing.models import Payment, PaymentStatus, Quote
+from billing.payment_testing import PaymentTestMixin
 from billing.tests import make_invoice
 from facilities.models import Facility, FacilityContact
 from passengers.models import Passenger
@@ -81,6 +85,49 @@ class DeleteAndRestoreTests(TrashTestCase):
         self.assertContains(page, "TEST One")
         self.assertNotContains(page, "Real Clinic")
         self.assertContains(self.client.get("/admin/trash/trashentry/?type=facilities.facility"), "Real Clinic")
+
+
+class OnlinePaymentBlocksDeleteTests(PaymentTestMixin, TrashTestCase):
+    """Money has moved, or may be about to: anything with an online payment stays (ADR 0050)."""
+
+    def quoted_request(self):
+        request = make_trip_request()
+        quote = Quote.objects.create(trip_request=request, amount=Decimal("64.80"), sent_to="payer@example.com")
+        return request, quote
+
+    def test_a_request_or_a_price_with_a_payment_can_not_be_deleted(self):
+        for status in (PaymentStatus.OPEN, PaymentStatus.PAID, PaymentStatus.EXPIRED, PaymentStatus.NEEDS_ATTENTION):
+            with self.subTest(status=status):
+                request, quote = self.quoted_request()
+                payment = self.make_payment(quote, status=status)
+                self.assertEqual(services.plan([request]).blocked, [payment])
+                self.assertEqual(services.plan([quote]).blocked, [payment])
+                for record in (request, quote):
+                    with self.assertRaises(services.TrashError):
+                        services.send(record, user=self.admin)
+                self.assertTrue(TripRequest.objects.filter(pk=request.pk).exists())
+                self.assertTrue(Quote.objects.filter(pk=quote.pk).exists())
+                self.assertTrue(Payment.objects.filter(pk=payment.pk).exists())
+        self.assertFalse(TrashEntry.objects.exists())
+
+    def test_the_admin_refuses_it_on_the_page_and_in_the_bulk_action(self):
+        request, quote = self.quoted_request()
+        self.make_payment(quote, status=PaymentStatus.PAID)
+        page = self.client.get(f"/admin/transportation/triprequest/{request.pk}/delete/")
+        self.assertContains(page, "Payment: Paid online payment of $64.80")
+        self.client.post(f"/admin/transportation/triprequest/{request.pk}/delete/", {"post": "yes"})
+        self.client.post("/admin/transportation/triprequest/", {"action": "delete_selected", "post": "yes",
+                                                                "_selected_action": [str(request.pk)]})
+        self.assertTrue(TripRequest.objects.filter(pk=request.pk).exists())
+        self.assertEqual(Payment.objects.count(), 1)
+        self.assertFalse(TrashEntry.objects.exists())
+
+    def test_a_request_with_a_price_but_no_payment_still_goes_to_the_trash_and_comes_back(self):
+        request, quote = self.quoted_request()
+        entry = services.send(request, user=self.admin)
+        self.assertFalse(Quote.objects.exists())
+        services.restore(entry, user=self.admin)
+        self.assertEqual(TripRequest.objects.get(pk=request.pk).quotes.get().pk, quote.pk)
 
 
 class PurgeTests(TrashTestCase):

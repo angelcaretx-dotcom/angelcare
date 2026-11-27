@@ -1,11 +1,15 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.utils import timezone
 
 from accounts.admin_base import AngelCareModelAdmin
 from audit.admin_mixins import AccessLoggedAdminMixin
 from audit.services import record_change
+from billing import checkout, payments
 
-from .models import TripRequest
+from .models import TripRequest, TripRequestStatus
+
+# A request that stops here is not happening: nothing more may be paid for it (ADR 0050).
+CLOSED = (TripRequestStatus.CANCELLED, TripRequestStatus.DECLINED)
 
 
 @admin.register(TripRequest)
@@ -62,7 +66,16 @@ class TripRequestAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
         if quote is None:
             return "Not yet. Use “Email the price” at the top of this page."
         when = timezone.localtime(quote.created_at)
-        return f"${quote.amount} to {quote.sent_to} on {when:%b %d, %Y at %I:%M %p}"
+        text = f"${quote.amount} to {quote.sent_to} on {when:%b %d, %Y at %I:%M %p}"
+        # Paid by card through the link in that email (ADR 0050).
+        paid = payments.paid_payment(trip_request)
+        if paid is not None and paid.paid_at:
+            paid_on = f"{timezone.localtime(paid.paid_at):%b %d, %Y}"
+            if paid.quote_id == quote.pk:
+                text += f". Paid online on {paid_on}."
+            else:
+                text += f". An earlier price (${paid.quote.amount}) was paid online on {paid_on}."
+        return text
 
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
@@ -87,3 +100,14 @@ class TripRequestAdmin(AccessLoggedAdminMixin, AngelCareModelAdmin):
                 after={"status": obj.status},
                 source="admin",
             )
+            if obj.status in CLOSED:
+                # A payment page still open for this ride is closed. A ride already paid is not
+                # refunded here: refunds are made in Stripe, and the dashboard lists it until then.
+                checkout.expire_open(obj)
+                if payments.request_paid(obj):
+                    self.message_user(
+                        request,
+                        "This ride was paid online: a refund may be due. Refunds are made in Stripe; "
+                        "the payment is listed under “Payments needing attention” until then.",
+                        messages.WARNING,
+                    )

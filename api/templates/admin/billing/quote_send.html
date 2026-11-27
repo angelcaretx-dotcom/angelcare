@@ -86,10 +86,27 @@ sends the addresses nowhere, and "noreferrer" keeps this page's address from Goo
             <input type="number" name="wait_minutes" step="1" min="0" value="{{ form.wait_minutes.value|default_if_none:''|unlocalize }}" class="{{ input_class }}">
         </label>
         {% endif %}
+        {# An optional discount (ADR 0051), in this same form: the discount sent is always the one on the screen. #}
+        {# The reason is for the office only: it is kept with the price and in the audit log, never emailed. #}
+        <label class="flex flex-col gap-2 text-sm">Discount (optional)
+            <span class="flex gap-2 items-center">
+                <input type="number" name="discount" step="0.01" min="0" value="{{ form.discount.value|default_if_none:''|unlocalize }}" class="{{ input_class }}">
+                <select name="discount_kind" class="{{ input_class }}" aria-label="Discount in dollars or percent">
+                    <option value="$"{% if form.discount_kind.value != '%' %} selected{% endif %}>$</option>
+                    <option value="%"{% if form.discount_kind.value == '%' %} selected{% endif %}>%</option>
+                </select>
+            </span>
+        </label>
+        <label class="flex flex-col gap-2 text-sm">Reason for the discount
+            <input type="text" name="discount_reason" maxlength="200" value="{{ form.discount_reason.value|default_if_none:'' }}" class="{{ input_class }}">
+        </label>
         {# formnovalidate: working the price out must not ask for the two boxes a send needs. #}
         <button type="submit" name="preview" value="1" formnovalidate class="bg-primary-600 cursor-pointer font-medium hover:bg-primary-700 px-3 py-1 rounded-default text-white">Work out the price</button>
         {% for error in form.miles.errors %}<span class="font-medium text-red-600">Miles: {{ error }}</span>{% endfor %}
         {% for error in form.wait_minutes.errors %}<span class="font-medium text-red-600">Wait: {{ error }}</span>{% endfor %}
+        {% for error in form.discount.errors %}<span class="font-medium text-red-600" data-quote-discount-error>Discount: {{ error }}</span>{% endfor %}
+        {% for error in form.discount_kind.errors %}<span class="font-medium text-red-600" data-quote-discount-error>Discount: choose $ or %.</span>{% endfor %}
+        {% for error in form.discount_reason.errors %}<span class="font-medium text-red-600" data-quote-discount-error>Reason for the discount: {{ error }}</span>{% endfor %}
         {% if error %}<span class="font-medium text-red-600" data-quote-error>{{ error }}</span>{% endif %}
     </div>
 
@@ -103,9 +120,27 @@ sends the addresses nowhere, and "noreferrer" keeps this page's address from Goo
                 <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ line.quantity|unlocalize }} × ${{ line.unit|unlocalize }}</td>
                 <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">${{ line.amount|unlocalize }}</td>
             </tr>{% endfor %}
+            {% if priced.discount %}
+            {# The discount comes after the lines and before the total (ADR 0051). The customer's email shows it without the reason. #}
+            <tr data-quote-before-discount>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">Price before the discount</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800"></td>
+                <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">${{ priced.discount.before|unlocalize }}</td>
+            </tr>
+            <tr data-quote-discount>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">Discount{% if priced.discount.percent %} ({{ priced.discount.percent }}%){% endif %}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">Reason (not shown to the customer): {{ priced.discount.reason }}</td>
+                <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">-${{ priced.discount.off|unlocalize }}</td>
+            </tr>
+            <tr data-quote-total>
+                <td class="align-top border-b border-base-200 font-medium px-3 py-2 dark:border-base-800">Total</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800"></td>
+                <td class="align-top border-b border-base-200 font-medium py-2 text-right dark:border-base-800">${{ priced.amount|unlocalize }}</td>
+            </tr>
+            {% endif %}
         </tbody></table>
         {% for note in priced.notes %}<p class="text-sm text-subtle">{{ note }}</p>{% endfor %}
-        {% if priced.changed %}<p class="font-medium text-red-600">The price is not the one you checked: the miles, the wait or the rate card changed. Nothing was sent. Check it again, then send.</p>{% endif %}
+        {% if priced.changed %}<p class="font-medium text-red-600">The price is not the one you checked: the miles, the wait, the discount or the rate card changed. Nothing was sent. Check it again, then send.</p>{% endif %}
         {% if priced.unconfirmed %}<p class="font-medium text-red-600" data-quote-unconfirmed>{{ priced.unconfirmed }}</p>{% endif %}
         <div class="flex flex-col gap-3 mt-4" data-quote-send>
             {# The miles and the wait are the boxes above, in this same form: no hidden copy that could differ from them. #}
@@ -152,6 +187,21 @@ sends the addresses nowhere, and "noreferrer" keeps this page's address from Goo
                 <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ quote.created_at|date:"M j, Y, g:i A" }}</td>
                 <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{% if quote.delivered %}Emailed to {{ quote.sent_to }}{% else %}<span class="font-medium text-red-600">Not sent: the email failed</span>{% endif %}{% if quote.sent_by %} by {{ quote.sent_by.get_full_name|default:quote.sent_by.username }}{% endif %}</td>
                 <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">${{ quote.amount|unlocalize }}</td>
+            </tr>{% endfor %}
+        </tbody></table>
+    </div>
+    {% endif %}
+
+    {# Online payment (ADR 0050): every attempt to pay a price of this request. Amounts are fine here: this page is for Administrators. #}
+    {% if online_payments %}
+    <div class="bg-white border border-base-200 p-6 rounded-default shadow-xs dark:bg-base-900 dark:border-base-800" data-quote-payments>
+        <h2 class="font-semibold mb-2 text-important">Online payments for this request</h2>
+        {% if paid %}<p class="font-medium text-sm" data-quote-paid>Paid online on {{ paid.paid_at|date:"M j, Y" }}. A paid price is final: to change it, refund the payment in Stripe first.</p>{% endif %}
+        <table class="text-sm w-full"><tbody>
+            {% for payment in online_payments %}<tr>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{{ payment.created_at|date:"M j, Y, g:i A" }}</td>
+                <td class="align-top border-b border-base-200 px-3 py-2 dark:border-base-800">{% if can_view_payments %}<a href="{% url 'admin:billing_payment_change' payment.pk %}" class="text-primary-600 underline">{{ payment.get_status_display }}</a>{% else %}{{ payment.get_status_display }}{% endif %}{% if payment.paid_at %} on {{ payment.paid_at|date:"M j, Y" }}{% endif %}{% if payment.refunded_cents %}, ${{ payment.refunded|unlocalize }} refunded{% endif %}{% if payment.disputed_at %}, disputed{% endif %}</td>
+                <td class="align-top border-b border-base-200 py-2 text-right dark:border-base-800">${{ payment.amount|unlocalize }}</td>
             </tr>{% endfor %}
         </tbody></table>
     </div>

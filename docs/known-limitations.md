@@ -116,6 +116,22 @@ Tracked honestly so nothing here is discovered by surprise later.
   0049): rates are per service, so the fee lines differ between
   services even though the email never names one. Accepted by the owner
   (2026-11-26).
+- **A discount lowers a driver's percent-of-charge pay for that ride**
+  (ADR 0051). That pay is a share of what the trip is billed, and a
+  discounted trip is billed less. The profit report shows the
+  discounted charge too, with no separate figure for the discount. The
+  owner may want driver pay worked out on the price before the discount
+  later.
+- **A discount is fixed when the price is emailed** (ADR 0051). It
+  cannot be edited afterwards: send a new price. There are no promotion
+  codes and no automatic discounts. The reason is free text that only
+  Administrators see; nothing stops staff typing something private in
+  it, so the guide says not to.
+- **A round trip's discount is split by a fixed rule** (ADR 0051): the
+  first trip's invoice takes it up to that trip's part of the price, the
+  ride back's invoice takes the rest. A trip whose whole charge is
+  covered gets no invoice and stays listed under "could not be billed",
+  with the reason.
 - **No rate schedule or EDI.** Structural Payer (ADR 0017), Billing
   (ADR 0018), and Claims (ADR 0019) domains exist, but rate schedules,
   EDI/clearinghouse/billing-vendor integration, and payment processing

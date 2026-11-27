@@ -32,6 +32,16 @@ class Area:
     models: tuple  # (app_label, model_name) pairs
     # Highest level that makes sense, e.g. logs are never editable.
     max_level: int = FULL
+    # Records and settings that come with the area: ((app_label, model_name), actions)
+    # pairs. They are granted along with the area's level but never beyond those
+    # actions (nobody can be given "delete a payment"), and they don't count towards
+    # holding a level, so adding one here changes nobody's level.
+    records: tuple = ()
+
+    def record_actions(self, level: int):
+        """(app_label, model_name, actions) for each record, at this level."""
+        return [(app, model, [a for a in LEVEL_ACTIONS[level] if a in allowed])
+                for (app, model), allowed in self.records]
 
 
 AREAS = [
@@ -66,8 +76,15 @@ AREAS = [
     Area("payers", "Payers", (("payers", "payer"),)),
     Area(
         "billing",
-        "Billing (invoices, rate cards, driver pay, emailed prices)",
+        "Billing (invoices, rate cards, driver pay, emailed prices, online payments)",
         (("billing", "invoice"), ("billing", "ratecard"), ("billing", "driverpayplan"), ("billing", "quote")),
+        # Online payment (ADR 0050): what Stripe reported is only ever seen; the
+        # settings row is seen and changed, never added to or deleted.
+        records=(
+            (("billing", "payment"), ("view",)),
+            (("billing", "paymentevent"), ("view",)),
+            (("billing", "paymentterms"), ("view", "change")),
+        ),
     ),
     Area(
         "claims",
@@ -166,6 +183,13 @@ def _permissions_for(area: Area, level: int):
             Permission.objects.filter(
                 content_type__app_label=app,
                 codename__in=[f"{a}_{model}" for a in LEVEL_ACTIONS[level]],
+            )
+        )
+    for app, model, actions in area.record_actions(level):
+        perms += list(
+            Permission.objects.filter(
+                content_type__app_label=app,
+                codename__in=[f"{a}_{model}" for a in actions],
             )
         )
     return perms

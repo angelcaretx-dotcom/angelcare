@@ -302,7 +302,7 @@ class SendTests(QuoteTestCase):
         html = message.alternatives[0][0]
         for body in (message.body, html):
             self.assertIn(f"#{str(request.pk)[:8].upper()}", body)
-            for part in ("Booking fee", "$50.00", "Miles: 7.4 x $2.00 (after the first 5 miles)", "$14.80",
+            for part in ("Booking fee", "$50.00", "Miles: 12.4 miles, first 5 included: 7.4", "$14.80",
                          "Total price", "$64.80", "One-way ride", "How your price works", "not booked yet"):
                 self.assertIn(part, body)
             # The price and its parts (ADR 0049), still nothing about the rider or the trip (ADR 0027).
@@ -310,9 +310,14 @@ class SendTests(QuoteTestCase):
                 self.assertNotIn(private, body)
         text = message.body.replace("\r\n", "\n")  # the template's line ends are the checkout's
         self.assertIn("Booking fee: $50.00\n", text)
-        self.assertIn("Miles: 7.4 x $2.00 (after the first 5 miles) = $14.80\n", text)
+        # The real distance first, then the miles charged: the included miles don't hide it.
+        self.assertIn("Miles: 12.4 miles, first 5 included: 7.4 x $2.00 = $14.80\n", text)
+        self.assertIn("Miles: 12.4 miles, first 5 included: 7.4 × $2.00", html)
         self.assertIn("Total price: $64.80\n", text)
-        self.assertIn("Covers: One-way ride\n", text)
+        # "Covers" comes straight after the reference, before the parts of the price.
+        self.assertIn(f"Reference: #{str(request.pk)[:8].upper()}\nCovers: One-way ride\n\nBooking fee: $50.00\n", text)
+        self.assertLess(html.index("Covers"), html.index("Booking fee"))
+        self.assertLess(html.index("Booking fee"), html.index("Total price"))
 
         request.refresh_from_db()
         self.assertEqual(request.status, TripRequestStatus.CONTACTED)
@@ -442,8 +447,8 @@ class ItemisedEmailTests(QuoteTestCase):
 
     def rows(self, request, miles="12.4", wait_minutes=0):
         card, lines, _ = pricing.quote(request, miles=Decimal(miles), wait_minutes=wait_minutes)
-        rows = quotes.customer_rows(request, card, lines, wait_minutes)
-        # One row per line, and the amounts shown add up to the total.
+        rows = quotes.customer_rows(request, card, lines, wait_minutes, Decimal(miles))
+        # The amounts shown add up to the total.
         self.assertEqual(sum(Decimal(value.lstrip("$")) for _, value in rows), pricing.total(lines))
         return rows
 
@@ -473,20 +478,20 @@ class ItemisedEmailTests(QuoteTestCase):
     def test_every_kind_of_line_is_a_row_when_the_card_charges_the_fees_on_each_ride(self):
         RateCard.objects.update(loading_wheelchair=Decimal("20.00"))
         request = self.request(return_ride="scheduled", return_datetime=at(19))
+        # Each ride keeps its own fee rows; the miles of both rides are one row after them.
         expected = [
             ("Booking fee, ride there", "$50.00"), ("Loading fee, ride there", "$20.00"),
-            ("Miles there: 7.4 x $2.00 (after the first 5 miles)", "$14.80"),
             ("Booking fee, ride back", "$50.00"), ("Loading fee, ride back", "$20.00"),
-            ("Miles back: 7.4 x $2.00 (after the first 5 miles)", "$14.80"),
+            ("Miles, round trip: 24.8 miles, first 10 included: 14.8 x $2.00", "$29.60"),
             ("After-hours fee, ride back", "$10.00"),
         ]
         self.assertEqual(self.rows(request), expected)
         _, text, html = self.sent(request)
         for label, value in expected:
-            self.assertIn(label, html)
+            self.assertIn(label.replace(" x ", " × "), html)
             self.assertIn(value, html)
         self.assertIn("Booking fee, ride there: $50.00\n", text)
-        self.assertIn("Miles back: 7.4 x $2.00 (after the first 5 miles) = $14.80\n", text)
+        self.assertIn("Miles, round trip: 24.8 miles, first 10 included: 14.8 x $2.00 = $29.60\n", text)
         self.assertIn("After-hours fee, ride back: $10.00\n", text)
         self.assertIn("Total price: $179.60\n", text)
         self.assertIn("Covers: Round trip (there and back)\n", text)
@@ -498,10 +503,12 @@ class ItemisedEmailTests(QuoteTestCase):
         self.by_service()
         request = self.request(return_ride="wait")
         expected = [("Booking fee", "$70.00"), ("Loading fee", "$55.00"),
-                    ("Miles there: 10 x $5.00", "$50.00"), ("Miles back: 10 x $5.00", "$50.00"),
+                    ("Miles, round trip: 20 x $5.00", "$100.00"),
                     ("Waiting time: 2 x 15 minutes at $18.00", "$36.00")]
         self.assertEqual(self.rows(request, miles="10", wait_minutes=40), expected)
         _, text, html = self.sent(request, miles="10", wait_minutes=40)
+        self.assertIn("Miles, round trip: 20 x $5.00 = $100.00\n", text)
+        self.assertIn("Miles, round trip: 20 × $5.00", html)
         self.assertIn("Waiting time: 2 x 15 minutes at $18.00 = $36.00\n", text)
         self.assertIn("Total price: $261.00\n", text)
         for body in (text, html):
@@ -560,10 +567,9 @@ class ItemisedEmailTests(QuoteTestCase):
             self.assertEqual(subject, f"Your price for ride #{str(request.pk)[:8].upper()} — AngelCare Transit")
 
     def test_the_driver_does_not_wait_paragraph_is_only_for_a_round_trip_without_waiting(self):
-        leaves = ("On this booking the driver does not wait for you. The driver leaves after dropping you off, "
-                  "and the ride back is a second trip.")
+        leaves = "On this booking the driver does not wait for you: the ride back is a separate trip."
         calls = "When you call for the ride back, there can be a wait if the driver is finishing another ride."
-        switch = ("If you would rather have the driver wait for you and bring you straight back, "
+        switch = ("If you would rather have the driver wait and bring you straight back, "
                   "tell us and we will send you a new price.")
         for ride_back, shown in (("none", ()), ("wait", ()), ("scheduled", (leaves, switch)),
                                  ("will_call", (leaves, calls, switch))):
@@ -597,7 +603,7 @@ class ItemisedEmailTests(QuoteTestCase):
                 self.assertIn(covers, body, ride_back)
                 # One-way or round trip, never both in the same email.
                 self.assertEqual("One-way" in body, ride_back == "none", ride_back)
-                self.assertEqual("Miles back" in body, ride_back != "none", ride_back)
+                self.assertEqual("Miles, round trip" in body, ride_back != "none", ride_back)
                 self.assertEqual("A round trip is two rides" in body, ride_back != "none", ride_back)
             for part in (subject, text, html):
                 for private in self.PRIVATE:
@@ -900,7 +906,7 @@ class AdminTests(QuoteTestCase):
             "miles": "33", "wait_minutes": "", "checked_amount": str(checked), "send": "1",
             "miles_checked": "1", "customer_pays": "1"})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "not the one you checked: the miles, the wait or the rate card changed")
+        self.assertContains(response, "not the one you checked: the miles, the wait, the discount or the rate card changed")
         self.assertContains(response, "Total: $212.00")  # each way: 50 + 28 miles beyond the 5 included x 2
         self.assertContains(response, 'name="checked_amount" value="212.00"')
         self.assertNotContains(response, "checked>")

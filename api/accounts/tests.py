@@ -158,6 +158,11 @@ class RoleSeedingTests(TestCase):
                 "change_quote",
                 "add_quote",
                 "delete_quote",
+                # Online payment (ADR 0050): records are seen only, the settings row is seen and changed.
+                "view_payment",
+                "view_paymentevent",
+                "view_paymentterms",
+                "change_paymentterms",
                 "view_claim",
                 "change_claim",
                 "add_claim",

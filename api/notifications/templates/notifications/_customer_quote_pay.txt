@@ -1,0 +1,14 @@
+Pay online
+You can pay this price online by card, on a secure page:
+{{ pay.url|safe }}
+This link works until your ride's pickup time.
+
+{{ pay.what_paying_means|safe }}
+
+{{ pay.refund_policy|safe }}
+{% if pay.waiting %}
+{{ pay.waiting|safe }}
+{% endif %}
+If you would rather not pay online, you can book by phone or message
+instead:
+

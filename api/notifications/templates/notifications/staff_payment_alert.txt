@@ -1,0 +1,10 @@
+{{ heading }}
+
+{{ message|safe }}
+
+{% for label, value in rows %}{{ label }}: {{ value }}
+{% endfor %}
+Amounts and rider details are only shown in the admin, not in email.
+
+{{ button }}:
+{{ admin_url|safe }}
